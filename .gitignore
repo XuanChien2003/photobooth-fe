@@ -1,7 +1,20 @@
 node_modules/
-uploads/
+dist/
+.wrangler/
+.dev.vars
+.dev.vars.*
 .env
 .env.*
 !.env.example
 *.log
-.cache/
+.cache/face-detection/
+.cache/r2-storage-review/
+
+# Impeccable: keep shared design context, exclude local reviews/runtime state.
+**/.impeccable/config.local.json
+**/.impeccable/hook.cache.json
+**/.impeccable/hook.pending.json
+**/.impeccable/*.png
+**/.impeccable/review/
+**/.impeccable/live/session.json
+**/.impeccable/live/runtime.json

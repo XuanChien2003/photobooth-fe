@@ -1,0 +1,8 @@
+/* Admin design modules: the workspace, records, forms and responsive layout. */
+@import "../admin/workspace.css";
+@import "../admin/operations.css";
+@import "../admin/controls.css";
+@import "../admin/catalogs.css";
+@import "../admin/forms.css";
+@import "../admin/printing-and-storage.css";
+@import "../admin/responsive.css";

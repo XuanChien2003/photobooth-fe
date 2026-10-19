@@ -1,0 +1,63 @@
+.storage-warning {
+  position: sticky;
+  top: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+  padding: 18px 20px;
+  border: 1px solid #ebcf8c;
+  border-left-width: 5px;
+  border-radius: 16px;
+  background: #fff6e2;
+  color: #74520d;
+}
+.storage-warning > svg {
+  flex-shrink: 0;
+}
+.storage-warning-copy {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.storage-warning-copy strong {
+  display: block;
+  font-size: 16px;
+}
+.storage-warning-copy p {
+  margin: 4px 0;
+  font-size: 14px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+.storage-warning-copy small {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.storage-warning-critical {
+  border-color: #edb7bb;
+  background: #fff0f1;
+  color: #983348;
+}
+.storage-warning .button {
+  flex-shrink: 0;
+  border-color: currentColor;
+  color: inherit;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .storage-warning {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding: 16px;
+    gap: 10px;
+  }
+  .storage-warning-copy {
+    flex-basis: calc(100% - 36px);
+  }
+  .storage-warning .button {
+    width: 100%;
+    white-space: normal;
+  }
+}

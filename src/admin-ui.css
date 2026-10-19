@@ -1,0 +1,324 @@
+/*
+ * Giao diện trang quản trị & đăng nhập viết bằng Tailwind (@apply với tiền tố tw:).
+ * Chỉ áp dụng trong .admin-shell / .admin-login — máy chụp và album của khách giữ thiết kế riêng.
+ * Không đổi display / position của các phần có bố cục riêng trên điện thoại (menu, bảng dạng thẻ).
+ */
+@layer components {
+  /* ── Khung trang ─────────────────────────────────────────────── */
+  .admin-shell {
+    @apply tw:bg-cream tw:font-sans tw:text-ink tw:antialiased;
+  }
+  .admin-shell .admin-sidebar {
+    @apply tw:bg-linear-to-b tw:from-brand tw:via-brand-dark tw:to-[#2d1711] tw:shadow-[4px_0_24px_-12px_rgb(0_0_0/0.35)];
+  }
+  .admin-shell .admin-sidebar .sidebar-label {
+    @apply tw:text-[10px] tw:tracking-[0.18em] tw:text-white/45;
+  }
+  .admin-shell .admin-sidebar nav button {
+    @apply tw:rounded-xl tw:text-[#eaded3] tw:transition tw:duration-150;
+  }
+  .admin-shell .admin-sidebar nav button svg {
+    @apply tw:opacity-80;
+  }
+  .admin-shell .admin-sidebar nav button:hover {
+    @apply tw:bg-white/10 tw:text-white;
+  }
+  .admin-shell .admin-sidebar nav button.active {
+    @apply tw:bg-brand-soft tw:font-semibold tw:text-ink tw:shadow-[0_6px_16px_-8px_rgb(0_0_0/0.45)];
+  }
+  .admin-shell .admin-sidebar nav button.active svg {
+    @apply tw:opacity-100;
+  }
+  .admin-shell .admin-sidebar nav button:focus-visible {
+    @apply tw:outline-2 tw:outline-offset-2 tw:outline-brand-soft;
+  }
+  .admin-shell .nav-count {
+    @apply tw:bg-rose-500 tw:shadow-sm tw:shadow-rose-900/30;
+  }
+  .admin-shell .sidebar-bottom a,
+  .admin-shell .sidebar-bottom button {
+    @apply tw:rounded-lg tw:transition tw:hover:bg-white/10 tw:hover:text-white;
+  }
+  @media (min-width: 761px) {
+    .admin-shell .admin-header {
+      @apply tw:sticky tw:top-0 tw:z-30 tw:border-b tw:border-line/70 tw:bg-white/80 tw:backdrop-blur-md;
+    }
+  }
+  .admin-shell .admin-header h2 {
+    @apply tw:flex tw:items-center tw:gap-3 tw:tracking-tight;
+  }
+  .admin-shell .admin-header h2 > svg {
+    @apply tw:shrink-0 tw:text-brand;
+  }
+  .admin-shell .admin-user > div {
+    @apply tw:bg-linear-to-br tw:from-brand-soft tw:to-[#dcc1ad] tw:font-bold tw:text-brand tw:ring-2 tw:ring-white tw:shadow-sm;
+  }
+
+  /* ── Thẻ / khung nội dung ────────────────────────────────────── */
+  .admin-shell .panel,
+  .admin-shell .stat-card,
+  .admin-shell .table-wrap {
+    @apply tw:rounded-2xl tw:border-transparent tw:bg-white tw:ring-1 tw:ring-line tw:shadow-[0_1px_2px_rgb(63_44_37/0.04),0_12px_32px_-20px_rgb(63_44_37/0.22)];
+  }
+  .admin-shell .stat-card {
+    @apply tw:transition tw:duration-200 tw:hover:-translate-y-0.5 tw:hover:shadow-[0_1px_2px_rgb(63_44_37/0.05),0_18px_40px_-22px_rgb(63_44_37/0.35)];
+  }
+  .admin-shell .stat-card > span svg,
+  .admin-shell .stat-card > span > svg {
+    @apply tw:box-content tw:rounded-lg tw:bg-brand-soft tw:p-1.5 tw:text-brand;
+  }
+  .admin-shell .stat-card > strong {
+    @apply tw:tracking-tight tw:text-ink;
+  }
+  .admin-shell .welcome-banner {
+    @apply tw:rounded-2xl tw:border-0 tw:bg-linear-to-br tw:from-[#e9d8c8] tw:via-[#f1e4d8] tw:to-[#f8f2ec] tw:ring-1 tw:ring-line;
+  }
+  .admin-shell .eyebrow {
+    @apply tw:tracking-[0.14em];
+  }
+  .admin-shell .room-tile {
+    @apply tw:rounded-xl tw:shadow-sm tw:transition tw:hover:shadow-md;
+  }
+  .admin-shell .room-tile.shooting .room-clock {
+    @apply tw:text-amber-700;
+  }
+  .admin-shell .today-booking {
+    @apply tw:rounded-xl tw:px-2 tw:transition tw:hover:bg-cream;
+  }
+  .admin-shell .empty-state {
+    @apply tw:text-muted;
+  }
+
+  /* ── Bảng ────────────────────────────────────────────────────── */
+  .admin-shell .table-wrap {
+    @apply tw:overflow-x-auto;
+  }
+  .admin-shell .table-wrap th {
+    @apply tw:bg-cream tw:text-[11px] tw:font-semibold tw:tracking-[0.06em] tw:text-muted tw:uppercase;
+  }
+  .admin-shell .admin-table-heading {
+    @apply tw:inline-flex tw:items-center tw:gap-2;
+  }
+  .admin-shell .admin-table-heading > svg {
+    @apply tw:shrink-0;
+  }
+  .admin-shell .table-wrap td {
+    @apply tw:border-[#eee4db] tw:text-[13.5px] tw:text-ink;
+  }
+  .admin-shell .table-wrap td strong {
+    @apply tw:font-semibold;
+  }
+  .admin-shell .table-wrap td small {
+    @apply tw:text-[12.5px] tw:text-muted;
+  }
+  .admin-shell .table-wrap tbody tr {
+    @apply tw:transition-colors tw:duration-150;
+  }
+  .admin-shell .table-wrap tbody tr:hover {
+    @apply tw:bg-[#fcf9f6];
+  }
+  @media (min-width: 761px) {
+    .admin-shell .table-wrap th {
+      @apply tw:px-4 tw:py-3.5;
+    }
+    .admin-shell .table-wrap td {
+      @apply tw:px-4 tw:py-3.5 tw:align-middle;
+    }
+  }
+  /* Thao tác trong bảng: nút nhỏ xếp ngang thay vì chữ link xếp dọc */
+  .admin-shell .table-actions {
+    @apply tw:min-w-0 tw:flex-row tw:flex-wrap tw:items-center tw:gap-1.5;
+  }
+  .admin-shell .table-actions > button,
+  .admin-shell .table-actions > a {
+    @apply tw:inline-flex tw:min-h-0 tw:items-center tw:rounded-lg tw:bg-[#f8f2ec] tw:px-2.5 tw:py-1.5 tw:text-[12.5px] tw:leading-none tw:font-semibold tw:whitespace-nowrap tw:text-brand tw:no-underline tw:ring-1 tw:ring-line tw:transition tw:hover:bg-brand tw:hover:text-white tw:hover:no-underline tw:hover:ring-brand;
+  }
+  .admin-shell .table-actions > button:disabled {
+    @apply tw:cursor-not-allowed tw:opacity-50;
+  }
+  @media (max-width: 760px) {
+    .admin-shell .table-actions > button,
+    .admin-shell .table-actions > a {
+      @apply tw:min-h-[40px] tw:px-3.5;
+    }
+  }
+
+  /* ── Nhãn trạng thái: viên thuốc có chấm màu ─────────────────── */
+  .admin-shell .badge {
+    @apply tw:items-center tw:gap-1.5 tw:rounded-full tw:px-2.5 tw:py-1 tw:text-[12px] tw:font-semibold tw:ring-1 tw:ring-inset;
+  }
+  .admin-shell .badge::before {
+    content: "";
+    @apply tw:size-1.5 tw:rounded-full tw:bg-current tw:opacity-80;
+  }
+  .admin-shell .badge.pending {
+    @apply tw:bg-amber-50 tw:text-amber-700 tw:ring-amber-200;
+  }
+  .admin-shell .badge.confirmed {
+    @apply tw:bg-emerald-50 tw:text-emerald-700 tw:ring-emerald-200;
+  }
+  .admin-shell .badge.checked_in {
+    @apply tw:bg-sky-50 tw:text-sky-700 tw:ring-sky-200;
+  }
+  .admin-shell .badge.completed {
+    @apply tw:bg-violet-50 tw:text-violet-700 tw:ring-violet-200;
+  }
+  .admin-shell .badge.cancelled {
+    @apply tw:bg-rose-50 tw:text-rose-700 tw:ring-rose-200;
+  }
+
+  /* ── Nút ─────────────────────────────────────────────────────── */
+  .admin-shell .button,
+  .admin-login .button {
+    @apply tw:rounded-xl tw:bg-brand tw:font-semibold tw:text-white tw:shadow-[0_1px_0_rgb(255_255_255/0.12)_inset,0_6px_16px_-8px_rgb(82_46_34/0.7)] tw:transition tw:duration-150 tw:hover:bg-brand-dark tw:active:scale-[0.98] tw:disabled:cursor-not-allowed tw:disabled:opacity-55 tw:disabled:shadow-none tw:disabled:active:scale-100;
+  }
+  .admin-shell .button.outline,
+  .admin-login .button.outline {
+    @apply tw:bg-white tw:text-brand tw:shadow-sm tw:ring-1 tw:ring-line tw:hover:bg-cream tw:hover:ring-brand/40;
+  }
+  .admin-shell .button:focus-visible,
+  .admin-login .button:focus-visible,
+  .admin-shell .icon-button:focus-visible {
+    @apply tw:ring-0;
+    outline: 2px solid var(--wine);
+    outline-offset: 3px;
+  }
+  .admin-shell .icon-button {
+    @apply tw:rounded-xl tw:bg-white tw:text-ink tw:ring-1 tw:ring-line tw:transition tw:hover:bg-cream tw:hover:text-brand;
+  }
+  .admin-shell .segmented {
+    @apply tw:bg-[#f0e5dc] tw:ring-1 tw:ring-line;
+  }
+  .admin-shell .segmented button {
+    @apply tw:transition tw:hover:text-ink;
+  }
+  .admin-shell .segmented button.active {
+    @apply tw:bg-white tw:text-brand tw:shadow-sm;
+  }
+
+  /* ── Ô nhập ──────────────────────────────────────────────────── */
+  .admin-shell
+    input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"]),
+  .admin-shell select,
+  .admin-shell textarea,
+  .admin-login input:not([type="checkbox"]) {
+    @apply tw:rounded-xl tw:border-line tw:bg-white tw:text-ink tw:transition tw:duration-150 tw:hover:border-[#c7a991] tw:focus:border-brand;
+  }
+  .admin-shell input[aria-invalid="true"],
+  .admin-shell select[aria-invalid="true"],
+  .admin-login input[aria-invalid="true"] {
+    @apply tw:border-rose-400 tw:focus:ring-rose-500/15;
+  }
+  .admin-shell input[type="checkbox"],
+  .admin-login input[type="checkbox"] {
+    @apply tw:accent-brand;
+  }
+  .admin-shell .search-box {
+    @apply tw:rounded-xl tw:border-line tw:bg-white tw:transition tw:focus-within:border-brand tw:focus-within:ring-4 tw:focus-within:ring-brand/15;
+  }
+  .admin-shell .search-box input,
+  .admin-shell .search-box input:focus {
+    @apply tw:border-0 tw:shadow-none tw:ring-0;
+  }
+  .admin-shell .toolbar-filter {
+    @apply tw:relative tw:min-w-0;
+  }
+  .admin-shell .toolbar-filter > svg {
+    @apply tw:pointer-events-none tw:absolute tw:top-1/2 tw:-translate-y-1/2 tw:text-muted;
+  }
+  .admin-shell .toolbar-filter > input,
+  .admin-shell .toolbar-filter > select {
+    @apply tw:w-full tw:min-h-11 tw:py-2.5 tw:text-[13px];
+  }
+  .admin-shell .toolbar-date {
+    @apply tw:w-[156px];
+  }
+  .admin-shell .toolbar-date > input {
+    @apply tw:pr-11;
+  }
+  .admin-shell .toolbar-date > svg {
+    @apply tw:right-3.5;
+  }
+  .admin-shell .toolbar-date input::-webkit-calendar-picker-indicator {
+    @apply tw:absolute tw:right-3.5 tw:size-[17px] tw:cursor-pointer tw:p-0 tw:opacity-0;
+  }
+  .admin-shell .toolbar-status {
+    @apply tw:w-[186px];
+  }
+  .admin-shell .toolbar-status > svg {
+    @apply tw:left-3.5;
+  }
+  .admin-shell .toolbar-status > select {
+    @apply tw:pl-10;
+  }
+  @media (max-width: 760px) {
+    .admin-shell .toolbar-filter {
+      @apply tw:flex-[1_1_140px];
+    }
+    .admin-shell .toolbar-filter > input,
+    .admin-shell .toolbar-filter > select {
+      @apply tw:text-[14px];
+    }
+  }
+  .admin-shell .field-error,
+  .admin-login .field-error {
+    @apply tw:font-medium tw:text-rose-600;
+  }
+
+  /* ── Hộp thoại ───────────────────────────────────────────────── */
+  .admin-shell .modal-backdrop {
+    @apply tw:bg-[#281711]/45 tw:backdrop-blur-[3px];
+  }
+  .admin-shell .modal {
+    @apply tw:rounded-3xl tw:ring-1 tw:ring-black/5 tw:shadow-[0_30px_80px_-24px_rgb(60_32_24/0.45)];
+  }
+  .admin-shell .modal-header {
+    @apply tw:border-b tw:border-[#eee4db] tw:pb-4;
+  }
+  .admin-shell .modal h2 {
+    @apply tw:tracking-tight;
+  }
+  .admin-shell .summary-total {
+    @apply tw:rounded-2xl tw:border-0 tw:bg-cream tw:px-4 tw:ring-1 tw:ring-line;
+  }
+  .admin-shell .soft-note {
+    @apply tw:rounded-xl tw:ring-1 tw:ring-line;
+  }
+  .admin-shell .error-box {
+    @apply tw:rounded-xl tw:ring-1 tw:ring-rose-200;
+  }
+
+  /* ── Đăng nhập ───────────────────────────────────────────────── */
+  .admin-login {
+    @apply tw:font-sans tw:antialiased;
+  }
+  .admin-login .login-art {
+    @apply tw:relative tw:overflow-hidden tw:bg-linear-to-br tw:from-brand tw:via-brand-dark tw:to-[#2d1711];
+  }
+  .admin-login .login-art::after {
+    content: "";
+    @apply tw:pointer-events-none tw:absolute tw:-right-24 tw:-bottom-24 tw:size-96 tw:rounded-full tw:bg-[#e9d8c8]/15 tw:blur-3xl;
+  }
+  .admin-login .login-form form {
+    @apply tw:rounded-3xl tw:bg-white tw:p-7 tw:ring-1 tw:ring-line tw:shadow-[0_24px_60px_-30px_rgb(63_44_37/0.35)];
+  }
+}
+
+@layer components {
+  /* ── Tinh chỉnh bố cục ───────────────────────────────────────── */
+  .admin-shell .welcome-banner {
+    @apply tw:mb-[18px];
+  }
+  .admin-shell .dashboard-grid {
+    @apply tw:items-start;
+  }
+  .admin-shell .dashboard-grid > .panel {
+    @apply tw:m-0;
+  }
+  /* Điện thoại: bảng mã chụp là các thẻ riêng — bỏ khung bao ngoài */
+  @media (max-width: 760px) {
+    .admin-shell .booking-table {
+      @apply tw:overflow-visible tw:rounded-none tw:bg-transparent tw:shadow-none tw:ring-0;
+    }
+  }
+}

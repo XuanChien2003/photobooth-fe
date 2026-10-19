@@ -1,0 +1,285 @@
+@media (min-width: 1500px) {
+  .site-header {
+    max-width: 1380px;
+  }
+}
+@media (max-width: 1100px) {
+  .site-header {
+    padding: 0 30px;
+  }
+  .admin-sidebar {
+    width: 210px;
+  }
+  .admin-main {
+    margin-left: 210px;
+  }
+  .admin-content {
+    padding: 25px;
+  }
+  .admin-header {
+    padding: 23px 25px;
+  }
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 800px) {
+  .site-header {
+    height: 85px;
+    padding: 0 23px;
+  }
+  .brand {
+    width: 138px;
+  }
+  .brand > span {
+    font-size: 43px;
+  }
+  .brand small {
+    font-size: 6px;
+    letter-spacing: 1.6px;
+  }
+  .price {
+    font-size: 29px;
+  }
+  .price small {
+    font-size: 8px;
+  }
+  .address {
+    font-size: 10px;
+  }
+  .page {
+    padding: 35px 25px 60px;
+  }
+  .login-art {
+    padding: 40px;
+  }
+  .login-art h1 {
+    font-size: 51px;
+  }
+  .admin-sidebar {
+    width: 190px;
+    padding: 25px 12px;
+  }
+  .admin-sidebar nav button {
+    font-size: 10px;
+    padding: 11px 9px;
+  }
+  .admin-main {
+    margin-left: 190px;
+  }
+  .admin-user > span {
+    display: none;
+  }
+  .admin-header h2 {
+    font-size: 28px;
+  }
+  .welcome-banner {
+    padding: 25px;
+  }
+  .welcome-banner h2 {
+    font-size: 31px;
+  }
+  .welcome-banner > svg {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  h1 {
+    font-size: 45px;
+  }
+  .site-header {
+    height: 83px;
+    position: relative;
+  }
+  .site-header {
+    gap: 10px;
+    padding: 0 18px;
+  }
+  .brand {
+    width: 118px;
+  }
+  .brand > span {
+    font-size: 39px;
+  }
+  .brand small {
+    font-size: 5px;
+    letter-spacing: 1.3px;
+  }
+  .eyebrow {
+    font-size: 8px;
+    letter-spacing: 1.8px;
+  }
+  .price {
+    font-size: 38px;
+  }
+  .price small {
+    font-size: 11px;
+  }
+  .address {
+    font-size: 12px;
+  }
+  .page {
+    padding: 30px 20px 50px;
+  }
+  .steps {
+    gap: 5px;
+    margin-bottom: 25px;
+  }
+  .steps > div {
+    font-size: 9px;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .steps > div > span {
+    width: 29px;
+    height: 29px;
+  }
+  .ticket-code {
+    font-size: 43px;
+  }
+  .panel {
+    padding: 25px;
+  }
+  .admin-login {
+    grid-template-columns: 1fr;
+  }
+  .login-art {
+    padding: 30px;
+    min-height: 230px;
+  }
+  .login-art h1 {
+    font-size: 45px;
+    margin: 30px 0 15px;
+  }
+  .login-art p,
+  .login-art > svg {
+    display: none;
+  }
+  .login-art > a:last-child {
+    margin-top: 15px;
+  }
+  .login-form {
+    padding: 40px 28px;
+    max-width: 450px;
+  }
+  .admin-shell {
+    display: block;
+  }
+  .admin-sidebar {
+    position: static;
+    width: 100%;
+    padding: 18px 15px 0;
+    overflow: visible;
+  }
+  .admin-sidebar .brand {
+    margin: 0 auto 19px;
+  }
+  .sidebar-label {
+    display: none;
+  }
+  .admin-sidebar nav {
+    flex-direction: row;
+    overflow: auto;
+    gap: 5px;
+    padding-bottom: 13px;
+  }
+  .admin-sidebar nav button {
+    white-space: nowrap;
+    min-width: max-content;
+    padding: 10px;
+    font-size: 10px;
+  }
+  .admin-sidebar nav svg {
+    width: 15px;
+  }
+  .sidebar-bottom {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    padding: 12px 0;
+    margin: 0;
+    border-top: 1px solid var(--line);
+  }
+  .sidebar-bottom a,
+  .sidebar-bottom button {
+    font-size: 9px;
+    gap: 6px;
+  }
+  .sidebar-bottom svg {
+    width: 13px;
+  }
+  .admin-main {
+    margin-left: 0;
+  }
+  .admin-header {
+    padding: 20px;
+  }
+  .admin-header h2 {
+    font-size: 30px;
+  }
+  .admin-content {
+    padding: 20px;
+  }
+  .welcome-banner {
+    padding: 22px;
+  }
+  .welcome-banner h2 {
+    font-size: 30px;
+  }
+  .welcome-banner .eyebrow {
+    font-size: 7px;
+  }
+  .stats-grid {
+    gap: 10px;
+    margin: 17px 0;
+  }
+  .stat-card {
+    padding: 19px 15px;
+  }
+  .stat-card > span {
+    font-size: 9px;
+  }
+  .stat-card > strong {
+    font-size: 26px;
+  }
+  .dashboard-grid .panel {
+    padding: 22px;
+  }
+  .dashboard-grid h3 {
+    font-size: 27px;
+  }
+  .bar-chart {
+    gap: 5px;
+  }
+  .bar-column small {
+    font-size: 7px;
+  }
+  .admin-toolbar {
+    gap: 8px;
+  }
+  .admin-toolbar > .button {
+    font-size: 10px;
+    padding: 10px 13px;
+    min-height: 37px;
+  }
+  .search-box {
+    flex-basis: 100%;
+  }
+  .admin-toolbar > input,
+  .admin-toolbar > select {
+    max-width: 170px;
+  }
+  .table-wrap td {
+    padding: 15px;
+  }
+  .modal-backdrop {
+    padding: 15px;
+  }
+  .modal {
+    padding: 25px;
+  }
+}

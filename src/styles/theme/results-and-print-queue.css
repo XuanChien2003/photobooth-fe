@@ -1,0 +1,182 @@
+/* Kết quả */
+.result-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--lime);
+  color: var(--ink);
+}
+.result-banner > svg {
+  flex-shrink: 0;
+  font-size: 34px;
+  color: var(--wine);
+}
+.result-banner strong,
+.result-banner span {
+  display: block;
+}
+.result-banner strong {
+  font-size: 18px;
+}
+.result-banner span {
+  color: var(--muted);
+  font-size: 14px;
+}
+.sheet-strip {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 4px 2px 12px;
+}
+.sheet-strip figure {
+  flex: 0 0 auto;
+  margin: 0;
+}
+.sheet-strip img {
+  display: block;
+  width: auto;
+  max-width: min(88vw, 560px);
+  max-height: 380px;
+  border-radius: 4px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.14);
+}
+.sheet-strip figcaption {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+.frame-list {
+  margin-top: 12px;
+}
+.frame-list h3 {
+  margin: 0;
+}
+.frame-list > p {
+  margin: 2px 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.frame-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.frame-row img {
+  width: 44px;
+  height: 60px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: var(--cream);
+}
+.frame-row span {
+  flex: 1;
+  font-size: 14px;
+}
+.print-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 560px;
+  margin: 16px auto 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #fff6e5;
+  color: #7a5412;
+  font-size: 14px;
+}
+.print-status.printed {
+  background: var(--lime);
+  color: var(--ink);
+}
+.print-status svg {
+  flex-shrink: 0;
+  font-size: 20px;
+}
+
+/* Hàng chờ in (quản trị) */
+.nav-count {
+  margin-left: auto;
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #8b503c;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--line);
+}
+.segmented button {
+  padding: 7px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.segmented button.active {
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 600;
+}
+.print-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+.print-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+/* Xem trước tờ in đúng chiều: khung ngang hiện ngang, khung dọc hiện dọc */
+.print-sheets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 190px;
+  padding: 12px;
+  border-radius: 10px;
+  background: repeating-conic-gradient(#f3ece4 0 25%, #fff 0 50%) 0 0 / 16px
+    16px;
+}
+.print-sheets > a {
+  max-width: 100%;
+}
+.print-sheets img {
+  display: block;
+  max-width: 100%;
+  max-height: 240px;
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+}
+/* Lệnh nhiều tờ: thu nhỏ để thấy đủ các tờ cùng lúc */
+.print-sheets.many img {
+  max-height: 130px;
+}
+.print-card strong,
+.print-card small {
+  display: block;
+}
+.print-card small {
+  color: var(--muted);
+}
+.print-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}

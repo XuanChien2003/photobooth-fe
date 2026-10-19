@@ -1,0 +1,105 @@
+/* Sao tạo điểm nhấn quanh logo và vùng giới thiệu, không lặp trên nền trang. */
+@layer components {
+  :root {
+    --studio-star-cluster: url("/studio-star-cluster.svg");
+    --studio-star-divider: url("/studio-star-divider.svg");
+  }
+
+  .admin-login .login-art {
+    background-image: var(--studio-star-cluster), var(--studio-star-cluster);
+    background-repeat: no-repeat;
+    background-size:
+      48px 32px,
+      36px 24px;
+    background-position:
+      right 48px top 52px,
+      left 48px bottom 48px;
+  }
+
+  .admin-login .login-form h2::after {
+    content: "";
+    display: inline-block;
+    flex-shrink: 0;
+    width: 32px;
+    height: 24px;
+    margin-inline-start: 10px;
+    vertical-align: middle;
+    background: var(--studio-star-cluster) center / contain no-repeat;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .admin-shell .admin-sidebar .brand {
+    position: relative;
+    width: max-content;
+  }
+  .admin-shell .admin-sidebar .brand::after {
+    content: "";
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 8px;
+    width: 42px;
+    height: 28px;
+    background: var(--studio-star-cluster) center / contain no-repeat;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .site-header.is-compact {
+    position: relative;
+  }
+  .site-header.is-compact::before,
+  .site-header.is-compact::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 86px;
+    height: 26px;
+    transform: translateY(-50%);
+    background: var(--studio-star-divider) center / contain no-repeat;
+    pointer-events: none;
+    user-select: none;
+  }
+  .site-header.is-compact::before {
+    right: calc(50% + 48px);
+  }
+  .site-header.is-compact::after {
+    left: calc(50% + 48px);
+    transform: translateY(-50%) scaleX(-1);
+  }
+
+  .kiosk-entry-card,
+  .kiosk-done-card {
+    position: relative;
+  }
+  .kiosk-entry-card::before,
+  .kiosk-done-card::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    right: 8px;
+    width: 42px;
+    height: 28px;
+    background: var(--studio-star-cluster) center / contain no-repeat;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  @media (max-width: 760px) {
+    .admin-shell .admin-sidebar .brand::after {
+      top: 6px;
+      width: 34px;
+      height: 24px;
+    }
+    .admin-login .login-form h2::after {
+      width: 28px;
+      height: 20px;
+      margin-inline-start: 6px;
+    }
+    .site-header.is-compact::before,
+    .site-header.is-compact::after {
+      width: 72px;
+      height: 24px;
+    }
+  }
+}

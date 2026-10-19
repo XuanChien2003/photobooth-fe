@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#4b332a" />
+    <!-- Hệ thống nội bộ của tiệm: không cho công cụ tìm kiếm lập chỉ mục (kể cả album khách). -->
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="no-referrer" />
+    <title>NXC Photobooth</title>
+    <link rel="icon" type="image/jpeg" href="/studio-logo.jpg" />
+    <link rel="apple-touch-icon" href="/studio-logo.jpg" />
+    <link
+      rel="preload"
+      href="/fonts/be-vietnam-pro-400.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <!-- The bolder weights are used on every screen. Fetched early but at low priority: at normal
+         priority they took bandwidth from the app code on 4G and the album appeared ~0.5 s later
+         (measured); at low priority they still arrive well before the text needs them. -->
+    <link rel="preload" href="/fonts/be-vietnam-pro-600.woff2" as="font" type="font/woff2" crossorigin fetchpriority="low" />
+    <link rel="preload" href="/fonts/be-vietnam-pro-700.woff2" as="font" type="font/woff2" crossorigin fetchpriority="low" />
+    <link rel="preload" href="/fonts/be-vietnam-pro-500.woff2" as="font" type="font/woff2" crossorigin fetchpriority="low" />
+    <link rel="stylesheet" href="/fonts/be-vietnam-pro.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

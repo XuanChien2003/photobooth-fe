@@ -1,0 +1,12 @@
+/* Các lớp hoàn thiện được giữ nguyên thứ tự ghi đè ban đầu. */
+@import "./styles/polish/shared-and-ticket.css";
+@import "./styles/polish/kiosk-entry.css";
+@import "./styles/polish/admin-catalog-and-print.css";
+@import "./styles/polish/editor-and-validation.css";
+@import "./styles/polish/album-composition.css";
+@import "./styles/polish/rooms-and-camera-settings.css";
+@import "./styles/polish/dashboard-revenue.css";
+@import "./styles/polish/print-retention-and-staff.css";
+@import "./styles/polish/album-expiry.css";
+@import "./styles/polish/storage-assistant.css";
+@import "./styles/polish/storage-warning.css";

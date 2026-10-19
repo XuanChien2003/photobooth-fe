@@ -1,0 +1,310 @@
+@media (max-width: 1000px) {
+  .site-header {
+    padding: 0 24px;
+    gap: 14px;
+  }
+  .admin-sidebar {
+    width: 220px;
+  }
+  .admin-main {
+    margin-left: 220px;
+  }
+  .admin-content,
+  .admin-header {
+    padding: 24px;
+  }
+  .admin-sidebar nav button {
+    font-size: 12px;
+  }
+  .login-art {
+    padding: 38px;
+  }
+}
+@media (max-width: 760px) {
+  .site-header {
+    height: 76px;
+    padding: 0 20px;
+    position: relative;
+  }
+  .site-header .brand {
+    width: 120px;
+  }
+  .site-header .brand > span {
+    font-size: 29px;
+  }
+  .site-header .brand small {
+    font-size: 6px;
+  }
+  .page {
+    padding: 24px 20px 48px;
+  }
+  .steps > div {
+    font-size: 11px;
+    flex-direction: column;
+    gap: 7px;
+    flex: 1;
+    text-align: center;
+  }
+  .steps {
+    gap: 4px;
+  }
+  .panel {
+    padding: 24px;
+    border-radius: 16px;
+  }
+  .panel h2 {
+    font-size: 23px;
+  }
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+    min-height: 48px;
+  }
+  .ticket-code {
+    font-size: 34px;
+    letter-spacing: 6px;
+  }
+  .button {
+    font-size: 13px;
+  }
+  .button.small {
+    min-height: 42px;
+  }
+  .empty-state h3 {
+    font-size: 22px;
+  }
+  .admin-shell {
+    display: block;
+  }
+  .admin-sidebar {
+    position: relative;
+    width: 100%;
+    padding: 16px 20px;
+    overflow: visible;
+  }
+  .admin-sidebar .brand {
+    margin: 0;
+    width: 120px;
+  }
+  .admin-sidebar .brand > span {
+    font-size: 28px;
+  }
+  .admin-menu-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    min-height: 44px;
+    border: 1px solid #ad8d76;
+    border-radius: 9px;
+    color: white;
+    background: transparent;
+    font-size: 13px;
+  }
+  .admin-sidebar .sidebar-label {
+    display: none;
+  }
+  .admin-sidebar nav,
+  .admin-sidebar .sidebar-bottom {
+    display: none;
+  }
+  .admin-sidebar.mobile-open nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin-top: 22px;
+    gap: 6px;
+    overflow: visible;
+  }
+  .admin-sidebar.mobile-open .sidebar-bottom {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 16px 0 0;
+    margin-top: 16px;
+  }
+  .admin-sidebar nav button {
+    font-size: 12px;
+    white-space: normal;
+    min-height: 48px;
+    padding: 10px;
+  }
+  .admin-main {
+    margin-left: 0;
+  }
+  .admin-header {
+    padding: 20px;
+    align-items: flex-start;
+  }
+  .admin-header h2 {
+    font-size: 22px;
+  }
+  .admin-header .eyebrow {
+    font-size: 9px;
+  }
+  .admin-user {
+    font-size: 11px;
+  }
+  .admin-user > div {
+    display: none;
+  }
+  .admin-user small {
+    font-size: 10px;
+  }
+  .admin-content {
+    padding: 20px 16px;
+  }
+  .welcome-banner {
+    padding: 22px;
+  }
+  .welcome-banner h2 {
+    font-size: 23px;
+  }
+  .welcome-banner p {
+    font-size: 13px;
+  }
+  .stat-card {
+    padding: 18px;
+  }
+  .stat-card > span {
+    font-size: 12px;
+  }
+  .stat-card > strong {
+    font-size: 24px;
+  }
+  .admin-toolbar > input,
+  .admin-toolbar > select {
+    font-size: 14px;
+    max-width: none;
+    min-width: 0;
+    flex: 1 1 140px;
+  }
+  .admin-toolbar > .button {
+    font-size: 12px;
+    min-height: 44px;
+    padding: 10px 13px;
+  }
+  .search-box {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+  .search-box input {
+    font-size: 16px;
+  }
+  .dashboard-grid .panel {
+    padding: 20px;
+  }
+  .dashboard-grid h3 {
+    font-size: 21px;
+  }
+  .bar-column small {
+    font-size: 9px;
+  }
+  .login-art {
+    display: none;
+  }
+  .admin-login {
+    grid-template-columns: 1fr;
+    min-height: 100dvh;
+  }
+  .login-form {
+    padding: 32px 24px;
+  }
+  .login-form h2 {
+    font-size: 29px;
+  }
+  .modal {
+    padding: 22px;
+  }
+  .modal-backdrop {
+    padding: 12px;
+  }
+  .modal h2 {
+    font-size: 22px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .booking-table {
+    border: 0;
+    background: transparent;
+    border-radius: 0;
+    overflow: visible;
+  }
+  .booking-table table,
+  .booking-table tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .booking-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .booking-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: white;
+    margin-bottom: 14px;
+  }
+  .booking-table td {
+    display: block;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .booking-table td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 7px;
+  }
+  .booking-table td:first-child,
+  .booking-table td:last-child {
+    grid-column: 1/-1;
+  }
+  .booking-table td:first-child {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 14px;
+  }
+  .booking-table td:first-child > strong {
+    font-size: 15px;
+  }
+  .booking-table .table-actions {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .booking-table .table-actions > * {
+    border: 1px solid var(--line);
+    padding: 10px 12px;
+    border-radius: 8px;
+    min-height: 42px;
+  }
+  .booking-table .table-actions > button:not(:disabled):hover {
+    background: #f5ece3;
+  }
+}

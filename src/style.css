@@ -1,0 +1,8 @@
+/* CSS nền: giữ nguyên thứ tự khai báo để các lớp ghi đè hoạt động như cũ. */
+@import "./styles/base/foundation.css";
+@import "./styles/base/site-and-forms.css";
+@import "./styles/base/booking-and-feedback.css";
+@import "./styles/base/admin-layout.css";
+@import "./styles/base/admin-controls.css";
+@import "./styles/base/responsive.css";
+@import "./styles/base/feedback-and-previews.css";

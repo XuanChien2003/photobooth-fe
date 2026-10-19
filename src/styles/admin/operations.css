@@ -1,0 +1,243 @@
+@layer components {
+  .admin-shell .overview-date {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0 0 19px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .admin-shell .room-board,
+  .admin-shell .revenue-panel,
+  .admin-shell .dashboard-grid > .panel {
+    padding: 24px;
+  }
+  .admin-shell .room-board-head,
+  .admin-shell .revenue-head {
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 20px;
+  }
+  .admin-shell .room-board-summary,
+  .admin-shell .revenue-period {
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .admin-shell .room-board-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+    gap: 0;
+    border-top: 1px solid var(--line);
+  }
+  .admin-shell .room-tile {
+    align-content: start;
+    gap: 9px;
+    min-height: 118px;
+    padding: 20px 22px 2px 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .admin-shell .room-tile + .room-tile {
+    padding-left: 22px;
+    border-left: 1px solid var(--line);
+  }
+  .admin-shell .room-tile:hover {
+    box-shadow: none;
+  }
+  .admin-shell .room-tile-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 7px 12px;
+  }
+  .admin-shell .room-tile strong {
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .admin-shell .room-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #386147;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .admin-shell .room-state::before {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    content: "";
+  }
+  .admin-shell .room-tile.shooting .room-state {
+    color: #805413;
+  }
+  .admin-shell .room-tile.starting .room-state {
+    color: #315e91;
+  }
+  .admin-shell .room-clock {
+    color: var(--ink);
+    font-size: 27px;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .admin-shell .room-tile.shooting .room-clock {
+    color: #805413;
+  }
+  .admin-shell .room-tile small {
+    margin-top: auto;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .admin-shell .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 0;
+    margin: 22px 0;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+    overflow: hidden;
+  }
+  .admin-shell .stat-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px 14px;
+    padding: 20px 22px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .admin-shell .stat-card + .stat-card {
+    border-left: 1px solid var(--line);
+  }
+  .admin-shell .stat-card:hover {
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+  }
+  .admin-shell .stat-card > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .admin-shell .stat-card > span svg {
+    flex-shrink: 0;
+    width: 17px;
+    height: 17px;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--wine);
+  }
+  .admin-shell .stat-card > strong {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .admin-shell .stat-card > small {
+    grid-column: 1 / -1;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .admin-shell .revenue-summary {
+    gap: 0;
+    margin-top: 20px;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .admin-shell .revenue-summary > div {
+    padding: 17px 20px 17px 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .admin-shell .revenue-summary > div + div {
+    padding-left: 20px;
+    border-left: 1px solid var(--line);
+  }
+  .admin-shell .revenue-summary dt {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .admin-shell .revenue-summary dd {
+    margin-top: 4px;
+    font-size: 19px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .admin-shell .revenue-chart {
+    grid-template-rows: 180px auto;
+    margin-top: 56px;
+  }
+  .admin-shell .revenue-grid {
+    background: var(--stone);
+  }
+  .admin-shell .revenue-day:hover .revenue-bar,
+  .admin-shell .revenue-day.is-active .revenue-bar {
+    background: var(--wine-dark);
+  }
+  .admin-shell .revenue-tip {
+    border: 0;
+    border-radius: 10px;
+    box-shadow: 0 7px 24px rgb(48 40 34 / 16%);
+  }
+  .admin-shell .revenue-table summary {
+    font-size: 12px;
+  }
+  .admin-shell .dashboard-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 20px;
+  }
+  .admin-shell .dashboard-grid h3 {
+    margin: 0 0 12px;
+  }
+  .admin-shell .today-booking {
+    gap: 12px;
+    padding: 16px 0;
+    border-radius: 0;
+    font-size: 13px;
+  }
+  .admin-shell .today-booking > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .admin-shell .today-booking > strong,
+  .admin-shell .today-booking > .badge {
+    flex-shrink: 0;
+  }
+  .admin-shell .today-booking small {
+    font-size: 11px;
+  }
+  .admin-shell .today-booking:last-child {
+    border-bottom: 0;
+  }
+  .admin-shell .occupancy-row {
+    grid-template-columns: minmax(110px, 1fr) minmax(0, 1.3fr) auto;
+    gap: 14px;
+  }
+  .admin-shell .occupancy-row > span {
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  .admin-shell .occupancy-bar {
+    background: var(--stone);
+  }
+}

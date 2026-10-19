@@ -1,0 +1,176 @@
+/* ─── Tổng quan: phòng chụp lúc này (lễ tân biết phòng nào trống) ─── */
+.room-board {
+  margin-bottom: 18px;
+}
+.room-board-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.room-board-head h3 {
+  margin: 4px 0 0;
+}
+.room-board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+}
+.room-tile {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left: 5px solid #7fb069;
+  border-radius: 12px;
+  background: var(--paper);
+}
+.room-tile.shooting {
+  border-left-color: #e0a526;
+  background: #fffaf0;
+}
+.room-tile.starting {
+  border-left-color: #5b8def;
+}
+.room-tile small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+.room-clock {
+  font-size: 26px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+  color: var(--ink);
+}
+
+/* Trang không tồn tại (web nội bộ): lời nhắn ngắn cho khách lỡ vào nhầm */
+.internal-note {
+  padding-top: 18vh;
+}
+.internal-note p {
+  max-width: 460px;
+  margin: 12px auto 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+/* Cài đặt máy chụp: thư mục ảnh của máy ảnh (X Acquire / Capture One) */
+.kiosk-folder {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid #574036;
+  border-radius: 12px;
+}
+.kiosk-folder p {
+  margin: 0;
+  color: #eaded3;
+}
+.kiosk-folder b {
+  color: #fff;
+}
+.kiosk-folder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.kiosk-folder small {
+  color: #c4a995;
+  line-height: 1.5;
+}
+.kiosk-folder-check {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.kiosk-check-waiting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.kiosk-check-waiting p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kiosk-check-result {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  line-height: 1.5;
+}
+.kiosk-check-result.is-ok {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  border: 1px solid #2f6b4c;
+  background: #15291f;
+}
+.kiosk-check-result.is-ok img {
+  width: 96px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex: none;
+}
+.kiosk-check-result.is-warn {
+  border: 1px solid #6b5a2e;
+  background: #2b2617;
+  color: #f3dfa8;
+}
+.kiosk-folder .kiosk-check-result.is-warn p {
+  color: #f3dfa8;
+}
+.kiosk-check-result ol {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+.kiosk-settings .checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kiosk-entry .kiosk-folder-warning {
+  border: 1px solid #6b5a2e;
+  background: #2b2617;
+  color: #f3dfa8;
+}
+
+/* Cài kiosk: tải file cài "bật máy là kiosk tự mở" (Windows / Mac) */
+.kiosk-autostart {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px dashed #d6beaa;
+  border-radius: 14px;
+  background: #f8f2ec;
+  text-align: left;
+}
+.kiosk-autostart h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--wine);
+  font-size: 16px;
+}
+.kiosk-autostart p {
+  margin: 0;
+  color: #71574a;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.kiosk-autostart-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.kiosk-autostart small {
+  color: var(--muted);
+}

@@ -1,0 +1,159 @@
+@layer components {
+  .admin-shell .admin-toolbar {
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .admin-shell .button {
+    min-height: 44px;
+    padding: 11px 17px;
+    border: 1px solid var(--wine);
+    border-radius: 10px;
+    background: var(--wine);
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.4;
+    box-shadow: none;
+  }
+  .admin-shell .button:hover:not(:disabled) {
+    background: var(--wine-dark);
+    border-color: var(--wine-dark);
+  }
+  .admin-shell .button.outline {
+    border-color: var(--line);
+    background: #fff;
+    color: var(--wine);
+    box-shadow: none;
+  }
+  .admin-shell .button.outline:hover:not(:disabled) {
+    border-color: var(--wine);
+    background: var(--cream);
+  }
+  .admin-shell .icon-button {
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: #fff;
+    color: var(--wine);
+    box-shadow: none;
+  }
+  .admin-shell .icon-button:hover {
+    border-color: var(--wine);
+    background: var(--stone);
+  }
+  .admin-shell
+    input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"]),
+  .admin-shell select,
+  .admin-shell textarea {
+    min-height: 44px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background-color: #fff;
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    box-shadow: none;
+  }
+  .admin-shell input::placeholder,
+  .admin-shell textarea::placeholder {
+    color: var(--muted);
+    opacity: 1;
+  }
+  .admin-shell input[aria-invalid="true"],
+  .admin-shell textarea[aria-invalid="true"],
+  .admin-shell select[aria-invalid="true"] {
+    border-color: #a03d43;
+    background-color: #fffafa;
+  }
+  .admin-shell .search-box {
+    gap: 9px;
+    border-color: var(--line);
+    border-radius: 10px;
+    background: #fff;
+  }
+  .admin-shell .search-box input,
+  .admin-shell .search-box input:focus {
+    min-height: 44px;
+    padding: 10px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .admin-shell .search-box:focus-within {
+    outline: 2px solid var(--wine);
+    outline-offset: 2px;
+  }
+  .admin-shell .toolbar-filter {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: none;
+  }
+  .admin-shell .toolbar-filter > input,
+  .admin-shell .toolbar-filter > select {
+    min-height: 44px;
+    border: 0;
+    background-color: transparent;
+  }
+  .admin-shell .table-wrap table {
+    font-size: 13px;
+  }
+  .admin-shell .table-wrap th {
+    padding: 15px 18px;
+    background: var(--cream);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+  }
+  .admin-shell .table-wrap td {
+    padding: 18px;
+    border-color: var(--line);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .admin-shell .table-wrap td strong {
+    font-weight: 600;
+  }
+  .admin-shell .table-wrap td small {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .admin-shell .table-wrap tbody tr:hover {
+    background: var(--cream);
+  }
+  .admin-shell .table-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .admin-shell .table-actions > button,
+  .admin-shell .table-actions > a {
+    min-height: 34px;
+    padding: 7px 9px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--wine);
+    font-size: 11px;
+    line-height: 1.4;
+    box-shadow: none;
+    text-decoration: none;
+  }
+  .admin-shell .table-actions > button:hover:not(:disabled),
+  .admin-shell .table-actions > a:hover {
+    border-color: var(--wine);
+    background: var(--stone);
+    color: var(--wine);
+  }
+  .admin-shell .badge {
+    line-height: 1.45;
+    box-shadow: none;
+  }
+  .admin-shell .admin-content > .muted {
+    font-size: 12px;
+  }
+}

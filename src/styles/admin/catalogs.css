@@ -1,0 +1,236 @@
+@layer components {
+  .admin-shell .catalog-toolbar {
+    padding: 0 0 22px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .admin-shell .catalog-intro {
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .admin-shell .catalog-intro-icon {
+    flex: 0 0 26px;
+    height: 26px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .admin-shell .catalog-intro p {
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .admin-shell .catalog-search input,
+  .admin-shell .catalog-controls select {
+    border-radius: 10px;
+    background-color: #fff;
+    font-size: 13px;
+  }
+  .admin-shell .catalog-counts i {
+    background: #386147;
+  }
+  .admin-shell .package-catalog-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 285px), 1fr));
+    gap: 20px;
+  }
+  .admin-shell .package-card {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: none;
+  }
+  .admin-shell .package-card:hover,
+  .admin-shell .frame-catalog-card:hover {
+    border-color: var(--wine);
+    box-shadow: none;
+    transform: none;
+  }
+  .admin-shell .package-card-icon {
+    width: 24px;
+    height: 24px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--wine);
+  }
+  .admin-shell .package-card-name {
+    margin-top: 18px;
+    font-family: var(--sans);
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .admin-shell .package-card-price {
+    padding: 17px 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .admin-shell .package-card-price strong {
+    color: var(--wine);
+    font-size: 26px;
+    font-weight: 600;
+  }
+  .admin-shell .package-card-details {
+    border-bottom: 0;
+  }
+  .admin-shell .package-card-included {
+    color: var(--muted);
+    background: transparent;
+  }
+  .admin-shell .package-card-action,
+  .admin-shell .frame-catalog-edit,
+  .admin-shell .frame-catalog-delete {
+    border-radius: 9px;
+    border-color: var(--line);
+    box-shadow: none;
+  }
+  .admin-shell .package-card-edit {
+    background: var(--wine);
+    border-color: var(--wine);
+    color: #fff;
+  }
+  .admin-shell .package-card-edit:hover {
+    background: var(--wine-dark);
+    color: #fff;
+  }
+  .admin-shell .frame-catalog-group {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .admin-shell .frame-catalog-group-header {
+    gap: 11px;
+    margin-bottom: 16px;
+  }
+  .admin-shell .frame-catalog-group-icon {
+    flex: 0 0 23px;
+    width: 23px;
+    height: 23px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .admin-shell .frame-catalog-group-title p {
+    font-size: 12px;
+  }
+  .admin-shell .frame-catalog-group-count {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 400;
+  }
+  .admin-shell .frame-catalog-card {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: none;
+  }
+  .admin-shell .frame-catalog-preview {
+    height: auto;
+    aspect-ratio: 3 / 2;
+    max-height: 280px;
+    padding: 18px;
+    background: var(--stone);
+    border-color: var(--line);
+  }
+  .admin-shell .frame-catalog-preview img {
+    position: absolute;
+    inset: 18px;
+    width: calc(100% - 36px);
+    height: calc(100% - 36px);
+    filter: none;
+  }
+  .admin-shell .frame-catalog-status {
+    border: 0;
+    background: #fff;
+    color: #386147;
+    box-shadow: none;
+  }
+  .admin-shell .frame-catalog-card-body h4 {
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .admin-shell .frame-catalog-cards {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr));
+  }
+  .admin-shell .frame-catalog-card-body {
+    padding: 16px;
+  }
+  .admin-shell .frame-catalog-card-title {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .admin-shell .frame-catalog-card-title h4 {
+    flex: 1;
+    margin: 0;
+  }
+  .admin-shell .frame-catalog-card-title .frame-catalog-status {
+    position: static;
+    flex: none;
+    padding: 4px 0;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .admin-shell .frame-catalog-order {
+    margin-top: 10px;
+    font-size: 12px;
+  }
+  .admin-shell .frame-catalog-order strong {
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .admin-shell .frame-catalog-actions {
+    display: grid;
+    grid-template-columns: 44px 44px minmax(44px, 1fr) 44px;
+    gap: 6px;
+    margin: 0 16px;
+    padding: 12px 0 16px;
+    border-color: var(--line);
+    background: transparent;
+  }
+  .admin-shell .frame-catalog-actions button {
+    min-height: 44px;
+    min-width: 44px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: #fff;
+    color: var(--wine);
+  }
+  .admin-shell .frame-catalog-move {
+    display: grid;
+    place-items: center;
+  }
+  .admin-shell .frame-catalog-actions button:hover:not(:disabled) {
+    background: var(--cream);
+    border-color: var(--wine);
+  }
+  .admin-shell .frame-catalog-actions button:focus-visible {
+    outline: 2px solid var(--wine);
+    outline-offset: 3px;
+  }
+  .admin-shell .frame-catalog-actions button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .admin-shell .frame-catalog-actions .frame-catalog-delete {
+    width: 44px;
+  }
+  .admin-shell .frame-catalog-sort-hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.65;
+  }
+}

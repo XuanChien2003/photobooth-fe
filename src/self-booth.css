@@ -1,0 +1,525 @@
+/* ─── Bước 0: Self-booth — camera trên, ảnh vừa chụp dưới ──────────── */
+.self-booth {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* Vừa một màn hình: nửa trên live view, nửa dưới ảnh vừa chụp — không phải cuộn. */
+  height: 100dvh;
+  overflow: hidden;
+  padding: 8px;
+  background: #211713;
+  color: #faf2eb;
+}
+.self-booth .error-box {
+  margin: 0;
+}
+.booth-header {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  border-radius: 16px;
+  background: #35271f;
+}
+.booth-package {
+  display: grid;
+  min-width: 0;
+}
+.booth-package .eyebrow {
+  color: #c5ab98;
+}
+.booth-package strong {
+  overflow: hidden;
+  font-size: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.booth-package small {
+  color: #c5ab98;
+}
+.session-clock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 12px;
+  background: #211713;
+  font:
+    700 38px/1 ui-monospace,
+    "SF Mono",
+    Menlo,
+    Consolas,
+    monospace;
+  font-variant-numeric: tabular-nums;
+}
+.session-clock svg {
+  font-size: 26px;
+  color: #c5ab98;
+}
+.session-clock.urgent {
+  color: #ff5d73;
+  animation: clock-pulse 0.8s ease-in-out infinite alternate;
+}
+.session-clock.urgent svg {
+  color: #ff5d73;
+}
+@keyframes clock-pulse {
+  to {
+    opacity: 0.45;
+  }
+}
+
+/* Nửa trên: live view (nút chụp nằm đè ở đáy khung) */
+.booth-top {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+}
+.self-viewfinder {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #000;
+}
+.camera-preview-viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.camera-preview-viewport video {
+  position: absolute;
+  display: block;
+  max-width: none;
+  visibility: hidden;
+  transform: scaleX(-1);
+}
+.camera-cover,
+.camera-timeup {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #fff;
+  text-align: center;
+}
+.camera-cover {
+  background: #251914;
+  color: #c5ab98;
+}
+@keyframes count-pop {
+  0% {
+    transform: scale(1.6);
+    opacity: 0;
+    background: rgba(255, 255, 255, 0.55);
+  }
+  25% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.camera-timeup {
+  position: fixed;
+  z-index: 40;
+  background: rgba(33, 23, 19, 0.92);
+}
+.camera-timeup strong {
+  font-size: 28px;
+}
+.camera-timeup svg {
+  color: #ff5d73;
+}
+.self-shutter-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.self-shutter-bar > * {
+  pointer-events: auto;
+}
+/* Nửa dưới: chỉ hiện ảnh mới nhất, phủ kín toàn bộ vùng xem. */
+.booth-bottom {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #35271f;
+}
+.booth-review {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+}
+.booth-shot {
+  position: relative;
+  min-height: 0;
+  margin: 0;
+  border-radius: 0;
+  overflow: hidden;
+  background: #000;
+}
+.booth-shot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: shot-show 0.2s ease-out;
+}
+@keyframes shot-show {
+  from {
+    opacity: 0;
+  }
+}
+.booth-shot figcaption {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+.booth-folder-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  margin: 10px 12px;
+  padding: 10px 14px;
+  border: 1px solid #6b5a2e;
+  border-radius: 12px;
+  background: #2b2617;
+  color: #f3dfa8;
+}
+.booth-folder-alert p {
+  margin: 0;
+}
+.booth-gallery-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px;
+}
+.booth-gallery-head h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #faf2eb;
+}
+.booth-gallery-head b {
+  color: #e9d8c8;
+}
+.booth-gallery-head span {
+  color: #c5ab98;
+  font-size: 13px;
+}
+.booth-gallery-head span.is-warn {
+  color: #f3dfa8;
+}
+.booth-empty {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0;
+  border: 2px dashed #594235;
+  border-radius: 14px;
+  color: #c5ab98;
+}
+
+@media (max-width: 720px) {
+  .booth-header {
+    grid-template-columns: 1fr auto;
+  }
+  .booth-header > .button {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+  .session-clock {
+    font-size: 30px;
+  }
+}
+/* Màn hình nhỏ / thấp: giữ hai vùng xem lớn và cho cuộn. */
+@media (max-width: 720px), (max-height: 560px) {
+  .self-booth {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+  .booth-top,
+  .booth-bottom {
+    flex: none;
+  }
+  .self-viewfinder {
+    flex: none;
+    height: 46dvh;
+  }
+  .booth-shot {
+    height: 46dvh;
+  }
+  .booth-empty {
+    min-height: 30dvh;
+  }
+}
+
+/* Chụp tức thì: chớp sáng thay cho đếm ngược */
+.camera-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  pointer-events: none;
+  animation: camera-flash 0.28s ease-out forwards;
+}
+@keyframes camera-flash {
+  from {
+    opacity: 0.85;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Hoàn tất: mã QR để khách chuyển sang điện thoại */
+.kiosk-done {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 24px 16px;
+  background: radial-gradient(circle at 50% -10%, #522e22 0%, #211713 62%);
+  color: #faf2eb;
+}
+.kiosk-done-card {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  width: min(520px, 100%);
+  text-align: center;
+}
+.kiosk-done .eyebrow {
+  color: #c5ab98;
+}
+.kiosk-done h1 {
+  margin: 0;
+  color: #fff;
+  font-size: 32px;
+}
+.kiosk-done-card > p {
+  max-width: 420px;
+  margin: 0;
+  color: #c5ab98;
+}
+.kiosk-qr-box {
+  margin: 8px 0;
+  padding: 16px;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+}
+.kiosk-qr-box svg {
+  display: block;
+  width: min(260px, 70vw);
+  height: auto;
+}
+.kiosk-done-steps {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  width: 100%;
+  margin: 4px 0;
+  padding: 0;
+  list-style: none;
+}
+.kiosk-done-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #35271f;
+  color: #e6d7ca;
+  font-size: 14px;
+  text-align: left;
+}
+.kiosk-done-steps svg {
+  flex-shrink: 0;
+  font-size: 22px;
+  color: #e9d8c8;
+}
+.kiosk-done-sync {
+  color: #f1d9a0 !important;
+  font-size: 14px;
+}
+.kiosk-done .kiosk-start {
+  height: 58px;
+  border-color: #e9d8c8;
+  background: #e9d8c8;
+  color: #35241b;
+  font-size: 17px;
+}
+
+/* Hỏi lại trước khi kết thúc sớm — tránh bấm nhầm mất thời gian còn lại */
+.kiosk-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(28, 19, 15, 0.72);
+  backdrop-filter: blur(4px);
+}
+.kiosk-confirm-card {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: min(460px, 100%);
+  padding: 28px 24px 24px;
+  border: 1px solid #594235;
+  border-radius: 20px;
+  background: #2d1e17;
+  color: #f5ece3;
+  text-align: center;
+}
+.kiosk-confirm-card > svg {
+  color: #e9d8c8;
+}
+.kiosk-confirm-card h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 24px;
+}
+.kiosk-confirm-card p {
+  margin: 0 0 8px;
+  color: #d8c4b2;
+  line-height: 1.6;
+}
+.kiosk-confirm-card > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+}
+.kiosk-confirm-card .button {
+  justify-content: center;
+  min-height: 52px;
+}
+.kiosk-confirm-card .button.outline {
+  border-color: #e9d8c8;
+  background: transparent;
+  color: #e9d8c8;
+}
+.kiosk-confirm-card .button:not(.outline) {
+  border-color: #e9d8c8;
+  background: #e9d8c8;
+  color: #35241b;
+}
+.kiosk-done-fallback {
+  margin: 0;
+  color: #c5ab98;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.kiosk-done-fallback b {
+  color: #fff;
+}
+
+/* Chờ lưu ảnh trước khi kết thúc: spinner + tiến độ */
+.spinner.big {
+  width: 44px;
+  height: 44px;
+  border-width: 4px;
+  border-color: #594235;
+  border-top-color: #e9d8c8;
+}
+.booth-header .button .spinner {
+  border-color: rgba(255, 255, 255, 0.35);
+  border-top-color: currentColor;
+}
+.save-progress {
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #3c2b22;
+}
+.save-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #e9d8c8;
+  transition: width 0.3s ease;
+}
+.save-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.kiosk-confirm-card .save-count {
+  color: #f3dfa8;
+}
+.camera-timeup .save-progress {
+  width: min(360px, 80%);
+}
+/* Nút hoàn thành giữ nguyên bề rộng khi đổi sang "Đang lưu N ảnh…" */
+.booth-header .booth-finish {
+  min-width: 190px;
+  justify-content: center;
+}
+.booth-header .booth-finish:disabled {
+  opacity: 0.75;
+  cursor: wait;
+}
+
+/* Ảnh gốc máy ảnh: khách bấm remote, không có nút chụp trên màn hình */
+.remote-hint {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 22px;
+  border: 1px solid #594235;
+  border-radius: 999px;
+  background: #35271f;
+  color: #f5ece3;
+}
+.self-viewfinder .remote-hint {
+  padding: 10px 20px;
+  border-color: rgba(233, 216, 200, 0.25);
+  background: rgba(33, 23, 19, 0.78);
+  backdrop-filter: blur(6px);
+}
+.remote-hint svg {
+  flex-shrink: 0;
+  color: #e9d8c8;
+}
+.remote-hint strong {
+  display: block;
+  font-size: 17px;
+}
+.remote-hint small {
+  color: #c5ab98;
+}

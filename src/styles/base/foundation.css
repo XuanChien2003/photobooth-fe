@@ -1,0 +1,144 @@
+:root {
+  --cream: #f8f2ec;
+  --paper: #fffdf8;
+  --ink: #3f2c25;
+  --wine: #522e22;
+  --muted: #807068;
+  --line: #e5d9cf;
+  --serif: "Cormorant Garamond", Georgia, serif;
+  --sans: "Be Vietnam Pro", sans-serif;
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--cream);
+  font-synthesis: none;
+  font-size: 13px;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button {
+  cursor: pointer;
+  color: inherit;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #c19464;
+  outline-offset: 4px;
+}
+img {
+  max-width: 100%;
+  display: block;
+}
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--serif);
+  font-weight: 500;
+}
+h1 {
+  font-size: 64px;
+  line-height: 1.08;
+  letter-spacing: -1.8px;
+}
+h2 {
+  font-size: 43px;
+  line-height: 1.15;
+  letter-spacing: -1px;
+}
+h3 {
+  font-size: 28px;
+  line-height: 1.15;
+}
+em {
+  font-weight: 400;
+  color: var(--wine);
+}
+p {
+  line-height: 1.85;
+  color: var(--muted);
+}
+small {
+  font-size: 11px;
+  line-height: 1.7;
+}
+svg {
+  flex-shrink: 0;
+}
+.button {
+  border: 1px solid var(--wine);
+  background: var(--wine);
+  color: #fff9ef;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 16px 24px;
+  min-height: 48px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+  white-space: nowrap;
+}
+.button:hover {
+  background: #3c2018;
+  transform: translateY(-1px);
+}
+.button.outline {
+  background: transparent;
+  color: var(--wine);
+  border-color: #ccb7b7;
+}
+.button.outline:hover {
+  background: #efe5df;
+}
+.button.small {
+  padding: 9px 13px;
+  min-height: 35px;
+  gap: 7px;
+  font-size: 11px;
+}
+.full {
+  width: 100%;
+}
+.eyebrow {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 2.1px;
+  color: var(--wine);
+  display: block;
+  line-height: 1.7;
+}

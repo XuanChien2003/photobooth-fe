@@ -1,0 +1,139 @@
+/* ─── Kiosk: màn hình nhập mã (tông tối như phòng chụp) ─────── */
+.kiosk-entry {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 24px 16px;
+  background: radial-gradient(circle at 50% -10%, #522e22 0%, #211713 62%);
+  color: #faf2eb;
+}
+.kiosk-entry-card {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  width: min(440px, 100%);
+  text-align: center;
+}
+.kiosk-entry-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: #e9d8c8;
+  color: #35241b;
+  font-size: 30px;
+}
+.kiosk-entry .eyebrow {
+  color: #c5ab98;
+}
+.kiosk-entry h1 {
+  margin: 0;
+  color: #fff;
+  font-size: 34px;
+  letter-spacing: -0.5px;
+}
+.kiosk-entry-card > p {
+  margin: 0;
+  color: #c5ab98;
+}
+.kiosk-entry .error-box,
+.kiosk-entry .soft-note {
+  width: 100%;
+  margin: 0;
+}
+.code-slots {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  width: 100%;
+  margin: 12px 0 4px;
+  cursor: text;
+}
+.code-slots span {
+  display: grid;
+  place-items: center;
+  height: 70px;
+  border: 2px solid #594235;
+  border-radius: 14px;
+  background: #35271f;
+  color: #fff;
+  font:
+    700 34px/1 ui-monospace,
+    "SF Mono",
+    Menlo,
+    Consolas,
+    monospace;
+}
+.code-slots span.filled {
+  border-color: #6d4f3e;
+}
+.code-slots span.current {
+  border-color: #e9d8c8;
+  box-shadow: 0 0 0 4px rgba(207, 227, 176, 0.14);
+}
+.kiosk-entry .keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+}
+.kiosk-entry .keypad button {
+  height: 66px;
+  border: 0;
+  border-radius: 16px;
+  background: #35271f;
+  color: #fff;
+  font-size: 27px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    transform 0.08s;
+}
+.kiosk-entry .keypad button:hover {
+  background: #3b2b22;
+}
+.kiosk-entry .keypad button:active {
+  transform: scale(0.96);
+  background: #493329;
+}
+.kiosk-entry .keypad .keypad-action {
+  color: #c5ab98;
+  font-size: 18px;
+}
+.kiosk-entry .keypad .keypad-action svg {
+  font-size: 26px;
+}
+/* Cài đặt máy chụp: dành cho nhân viên, gọn dưới màn nhập mã */
+.kiosk-settings {
+  width: 100%;
+  color: #c5ab98;
+  font-size: 13px;
+  text-align: left;
+}
+.kiosk-settings summary {
+  cursor: pointer;
+  list-style-position: inside;
+}
+.kiosk-settings label {
+  margin: 10px 0 0;
+  color: #c5ab98;
+}
+.kiosk-settings select {
+  border-color: #594235;
+  background: #35271f;
+  color: #fff;
+}
+.kiosk-entry .kiosk-start {
+  height: 62px;
+  margin-top: 4px;
+  border-color: #e9d8c8;
+  background: #e9d8c8;
+  color: #35241b;
+  font-size: 18px;
+}
+.kiosk-entry .kiosk-start:disabled {
+  opacity: 0.4;
+}

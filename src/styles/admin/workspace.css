@@ -1,0 +1,183 @@
+@layer components {
+  .admin-shell {
+    background: var(--cream);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .admin-shell .admin-sidebar {
+    width: 232px;
+    padding: 28px 16px 20px;
+    border-right: 1px solid var(--line);
+    background: var(--stone);
+    box-shadow: none;
+  }
+  .admin-shell .admin-sidebar .brand {
+    width: auto;
+    margin: 0 10px 28px;
+    align-items: flex-start;
+    color: var(--wine);
+  }
+  .admin-shell .admin-sidebar .brand-logo {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+  }
+  .admin-shell .admin-sidebar .brand small {
+    display: none;
+  }
+  .admin-shell .admin-sidebar nav {
+    gap: 24px;
+  }
+  .admin-shell .admin-nav-group {
+    display: grid;
+    gap: 4px;
+  }
+  .admin-shell .admin-nav-label {
+    padding: 0 12px 5px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .admin-shell .admin-sidebar nav button {
+    width: 100%;
+    min-width: 0;
+    min-height: 46px;
+    gap: 11px;
+    padding: 11px 12px;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--wine);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: normal;
+    box-shadow: none;
+    transition:
+      background-color 160ms ease,
+      color 160ms ease;
+  }
+  .admin-shell .admin-nav-text {
+    min-width: 0;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+  .admin-shell .admin-sidebar nav button:focus-visible {
+    outline: 2px solid var(--wine);
+    outline-offset: 3px;
+  }
+  .admin-shell .admin-sidebar nav button:hover {
+    background: #fff;
+    color: var(--wine);
+  }
+  .admin-shell .admin-sidebar nav button.active {
+    background: var(--wine);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: none;
+  }
+  .admin-shell .admin-sidebar nav button svg {
+    flex-shrink: 0;
+    opacity: 1;
+    stroke-width: 1.7;
+  }
+  .admin-shell .nav-count {
+    margin-left: auto;
+    background: var(--blush);
+    color: var(--wine-dark);
+    box-shadow: none;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  .admin-shell .sidebar-bottom {
+    gap: 4px;
+    margin-top: auto;
+    padding: 20px 0 0;
+    border-top: 1px solid var(--line);
+  }
+  .admin-shell .sidebar-bottom button {
+    min-height: 40px;
+    padding: 9px 12px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .admin-shell .sidebar-bottom button:hover {
+    background: #fff;
+    color: var(--wine);
+  }
+  .admin-shell .admin-main {
+    margin-left: 232px;
+  }
+  .admin-shell .admin-header {
+    min-height: 92px;
+    gap: 20px;
+    padding: 23px 32px;
+    border-bottom: 1px solid var(--line);
+    background: #fff;
+    backdrop-filter: none;
+  }
+  .admin-shell .admin-header > div:first-child {
+    min-width: 0;
+  }
+  .admin-shell .admin-header h2 {
+    gap: 12px;
+    margin: 0;
+    font-family: var(--sans);
+    font-size: 25px;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.025em;
+  }
+  .admin-shell .admin-header h2 > svg {
+    width: 24px;
+    height: 24px;
+    stroke-width: 1.7;
+  }
+  .admin-shell .admin-header .eyebrow {
+    display: none;
+  }
+  .admin-shell .admin-user {
+    flex-shrink: 0;
+    gap: 12px;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .admin-shell .admin-user small {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .admin-shell .admin-user > div {
+    width: 38px;
+    height: 38px;
+    background: var(--stone);
+    color: var(--wine);
+    box-shadow: none;
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .admin-shell .admin-content {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 28px 32px 48px;
+  }
+  .admin-shell .panel,
+  .admin-shell .table-wrap {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: none;
+  }
+  .admin-shell .panel h3,
+  .admin-shell .catalog-intro h3,
+  .admin-shell .frame-catalog-group-title h3 {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: -0.02em;
+  }
+}

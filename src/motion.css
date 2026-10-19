@@ -1,0 +1,293 @@
+/* ─── Chuyển trang & chuyển cảnh ─────────────────────────────────────────
+   Dùng View Transitions API (Chrome/Edge/Safari mới): React Router bật cho
+   chuyển trang; transitions.js bật cho chuyển bước trong trang và đặt kiểu
+   hiệu ứng qua html[data-transition]. Trình duyệt cũ: đổi trang ngay, không lỗi. */
+
+:root {
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* Phần giữ nguyên khi chuyển cảnh: chỉ nội dung chính chuyển động. */
+.site-header {
+  position: relative;
+  z-index: 40;
+  view-transition-name: site-header;
+}
+.admin-sidebar {
+  view-transition-name: admin-sidebar;
+}
+.studio-steps {
+  view-transition-name: studio-steps;
+}
+.studio-meta {
+  view-transition-name: studio-meta;
+}
+.studio-actions {
+  view-transition-name: studio-actions;
+}
+.booth-header {
+  view-transition-name: booth-header;
+}
+/* Xóa/thêm ảnh: từng ảnh tự trượt về chỗ mới. */
+html[data-transition="reorder"] .studio-grid figure {
+  view-transition-name: var(--vt);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-group(*) {
+    animation-duration: 320ms;
+    animation-timing-function: var(--ease-out);
+  }
+
+  /* Mặc định (chuyển trang): trang cũ mờ đi, trang mới nổi lên nhẹ. */
+  ::view-transition-old(root) {
+    animation: vt-fade-out 160ms var(--ease-in) both;
+  }
+  ::view-transition-new(root) {
+    animation: vt-rise-in 340ms var(--ease-out) 60ms both;
+  }
+
+  html[data-transition="fade"]::view-transition-old(root) {
+    animation: vt-fade-out 180ms ease both;
+  }
+  html[data-transition="fade"]::view-transition-new(root) {
+    animation: vt-fade-in 240ms ease both;
+  }
+
+  /* Bước tiếp theo: trượt sang trái; quay lại: trượt sang phải. */
+  html[data-transition="forward"]::view-transition-old(root) {
+    animation: vt-slide-out-left 200ms var(--ease-in) both;
+  }
+  html[data-transition="forward"]::view-transition-new(root) {
+    animation: vt-slide-in-right 340ms var(--ease-out) 90ms both;
+  }
+  html[data-transition="back"]::view-transition-old(root) {
+    animation: vt-slide-out-right 200ms var(--ease-in) both;
+  }
+  html[data-transition="back"]::view-transition-new(root) {
+    animation: vt-slide-in-left 340ms var(--ease-out) 90ms both;
+  }
+
+  /* Vào phòng chụp / đăng nhập: thu phóng nhẹ. */
+  html[data-transition="zoom"]::view-transition-old(root) {
+    animation: vt-zoom-out 220ms var(--ease-in) both;
+  }
+  html[data-transition="zoom"]::view-transition-new(root) {
+    animation: vt-zoom-in 420ms var(--ease-out) both;
+  }
+
+  /* Sắp xếp lại lưới ảnh: nền giữ yên, chỉ các ảnh di chuyển. */
+  html[data-transition="reorder"]::view-transition-old(root),
+  html[data-transition="reorder"]::view-transition-new(root) {
+    animation: none;
+  }
+  html[data-transition="reorder"]::view-transition-old(*):only-child {
+    animation: vt-shrink-out 220ms var(--ease-in) both;
+  }
+  html[data-transition="reorder"]::view-transition-new(*):only-child {
+    animation: vt-fade-in 260ms ease both;
+  }
+
+  /* Hộp thoại & popup */
+  .modal-backdrop {
+    animation: vt-fade-in 200ms ease both;
+  }
+  .modal-backdrop > .modal,
+  .modal-backdrop > section {
+    animation: modal-in 280ms var(--ease-out) both;
+  }
+  @media (max-width: 640px) {
+    .modal-backdrop > .photo-editor {
+      animation: sheet-up 340ms var(--ease-out) both;
+    }
+  }
+
+  /* Ảnh hiện dần khi tải xong, khung chờ có ánh sáng lướt. */
+  .fade-img {
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+  .fade-img.is-loaded {
+    opacity: 1;
+  }
+  .studio-photo:has(.fade-img:not(.is-loaded)) {
+    background: linear-gradient(
+        100deg,
+        var(--line) 30%,
+        #f4ece4 50%,
+        var(--line) 70%
+      )
+      0 0 / 200% 100%;
+    animation: shimmer 1.2s linear infinite;
+  }
+
+  /* Tương tác nhỏ */
+  .tile-heart[aria-pressed="true"] svg {
+    animation: pop 0.4s cubic-bezier(0.3, 1.6, 0.5, 1);
+  }
+  .theme-check {
+    animation: pop 0.3s cubic-bezier(0.3, 1.6, 0.5, 1);
+  }
+  .studio-steps button,
+  .editor-tabs button,
+  .filter-strip img,
+  .gallery-tools button,
+  .frame-tabs button,
+  .photo-carousel button {
+    transition:
+      background-color 0.2s,
+      border-color 0.2s,
+      color 0.2s,
+      box-shadow 0.2s,
+      transform 0.12s;
+  }
+  .photo-carousel button:active,
+  .editor-tabs button:active {
+    transform: scale(0.97);
+  }
+  .camera-timeup {
+    animation: vt-fade-in 0.3s ease both;
+  }
+  .result-banner,
+  .theme-status {
+    animation: vt-rise-in 0.4s var(--ease-out) both;
+  }
+  .sheet-strip figure {
+    animation: vt-rise-in 0.45s var(--ease-out) both;
+  }
+  .sheet-strip figure:nth-child(2) {
+    animation-delay: 60ms;
+  }
+  .sheet-strip figure:nth-child(3) {
+    animation-delay: 120ms;
+  }
+  .sheet-strip figure:nth-child(n + 4) {
+    animation-delay: 180ms;
+  }
+}
+
+/* Vòng xoay khi đang tải trang */
+.page-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-block: 80px;
+  color: var(--muted);
+}
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--line);
+  border-top-color: var(--wine);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vt-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes vt-slide-out-left {
+  to {
+    opacity: 0;
+    transform: translateX(-36px);
+  }
+}
+@keyframes vt-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(36px);
+  }
+}
+@keyframes vt-slide-out-right {
+  to {
+    opacity: 0;
+    transform: translateX(36px);
+  }
+}
+@keyframes vt-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-36px);
+  }
+}
+@keyframes vt-zoom-out {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+@keyframes vt-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(1.03);
+  }
+}
+@keyframes vt-shrink-out {
+  to {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+}
+@keyframes sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(48px);
+  }
+}
+@keyframes pop {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.22);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Người dùng bật "giảm chuyển động" trong hệ điều hành: tắt mọi hiệu ứng. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .fade-img {
+    opacity: 1;
+  }
+}

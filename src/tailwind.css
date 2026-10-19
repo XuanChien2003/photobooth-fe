@@ -1,0 +1,46 @@
+/*
+ * Tailwind CSS 4 dùng chung với CSS sẵn có của dự án:
+ * - Tiền tố "tw:" cho mọi class Tailwind (vd. tw:flex, tw:hover:bg-brand) để không trùng tên
+ *   class cũ (nút ".outline", ".small"…).
+ * - Không dùng preflight (reset mặc định) để giữ nguyên kiểu chữ / nút của các màn hiện có.
+ * - CSS cũ nằm trong lớp "legacy", thấp hơn "components" và "utilities": class Tailwind luôn
+ *   ghi đè được CSS cũ, không phụ thuộc độ ưu tiên selector.
+ */
+@layer theme, base, legacy, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme) prefix(tw);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@import "./style.css" layer(legacy);
+@import "./theme.css" layer(legacy);
+@import "./self-booth.css" layer(legacy);
+@import "./polish.css" layer(legacy);
+@import "./motion.css" layer(legacy);
+
+/* Màu & chữ thương hiệu (dùng như tw:bg-brand, tw:text-ink, tw:ring-line…) */
+@theme {
+  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  --color-brand: #4b332a;
+  --color-brand-dark: #34231d;
+  --color-brand-soft: #eee4db;
+  --color-ink: #302822;
+  --color-muted: #72665d;
+  --color-line: #dcd3c8;
+  --color-cream: #fbf9f5;
+}
+
+/* Giao diện quản trị & đăng nhập (Tailwind, lớp components — ghi đè CSS cũ) */
+@import "./admin-ui.css";
+@import "./styles/polish/catalog-controls.css";
+@import "./styles/polish/package-catalog.css";
+@import "./styles/polish/frame-catalog.css";
+@import "./styles/polish/album-theme-picker.css";
+@import "./styles/polish/brown-experience.css";
+@import "./styles/polish/brand-logo.css";
+@import "./styles/polish/professional-foundation.css";
+@import "./styles/polish/professional-entry.css";
+@import "./styles/polish/professional-admin.css";
+@import "./styles/polish/professional-album.css";
+@import "./styles/polish/room-access.css";
+@import "./styles/admin/storage-assistant-overview.css";
+@import "./styles/polish/studio-stars.css";

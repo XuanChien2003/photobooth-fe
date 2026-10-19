@@ -1,0 +1,212 @@
+.admin-shell {
+  background: #faf4ed;
+}
+.admin-sidebar {
+  width: 244px;
+  background: #4a2c21;
+  border: 0;
+  padding: 28px 14px 20px;
+}
+.admin-sidebar .brand {
+  color: #f7eee5;
+  margin: 0 16px 32px;
+}
+.admin-sidebar .brand > span {
+  font-size: 31px;
+}
+.sidebar-label {
+  font-size: 10px;
+  letter-spacing: 1.3px;
+  color: #cdb7a3;
+}
+.admin-sidebar nav {
+  gap: 4px;
+}
+.admin-sidebar nav button {
+  color: #e5d9cf;
+  font-size: 13px;
+  min-height: 45px;
+  padding: 11px 13px;
+  border-radius: 9px;
+}
+.admin-sidebar nav button:hover {
+  background: #ffffff0d;
+}
+.admin-sidebar nav button.active {
+  background: #e9d8c8;
+  color: #522e22;
+  font-weight: 600;
+}
+.sidebar-bottom {
+  padding: 20px 12px 0;
+  border-top: 1px solid #ffffff20;
+  margin-top: 26px;
+  gap: 12px;
+}
+.sidebar-bottom a,
+.sidebar-bottom button {
+  color: #dec9b8;
+  font-size: 12px;
+  min-height: 32px;
+}
+.admin-main {
+  margin-left: 244px;
+}
+.admin-header {
+  background: white;
+  padding: 24px 30px;
+  gap: 20px;
+}
+.admin-header h2 {
+  font-size: 26px;
+}
+.admin-header .eyebrow {
+  font-size: 10px;
+}
+.admin-user {
+  font-size: 13px;
+}
+.admin-user small {
+  font-size: 11px;
+}
+.admin-user > div {
+  background: #f3e7da;
+  font-size: 21px;
+  width: 42px;
+  height: 42px;
+  font-weight: 600;
+}
+.admin-content {
+  padding: 28px 30px;
+}
+.welcome-banner {
+  border: 1px solid #eddfd2;
+  border-radius: 16px;
+  background: #f4e9dd;
+  padding: 26px;
+}
+.welcome-banner h2 {
+  font-size: 27px;
+}
+.welcome-banner p {
+  font-size: 14px;
+}
+.stat-card {
+  border-radius: 14px;
+  padding: 24px;
+}
+.stat-card > span {
+  font-size: 13px;
+}
+.stat-card > strong {
+  font-size: 29px;
+  font-weight: 600;
+}
+.dashboard-grid h3,
+.occupancy-panel h3 {
+  font-size: 22px;
+}
+.bar {
+  background: #ad8d76;
+  border-radius: 5px 5px 0 0;
+}
+.bar-column small,
+.bar-column > span {
+  font-size: 10px;
+}
+.table-wrap {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.table-wrap th {
+  background: #f5ece3;
+  color: #82573f;
+  font-size: 12px;
+  padding: 16px;
+}
+.table-wrap td {
+  padding: 18px 16px;
+  font-size: 13px;
+}
+.table-wrap tbody tr:hover {
+  background: #fcf7f1;
+}
+.table-wrap td small {
+  font-size: 12px;
+}
+.table-actions {
+  gap: 8px;
+}
+.table-actions button,
+.table-actions a {
+  font-size: 12px;
+  min-height: 30px;
+  text-align: left;
+}
+.admin-toolbar {
+  flex-wrap: wrap;
+}
+.admin-toolbar > input,
+.admin-toolbar > select {
+  font-size: 13px;
+  min-height: 44px;
+  border-radius: 9px;
+}
+.search-box {
+  border-radius: 9px;
+  min-width: 200px;
+}
+.search-box input {
+  font-size: 14px;
+  min-height: 44px;
+}
+.today-booking {
+  font-size: 13px;
+}
+.today-booking small {
+  font-size: 11px;
+}
+.occupancy-row > div {
+  font-size: 13px;
+}
+.occupancy-row small,
+.occupancy-row > span {
+  font-size: 11px;
+}
+.admin-menu-toggle {
+  display: none;
+}
+.login-art {
+  background: #4a2c21;
+  padding: 64px;
+}
+.login-art .brand {
+  color: #e9d8c8;
+}
+.login-art h1 {
+  font-size: 48px;
+  margin-top: 85px;
+  line-height: 1.3;
+}
+.login-art h1 em {
+  color: #ead7c3;
+}
+.login-art p {
+  color: #dec9b8;
+  font-size: 14px;
+}
+.login-art > svg {
+  color: #ead7c3;
+}
+.login-form {
+  max-width: 450px;
+}
+.login-form h2 {
+  font-size: 31px;
+}
+.login-form > p {
+  font-size: 14px;
+}
+.login-form > small {
+  font-size: 12px;
+}

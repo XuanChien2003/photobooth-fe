@@ -1,0 +1,282 @@
+﻿/* Impeccable: hệ màu và điều khiển dùng chung. */
+@layer components {
+  :root {
+    --wine: #4b332a;
+    --wine-dark: #34231d;
+    --wine-soft: #eee4db;
+    --cream: #fbf9f5;
+    --paper: #fff;
+    --surface: #fff;
+    --stone: #eee8df;
+    --blush: #f1b7bd;
+    --ink: #302822;
+    --muted: #72665d;
+    --line: #dcd3c8;
+    --sans: "Be Vietnam Pro", "Segoe UI", sans-serif;
+    --serif: var(--sans);
+    --ui-shadow: 0 8px 24px #34231d0d;
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--cream);
+  }
+  body {
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: var(--blush);
+    color: var(--wine-dark);
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--sans);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.35;
+    text-wrap: balance;
+  }
+  h1 {
+    font-size: 36px;
+  }
+  h2 {
+    font-size: 26px;
+  }
+  h3 {
+    font-size: 18px;
+  }
+  p {
+    line-height: 1.7;
+  }
+  small,
+  .muted {
+    font-size: 12px;
+    line-height: 1.65;
+  }
+  a {
+    text-underline-offset: 4px;
+  }
+  input,
+  textarea {
+    caret-color: var(--wine);
+  }
+  input,
+  select,
+  textarea {
+    min-height: 46px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 14px;
+    box-shadow: none;
+    transition: border-color 160ms ease-out;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--muted);
+    opacity: 1;
+  }
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-color: var(--wine);
+    box-shadow: none;
+  }
+  input[aria-invalid="true"],
+  textarea[aria-invalid="true"] {
+    border-color: #ad3930;
+  }
+  input[type="range"] {
+    min-height: 26px;
+    padding: 0;
+    accent-color: var(--wine);
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 0;
+    accent-color: var(--wine);
+  }
+  .button {
+    min-height: 46px;
+    padding: 12px 18px;
+    border: 1px solid var(--wine);
+    border-radius: 10px;
+    background: var(--wine);
+    color: #fff;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.45;
+    box-shadow: none;
+    transform: none;
+    transition:
+      background-color 160ms ease-out,
+      border-color 160ms ease-out;
+  }
+  .button.small {
+    min-height: 40px;
+    padding: 9px 13px;
+    font-size: 13px;
+  }
+  .button.outline {
+    background: var(--surface);
+    color: var(--wine);
+    border-color: var(--line);
+  }
+  .button:not(.outline):not(:disabled):hover {
+    background: var(--wine-dark);
+    border-color: var(--wine-dark);
+    transform: none;
+    box-shadow: none;
+  }
+  .button.outline:not(:disabled):hover {
+    background: var(--stone);
+    border-color: #a99688;
+    transform: none;
+    box-shadow: none;
+  }
+  .button:not(:disabled):active {
+    background: var(--wine-dark);
+    color: #fff;
+  }
+  .button:disabled {
+    opacity: 0.48;
+    transform: none;
+  }
+  :where(button, a, input, select, textarea, summary):focus-visible {
+    outline: 2px solid var(--wine);
+    outline-offset: 3px;
+  }
+  .icon-button {
+    min-width: 40px;
+    min-height: 40px;
+    border-radius: 10px;
+  }
+  .soft-note,
+  .error-box {
+    font-size: 13px;
+    line-height: 1.65;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border-left-width: 1px;
+  }
+  .soft-note {
+    background: var(--stone);
+    color: var(--muted);
+  }
+  .empty-state {
+    padding: 32px 20px;
+    background: transparent;
+  }
+  .empty-state p {
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .empty-state h3 {
+    font-size: 19px;
+    margin-bottom: 8px;
+  }
+  .toast {
+    font-size: 14px;
+    line-height: 1.55;
+    border-radius: 12px;
+    align-items: center;
+  }
+  .toast-msg {
+    min-width: 0;
+  }
+  .toast-close {
+    width: 44px;
+    height: 44px;
+    justify-content: center;
+  }
+  .guide {
+    border-radius: 12px;
+    box-shadow: none;
+  }
+  .guide:not(.is-dark) {
+    background: var(--surface);
+    border-color: var(--line);
+  }
+  .guide-head {
+    min-height: 46px;
+    padding: 12px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    gap: 10px;
+  }
+  .guide-head span {
+    min-width: 0;
+    line-height: 1.6;
+  }
+  .guide-head small {
+    font-size: 12px;
+  }
+  .guide-body {
+    padding: 0 16px 16px;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .ticket-card {
+    background: var(--surface);
+    border-color: var(--line);
+    border-radius: 16px;
+    box-shadow: none;
+  }
+  .ticket-card .ticket-code {
+    font-family: var(--sans);
+    font-variant-numeric: tabular-nums;
+    color: var(--wine);
+  }
+  .ticket-card .ticket-top {
+    background: var(--surface);
+  }
+  .ticket-card .ticket-bottom p {
+    font-size: 13px;
+  }
+  .ticket-card .ticket-meta dt {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .ticket-card .ticket-meta dd {
+    font-size: 14px;
+  }
+  @media (max-width: 760px) {
+    input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not(
+        [type="color"]
+      ):not([type="file"]),
+    select,
+    textarea {
+      font-size: 16px;
+    }
+    .button.small,
+    .icon-button {
+      min-height: 44px;
+    }
+    .icon-button {
+      min-width: 44px;
+    }
+    input[type="range"] {
+      min-height: 44px;
+    }
+    .text-link {
+      min-width: 44px;
+      min-height: 44px;
+      padding: 8px 6px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

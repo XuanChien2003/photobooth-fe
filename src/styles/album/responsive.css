@@ -1,0 +1,425 @@
+@layer components {
+  @media (max-width: 1000px) {
+    .studio-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .frame-workspace {
+      grid-template-columns: minmax(0, 1fr) 290px;
+      gap: 20px;
+    }
+    .slot-tools {
+      padding: 16px;
+    }
+    .editor-workspace {
+      grid-template-columns: minmax(0, 1.3fr) minmax(280px, 1fr);
+      gap: 18px;
+    }
+    .editor-control-panel {
+      padding: 16px;
+    }
+  }
+  @media (max-width: 760px) {
+    .studio-page {
+      padding-inline: 20px;
+    }
+    .studio-meta {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .studio-meta-heading {
+      grid-column: 1;
+    }
+    .theme-catalog {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px 16px;
+    }
+    .theme-total {
+      display: block;
+    }
+    .frame-workspace,
+    .editor-workspace {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .frame-canvas {
+      min-height: 0;
+    }
+    .slot-tools-head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .slot-tools-actions {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 4px;
+      width: 100%;
+    }
+    .slot-tools-actions .text-link {
+      text-align: center;
+    }
+  }
+  @media (max-width: 640px) {
+    .studio-page {
+      padding: 18px 20px 168px;
+    }
+    .studio-meta {
+      gap: 6px;
+      margin-bottom: 14px;
+      padding-bottom: 14px;
+    }
+    .studio-meta-heading {
+      gap: 8px;
+    }
+    .studio-album-ticket {
+      gap: 5px;
+      font-size: 13px;
+    }
+    .studio-album-retention {
+      gap: 5px;
+      font-size: 11px;
+    }
+    .studio-meta p,
+    .studio-meta small {
+      font-size: 12px;
+    }
+    .studio-steps {
+      margin-bottom: 22px;
+    }
+    .studio-steps button {
+      flex-direction: column;
+      min-height: 56px;
+      gap: 5px;
+      padding: 7px 3px;
+      font-size: 12px;
+    }
+    .studio-steps button span {
+      width: 20px;
+      height: 20px;
+      font-size: 18px;
+    }
+    .studio-head {
+      gap: 8px 12px;
+      margin-bottom: 20px;
+    }
+    .studio-head h2 {
+      font-size: 23px;
+    }
+    .studio-title-row {
+      gap: 5px 8px;
+    }
+    .studio-photo-total {
+      font-size: 12px;
+    }
+    .studio-head p {
+      font-size: 13px;
+    }
+    .studio-head > .button {
+      min-height: 44px;
+      padding: 9px 10px;
+      font-size: 12px;
+    }
+    .studio-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .studio-upload-tile {
+      gap: 5px;
+      padding: 12px 8px;
+    }
+    .studio-upload-tile > svg {
+      margin-bottom: 2px;
+      font-size: 25px;
+    }
+    .studio-upload-tile strong {
+      font-size: 14px;
+    }
+    .studio-upload-tile span {
+      font-size: 12px;
+    }
+    .studio-grid .tile-actions {
+      gap: 4px;
+      padding: 18px 6px 6px;
+    }
+    .studio-grid .tile-btn {
+      width: 38px;
+      height: 38px;
+      font-size: 18px;
+    }
+    .studio-actions {
+      gap: 8px;
+      padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+    .studio-actions .button {
+      min-height: 46px;
+      font-size: 13px;
+    }
+    .gallery-tools {
+      flex-wrap: wrap;
+      gap: 4px;
+      overflow: visible;
+    }
+    .gallery-tools button {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 44px;
+      justify-content: center;
+      gap: 5px;
+      padding: 8px 6px;
+      font-size: 12px;
+      white-space: normal;
+    }
+    .gallery-tools button[aria-label="Thoát chế độ chọn"] {
+      flex: 0 0 44px;
+    }
+    .gallery-cta {
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .gallery-cta > .button {
+      flex: 0 1 auto;
+      padding-inline: 15px;
+    }
+    .fav-count {
+      min-width: 0;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: normal;
+    }
+    .theme-selection-status {
+      margin-bottom: 20px;
+      padding-block: 12px;
+    }
+    .theme-selection-status strong {
+      font-size: 13px;
+    }
+    .theme-selection-status span {
+      font-size: 12px;
+    }
+    .theme-total {
+      font-size: 12px;
+    }
+    .theme-catalog {
+      gap: 22px 14px;
+    }
+    .theme-catalog > button {
+      gap: 10px;
+      padding: 0;
+      border-radius: 0;
+    }
+    .theme-catalog .theme-big-preview {
+      gap: 6px;
+      padding: 18px 10px;
+      border-radius: 14px;
+    }
+    .theme-catalog .theme-list-info strong {
+      font-size: 15px;
+    }
+    .theme-card-meta {
+      gap: 4px 8px;
+      font-size: 12px;
+    }
+    .theme-card-meta svg {
+      font-size: 14px;
+    }
+    .theme-action-bar {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 12px;
+    }
+    .theme-action-summary {
+      grid-column: 1 / -1;
+      grid-row: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      text-align: left;
+    }
+    .theme-action-summary strong {
+      max-width: 48vw;
+      font-size: 13px;
+    }
+    .theme-action-summary small {
+      font-size: 11px;
+    }
+    .studio .frame-nav {
+      gap: 9px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+    }
+    .studio .frame-nav strong {
+      font-size: 16px;
+    }
+    .studio .frame-nav > span {
+      padding: 5px 7px;
+      font-size: 12px;
+    }
+    .frame-tabs {
+      margin-bottom: 14px;
+    }
+    .frame-tabs button {
+      padding: 7px 9px;
+      gap: 7px;
+      font-size: 12px;
+    }
+    .frame-tabs img {
+      height: 30px;
+    }
+    .frame-tabs span {
+      max-width: 105px;
+    }
+    .frame-workspace {
+      gap: 20px;
+    }
+    .frame-canvas {
+      padding: 18px;
+    }
+    .frame-canvas canvas {
+      max-height: 52dvh;
+    }
+    .frame-hint {
+      font-size: 12px;
+    }
+    .slot-tools {
+      gap: 14px;
+      padding: 16px;
+    }
+    .slot-tools-head {
+      gap: 6px;
+    }
+    .slot-tools-head > strong {
+      flex-shrink: 0;
+      font-size: 15px;
+    }
+    .slot-tools-actions .text-link {
+      font-size: 12px;
+    }
+    .editor-backdrop {
+      padding: 0;
+    }
+    .photo-editor {
+      width: 100vw;
+      height: 100dvh;
+      max-height: 100dvh;
+      gap: 16px;
+      padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .editor-head {
+      padding-bottom: 12px;
+    }
+    .editor-head h2 {
+      font-size: 18px;
+    }
+    .editor-workspace {
+      gap: 22px;
+    }
+    .editor-control-panel {
+      gap: 14px;
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+    .editor-tabs button {
+      min-height: 62px;
+      font-size: 12px;
+    }
+    .editor-foot {
+      bottom: calc(-16px - env(safe-area-inset-bottom, 0px));
+      padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    }
+    .editor-foot .button {
+      font-size: 13px;
+    }
+    .sheet-strip {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 24px;
+    }
+    .sheet-strip figure > button {
+      padding: 18px;
+    }
+    .print-confirmation {
+      grid-template-columns: 42px minmax(0, 1fr);
+      gap: 22px 12px;
+      padding: 22px 18px;
+      border-radius: 14px;
+    }
+    .print-confirmation h2 {
+      font-size: 22px;
+    }
+    .print-confirmation-check {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+    }
+    .print-confirmation-check svg {
+      width: 25px;
+      height: 25px;
+    }
+    .print-confirmation-heading p,
+    .print-confirmation-help,
+    .print-confirmation-notes p {
+      font-size: 13px;
+    }
+    .print-confirmation-ticket {
+      padding: 12px;
+      font-size: 13px;
+    }
+    .print-confirmation-actions {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+    }
+    .print-confirmation-actions .button {
+      font-size: 13px;
+    }
+    .result-action-bar {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: stretch;
+    }
+    .result-action-bar > .button {
+      min-width: 0;
+      padding-inline: 10px;
+      white-space: normal;
+    }
+    .result-action-bar > .button:only-child {
+      grid-column: 1 / -1;
+      width: 100%;
+      margin: 0;
+    }
+  }
+  @media (max-width: 360px) {
+    .studio-page {
+      padding-inline: 16px;
+    }
+    .studio-head > .button {
+      grid-column: 1 / -1;
+      grid-row: 3;
+      justify-self: start;
+    }
+    .studio-title-row {
+      grid-column: 1 / -1;
+    }
+    .studio-head h2 {
+      font-size: 22px;
+    }
+    .theme-catalog-head h2 {
+      font-size: 21px;
+    }
+    .theme-total {
+      display: none;
+    }
+    .studio-photo img,
+    .studio-upload-tile {
+      min-height: 120px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .theme-catalog .theme-big-preview,
+    .sheet-strip figure > button {
+      transition: none;
+    }
+  }
+}

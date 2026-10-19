@@ -1,0 +1,8 @@
+/* Giao diện chủ đề: nạp lần lượt các phần chung, quản trị và album. */
+@import "./styles/theme/shared.css";
+@import "./styles/theme/admin.css";
+@import "./styles/theme/responsive.css";
+@import "./styles/theme/gallery.css";
+@import "./styles/theme/photo-editor.css";
+@import "./styles/theme/frame-composer.css";
+@import "./styles/theme/results-and-print-queue.css";

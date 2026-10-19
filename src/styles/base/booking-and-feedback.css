@@ -1,0 +1,128 @@
+.steps {
+  display: flex;
+  max-width: 780px;
+  justify-content: space-between;
+  margin: 0 auto 35px;
+  gap: 10px;
+}
+.steps > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #b0a39a;
+  font-size: 11px;
+}
+.steps > div > span {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.steps > div.active {
+  color: var(--wine);
+}
+.steps > div.active > span {
+  background: var(--wine);
+  color: white;
+  border-color: var(--wine);
+}
+.summary-total {
+  display: flex;
+  justify-content: space-between;
+  padding: 22px 0 12px;
+  border-top: 1px solid var(--line);
+  margin-top: 20px;
+}
+.summary-total strong {
+  font-size: 23px;
+  font-family: var(--serif);
+  color: var(--wine);
+}
+.muted {
+  color: var(--muted);
+  font-size: 11px;
+}
+.center {
+  text-align: center;
+}
+.ticket-code {
+  font-size: 49px;
+  letter-spacing: 9px;
+  font-family: var(--serif);
+  color: var(--wine);
+  margin: 8px 0 16px;
+}
+.inline-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.badge {
+  display: inline-flex;
+  padding: 6px 9px;
+  border-radius: 4px;
+  background: #eee7dd;
+  color: #806b54;
+  font-size: 9px;
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.badge.pending {
+  background: #fff0d6;
+  color: #9c6b27;
+}
+.badge.confirmed {
+  background: #e8eedf;
+  color: #4f6d48;
+}
+.badge.checked_in {
+  background: #e4ecf8;
+  color: #4e6a97;
+}
+.badge.completed {
+  background: #e9e5f1;
+  color: #73618e;
+}
+.badge.cancelled {
+  background: #f4e2df;
+  color: #98615c;
+}
+.empty-state {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--muted);
+}
+.empty-state > svg {
+  margin: auto auto 16px;
+  color: #b39d91;
+}
+.empty-state h3 {
+  font-size: 27px;
+  margin-bottom: 10px;
+}
+.empty-state p {
+  font-size: 12px;
+}
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 25px;
+}
+.keypad button {
+  background: #f2ebdf;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  min-height: 54px;
+  font-size: 20px;
+  font-family: var(--serif);
+}
+.keypad button:hover {
+  background: #e2d2c2;
+}

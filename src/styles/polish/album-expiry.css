@@ -1,0 +1,42 @@
+/* Hàng chờ in: giờ tự xóa của từng lệnh in (24 giờ sau khi gửi) */
+.expiry-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #fff3d6;
+  color: #7a5200;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.expiry-chip.is-soon {
+  background: #f3ece4;
+  color: #807068;
+}
+.expiry-chip.is-urgent {
+  background: #fde3e7;
+  color: #a01d32;
+  animation: day-note-tick 1s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .expiry-chip.is-urgent {
+    animation: none;
+  }
+}
+
+/* Album khách: ảnh sắp tự xóa (mỗi ảnh lưu 24 giờ kể từ lúc chụp) */
+.photo-expiry {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(176, 30, 50, 0.85);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+}

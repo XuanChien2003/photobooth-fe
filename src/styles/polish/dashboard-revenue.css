@@ -1,0 +1,237 @@
+/* ─── Tổng quan: thẻ số liệu & doanh thu theo ngày trong tháng ─── */
+.stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+.stat-card > small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.revenue-panel {
+  margin-bottom: 20px;
+}
+.revenue-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.revenue-head h3 {
+  margin: 4px 0 0;
+}
+.revenue-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.revenue-panel .revenue-filters label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.revenue-filters select {
+  width: auto;
+  min-width: 150px;
+}
+.revenue-body {
+  transition: opacity 0.2s ease;
+}
+/* Đổi tháng: giữ khung cũ, mờ đi trong lúc tải — không nhảy bố cục */
+.revenue-body.is-loading {
+  opacity: 0.5;
+}
+.revenue-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 16px 0 0;
+}
+.revenue-summary > div {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #f8f2ec;
+}
+.revenue-summary dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+.revenue-summary dd {
+  margin: 2px 0 0;
+  color: var(--ink);
+  font-size: 19px;
+  font-weight: 700;
+}
+.revenue-empty {
+  margin: 12px 0 0;
+}
+.revenue-chart {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  grid-template-rows: 200px auto;
+  column-gap: 8px;
+  row-gap: 6px;
+  /* Chừa chỗ phía trên cho tooltip và nhãn ngày cao nhất */
+  margin-top: 70px;
+}
+.revenue-axis {
+  position: relative;
+  grid-row: 1;
+  grid-column: 1;
+}
+.revenue-axis span {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.revenue-plot,
+.revenue-x {
+  display: grid;
+  grid-template-columns: repeat(var(--days), minmax(0, 1fr));
+  column-gap: 2px;
+}
+.revenue-plot {
+  position: relative;
+  grid-row: 1;
+  grid-column: 2;
+}
+.revenue-x {
+  grid-row: 2;
+  grid-column: 2;
+}
+/* Lưới ngang mảnh, nét liền, nhạt hơn dữ liệu */
+.revenue-grid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #eee4db;
+  pointer-events: none;
+}
+.revenue-grid:first-child {
+  background: var(--line);
+}
+/* Cả cột ngày là vùng rê chuột / chạm (lớn hơn cột vẽ) */
+.revenue-day {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+.revenue-day:hover,
+.revenue-day.is-active {
+  background: rgba(82, 46, 34, 0.06);
+}
+.revenue-day:focus-visible {
+  outline: 2px solid var(--wine);
+  outline-offset: -2px;
+}
+.revenue-bar {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: min(100%, 24px);
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  background: var(--wine);
+  transform: translateX(-50%);
+}
+.revenue-day:hover .revenue-bar,
+.revenue-day.is-active .revenue-bar {
+  background: #3c2018;
+}
+.revenue-peak {
+  position: absolute;
+  left: 50%;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  transform: translate(-50%, -4px);
+  pointer-events: none;
+}
+.revenue-tip {
+  position: absolute;
+  top: -10px;
+  z-index: 5;
+  display: grid;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+.revenue-tip strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+.revenue-tip span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.revenue-x span {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.revenue-x span.is-today {
+  color: var(--ink);
+  font-weight: 700;
+}
+.revenue-table {
+  margin-top: 18px;
+}
+.revenue-table summary {
+  cursor: pointer;
+  color: var(--wine);
+  font-weight: 600;
+}
+.revenue-table .table-wrap {
+  max-height: 420px;
+  margin-top: 10px;
+  overflow: auto;
+}
+.revenue-table td:not(:first-child),
+.revenue-table th:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.revenue-table tr.is-zero td {
+  color: var(--muted);
+}
+.revenue-table tfoot th {
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+}
+@media (max-width: 900px) {
+  .revenue-x span.minor {
+    visibility: hidden;
+  }
+}
+@media (max-width: 640px) {
+  .revenue-chart {
+    grid-template-columns: 40px 1fr;
+  }
+  .revenue-axis span {
+    font-size: 10px;
+  }
+}

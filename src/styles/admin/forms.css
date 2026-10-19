@@ -1,0 +1,48 @@
+@layer components {
+  .admin-shell .modal-backdrop {
+    background: rgb(30 22 17 / 44%);
+    backdrop-filter: none;
+  }
+  .admin-shell .modal {
+    border: 0;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 18px 64px rgb(30 22 17 / 24%);
+  }
+  .admin-shell .modal h2 {
+    font-family: var(--sans);
+    font-size: 23px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: -0.025em;
+  }
+  .admin-shell .modal label,
+  .admin-shell .catalog-editor .form-field {
+    color: var(--ink);
+    font-size: 13px;
+  }
+  .admin-shell .modal > p,
+  .admin-shell .resource-editor-title p {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .admin-shell .resource-editor-icon {
+    flex: 0 0 26px;
+    height: 26px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .admin-shell .catalog-editor-preview {
+    padding: 20px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--stone);
+    box-shadow: none;
+  }
+  .admin-shell .catalog-editor .resource-editor-footer {
+    border-color: var(--line);
+    background: var(--cream);
+  }
+}

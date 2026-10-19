@@ -1,0 +1,199 @@
+@layer components {
+  .studio-page {
+    max-width: 1160px;
+    padding: 24px 28px 136px;
+  }
+  /* Retention stays visible without putting a card before the photographs. */
+  .studio-meta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 7px 20px;
+    margin-bottom: 22px;
+    padding: 0 0 20px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .studio-meta-heading {
+    display: flex;
+    grid-column: 1 / -1;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+  }
+  .studio-album-ticket,
+  .studio-album-retention {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .studio-meta-heading .studio-album-refresh {
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  .studio-album-ticket {
+    color: var(--ink);
+    font-size: 14px;
+  }
+  .studio-album-ticket > svg {
+    font-size: 18px;
+    color: var(--wine);
+  }
+  .studio-album-ticket strong {
+    font-size: 16px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .studio-album-retention {
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .studio-meta p,
+  .studio-meta small {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.65;
+  }
+  .studio-meta small strong {
+    color: var(--ink);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .studio-steps {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    margin-bottom: 28px;
+    padding: 0;
+    border-bottom: 1px solid var(--line);
+    overflow: visible;
+  }
+  .studio-steps button {
+    min-width: 0;
+    min-height: 48px;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: -1px;
+    padding: 10px 8px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    box-shadow: none;
+  }
+  .studio-steps button span {
+    width: 22px;
+    height: 22px;
+    background: transparent;
+    color: inherit;
+    font-size: 18px;
+  }
+  .studio-steps button.active {
+    border-color: var(--wine);
+    background: transparent;
+    color: var(--wine);
+    font-weight: 700;
+    box-shadow: none;
+  }
+  .studio-steps button.active span,
+  .studio-steps button.done span {
+    background: transparent;
+    color: var(--wine);
+  }
+  .studio-steps button.done {
+    border-color: transparent;
+    color: var(--wine);
+  }
+  .studio-steps button:disabled,
+  .studio-steps button:disabled span {
+    opacity: 1;
+    border-color: transparent;
+    background: transparent;
+    color: #93877d;
+  }
+  .studio:has(.frame-nav) .studio-steps,
+  .studio-page:has(.frame-nav) .studio-meta {
+    display: none;
+  }
+
+  .studio-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 20px;
+    margin-bottom: 24px;
+  }
+  .studio-head > div {
+    display: contents;
+  }
+  .studio-head h2 {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.35;
+  }
+  .studio-head p {
+    grid-column: 1 / -1;
+    max-width: 70ch;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.65;
+  }
+  .studio-title-row {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 7px 12px;
+    min-width: 0;
+  }
+  .studio-photo-total {
+    color: var(--muted);
+    font-size: 13px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .studio-head > .button {
+    grid-column: 2;
+    grid-row: 1;
+    min-height: 44px;
+    margin: 0;
+    padding: 9px 13px;
+    font-size: 13px;
+  }
+  .studio-head > .button[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .gallery-selected-pack {
+    grid-column: 1 / -1;
+    display: block;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .gallery-selected-pack strong {
+    color: var(--wine);
+  }
+}

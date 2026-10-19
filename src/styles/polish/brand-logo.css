@@ -1,0 +1,73 @@
+@layer components {
+  .brand {
+    width: auto;
+    align-items: center;
+  }
+  .brand-logo {
+    display: block;
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+    object-fit: contain;
+    border-radius: 14px;
+  }
+  .brand small {
+    white-space: nowrap;
+  }
+  .site-header.is-compact .brand-logo {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+  }
+  .admin-sidebar .brand {
+    width: auto;
+    align-items: flex-start;
+    margin: 0 12px 24px;
+  }
+  .admin-sidebar .brand-logo {
+    width: 88px;
+    height: 88px;
+    border-radius: 18px;
+  }
+  .login-art .brand {
+    align-items: flex-start;
+  }
+  .login-art .brand-logo {
+    width: 120px;
+    height: 120px;
+    border-radius: 24px;
+  }
+  .login-mobile-brand {
+    display: none;
+  }
+  @media (max-width: 760px) {
+    .site-header.is-compact .brand-logo {
+      width: 56px;
+      height: 56px;
+    }
+    .admin-sidebar .brand {
+      margin: 0;
+    }
+    .admin-sidebar .brand-logo {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+    }
+    .admin-sidebar .brand small {
+      display: none;
+    }
+    .login-mobile-brand {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+    .login-mobile-brand .brand-logo {
+      width: 80px;
+      height: 80px;
+      border-radius: 16px;
+    }
+    .login-mobile-brand .brand small {
+      display: none;
+    }
+  }
+}

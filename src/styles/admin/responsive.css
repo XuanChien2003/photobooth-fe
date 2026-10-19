@@ -1,0 +1,438 @@
+@layer components {
+  @media (max-width: 360px) {
+    .admin-shell .catalog-controls select {
+      flex-basis: 100%;
+      width: 100%;
+    }
+  }
+  @media (min-width: 761px) and (max-width: 1100px) {
+    .admin-shell .admin-header,
+    .admin-shell .admin-content {
+      padding-left: 24px;
+      padding-right: 24px;
+    }
+    .admin-shell .dashboard-grid,
+    .admin-shell .stats-grid,
+    .admin-shell .room-board-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .admin-shell .stat-card + .stat-card,
+    .admin-shell .room-tile + .room-tile {
+      border-left: 0;
+      border-top: 1px solid var(--line);
+    }
+    .admin-shell .room-tile + .room-tile {
+      padding-left: 0;
+    }
+    .admin-shell .print-day-note {
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+    .admin-shell .print-day-countdown {
+      grid-column: 2;
+      justify-items: start;
+      padding: 0;
+      border-left: 0;
+    }
+    .admin-shell .storage-metric {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 760px) {
+    .admin-shell .admin-sidebar {
+      position: relative;
+      width: 100%;
+      padding: 14px 20px;
+      border-right: 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .admin-shell .admin-sidebar .brand {
+      margin: 0;
+    }
+    .admin-shell .admin-sidebar .brand-logo {
+      width: 52px;
+      height: 52px;
+      border-radius: 10px;
+    }
+    .admin-shell .admin-menu-toggle {
+      top: 18px;
+      right: 20px;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--wine);
+      font-size: 12px;
+    }
+    .admin-shell .admin-sidebar.mobile-open nav {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+    .admin-shell .admin-nav-group {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 5px;
+    }
+    .admin-shell .admin-nav-label {
+      grid-column: 1 / -1;
+      padding-left: 5px;
+    }
+    .admin-shell .admin-sidebar nav button {
+      min-height: 48px;
+      padding: 11px;
+      font-size: 12px;
+    }
+    .admin-shell .admin-sidebar.mobile-open .sidebar-bottom {
+      display: flex;
+      margin-top: 18px;
+      padding-top: 14px;
+    }
+    .admin-shell .admin-main {
+      margin-left: 0;
+    }
+    .admin-shell .admin-header {
+      min-height: 79px;
+      gap: 14px;
+      padding: 20px;
+    }
+    .admin-shell .admin-header h2 {
+      gap: 9px;
+      font-size: 21px;
+    }
+    .admin-shell .admin-header h2 > svg {
+      width: 21px;
+      height: 21px;
+    }
+    .admin-shell .admin-user {
+      max-width: 105px;
+      font-size: 11px;
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+    .admin-shell .admin-user > span {
+      display: none;
+    }
+    .admin-shell .admin-user > div {
+      display: flex;
+      width: 34px;
+      height: 34px;
+      font-size: 14px;
+    }
+    .admin-shell .admin-content {
+      padding: 20px 16px 36px;
+    }
+    .admin-shell .room-board,
+    .admin-shell .revenue-panel,
+    .admin-shell .dashboard-grid > .panel {
+      padding: 20px;
+    }
+    .admin-shell .room-board-head {
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .admin-shell .room-board-head > .button {
+      width: 100%;
+    }
+    .admin-shell .room-board-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .admin-shell .room-tile {
+      min-height: 104px;
+      padding: 18px 0;
+    }
+    .admin-shell .room-tile + .room-tile {
+      padding-left: 0;
+      border-left: 0;
+      border-top: 1px solid var(--line);
+    }
+    .admin-shell .room-tile:last-child {
+      padding-bottom: 0;
+    }
+    .admin-shell .stats-grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0;
+      margin: 18px 0;
+    }
+    .admin-shell .stat-card {
+      padding: 17px 18px;
+    }
+    .admin-shell .stat-card + .stat-card {
+      border-left: 0;
+      border-top: 1px solid var(--line);
+    }
+    .admin-shell .stat-card > strong {
+      font-size: 22px;
+    }
+    .admin-shell .revenue-filters {
+      width: 100%;
+    }
+    .admin-shell .revenue-filters label {
+      flex: 1;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 5px;
+    }
+    .admin-shell .revenue-filters select {
+      width: 100%;
+    }
+    .admin-shell .revenue-filters > .button {
+      align-self: end;
+    }
+    .admin-shell .revenue-summary {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .admin-shell .revenue-summary > div,
+    .admin-shell .revenue-summary > div + div {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 5px 12px;
+      padding: 12px 0;
+      border-left: 0;
+    }
+    .admin-shell .revenue-summary > div + div {
+      border-top: 1px solid var(--line);
+    }
+    .admin-shell .revenue-summary dd {
+      margin: 0;
+      font-size: 18px;
+    }
+    .admin-shell .revenue-chart {
+      grid-template-rows: 170px auto;
+    }
+    .admin-shell .dashboard-grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+    }
+    .admin-shell .occupancy-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px 12px;
+    }
+    .admin-shell .occupancy-bar {
+      grid-row: 2;
+      grid-column: 1 / -1;
+    }
+    .admin-shell .occupancy-row > span {
+      grid-row: 1;
+      grid-column: 2;
+    }
+    .admin-shell .today-booking {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 5px 12px;
+    }
+    .admin-shell .today-booking > .badge {
+      grid-column: 2;
+      justify-self: start;
+    }
+    .admin-shell
+      input:not(
+        [type="checkbox"],
+        [type="radio"],
+        [type="file"],
+        [type="range"]
+      ),
+    .admin-shell select,
+    .admin-shell textarea,
+    .admin-shell .catalog-search input,
+    .admin-shell .catalog-controls select {
+      font-size: 16px;
+    }
+    .admin-shell .booking-table {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    .admin-shell .booking-table tbody tr {
+      gap: 15px 14px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+    .admin-shell .booking-table td {
+      padding: 0;
+      border: 0;
+    }
+    .admin-shell .booking-table td:first-child {
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--line);
+    }
+    .admin-shell .table-actions > button,
+    .admin-shell .table-actions > a {
+      min-height: 44px;
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+    .admin-shell .staff-table {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      overflow: visible;
+    }
+    .admin-shell .staff-table table,
+    .admin-shell .staff-table tbody {
+      display: block;
+      width: 100%;
+      min-width: 0;
+    }
+    .admin-shell .staff-table thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+    .admin-shell .staff-table tbody {
+      display: grid;
+      gap: 14px;
+    }
+    .admin-shell .staff-table tbody tr {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px 12px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+    .admin-shell .staff-table td {
+      display: block;
+      min-width: 0;
+      max-width: none;
+      padding: 0;
+      border: 0;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .admin-shell .staff-table td::before {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--muted);
+      font-size: 11px;
+      content: attr(data-label);
+    }
+    .admin-shell .staff-table td:first-child,
+    .admin-shell .staff-table td:nth-child(2) {
+      grid-column: 1 / -1;
+    }
+    .admin-shell .staff-table td:first-child > strong {
+      font-size: 15px;
+    }
+    .admin-shell .staff-table td:nth-child(2) {
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .admin-shell .staff-table td:last-child {
+      max-width: 140px;
+    }
+    .admin-shell .staff-table .badge,
+    .admin-shell .staff-table .self-account {
+      white-space: normal;
+    }
+    .admin-shell .staff-table .inline-actions {
+      flex-wrap: nowrap;
+      gap: 8px;
+    }
+    .admin-shell .staff-table .icon-button {
+      width: 44px;
+      height: 44px;
+    }
+    .admin-shell .catalog-toolbar {
+      padding: 0 0 20px;
+    }
+    .admin-shell .catalog-intro {
+      flex-wrap: wrap;
+    }
+    .admin-shell .catalog-intro-icon {
+      display: none;
+    }
+    .admin-shell .catalog-intro-copy {
+      flex-basis: 100%;
+    }
+    .admin-shell .catalog-intro > .button {
+      width: 100%;
+    }
+    .admin-shell .frame-catalog-preview {
+      height: auto;
+    }
+    .admin-shell .frame-catalog-group-icon {
+      display: none;
+    }
+    .admin-shell .print-grid {
+      gap: 16px;
+    }
+    .admin-shell .print-icons .icon-button {
+      width: 44px;
+      height: 44px;
+    }
+    .admin-shell .print-day-note {
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 12px;
+      padding: 16px;
+    }
+    .admin-shell .print-day-note strong {
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .admin-shell .print-day-icon {
+      width: 36px;
+      height: 36px;
+    }
+    .admin-shell .print-day-countdown {
+      grid-column: 1 / -1;
+      justify-items: start;
+      padding: 12px 0 0;
+      border-left: 0;
+      border-top: 1px solid #d9bd80;
+      white-space: normal;
+    }
+    .admin-shell .print-view-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      width: 100%;
+      gap: 4px;
+    }
+    .admin-shell .print-view-tabs button {
+      justify-content: center;
+      min-height: 44px;
+    }
+    .admin-shell .print-view-tabs button:last-child {
+      grid-column: 1 / -1;
+    }
+    .admin-shell .storage-assistant {
+      gap: 18px;
+    }
+    .admin-shell .storage-heading {
+      gap: 16px;
+    }
+    .admin-shell .storage-heading h3 {
+      font-size: 20px;
+    }
+    .admin-shell .storage-metrics {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .admin-shell .storage-metric {
+      padding: 18px;
+    }
+    .admin-shell .storage-metric:nth-child(even) {
+      border-left: 0;
+    }
+    .admin-shell .storage-metric + .storage-metric {
+      border-top: 1px solid var(--line);
+    }
+    .admin-shell .storage-metric strong {
+      font-size: 20px;
+    }
+    .admin-shell .storage-details {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+    }
+    .admin-shell .storage-details > .panel {
+      padding: 20px;
+    }
+  }
+}

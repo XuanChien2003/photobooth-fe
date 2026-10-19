@@ -1,0 +1,8 @@
+/* Customer album: task flow, photographs, composition and print results. */
+@import "../album/workspace.css";
+@import "../album/gallery.css";
+@import "../album/themes.css";
+@import "../album/composer.css";
+@import "../album/photo-editor.css";
+@import "../album/results.css";
+@import "../album/responsive.css";
