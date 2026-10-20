@@ -15,7 +15,7 @@ import {
   PiSignatureBold,
   PiTrashBold,
 } from "react-icons/pi";
-import { Button, useToast } from "../studio";
+import { Button, useStudio, useToast } from "../studio";
 import {
   DEFAULT_TRANSFORM,
   composeLayout,
@@ -31,6 +31,8 @@ import {
   MAX_DRAWING_POINTS,
   decorationBox,
   hitDecoration,
+  decorationsReady,
+  preloadDecorations,
 } from "./decorations";
 
 const EMPTY_IMAGES = Object.freeze({});
@@ -52,6 +54,7 @@ export function FrameEditor({
   onNext,
 }) {
   const toast = useToast();
+  const { stickers: shopStickers = [] } = useStudio();
   const canvas = useRef(null);
   // "photo": chỉnh ảnh trong ô; "decor": thêm chữ / sticker / ký tên lên khung.
   const [mode, setMode] = useState("photo");
@@ -59,12 +62,20 @@ export function FrameEditor({
   const [stickers, setStickers] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [brush, setBrush] = useState({ color: "#382b26", width: 6 });
-  const [liveStroke, setLiveStroke] = useState(null);
   const decorRef = useRef(decorations);
   decorRef.current = decorations;
   const decorDrag = useRef(null);
   const liveRef = useRef(null);
   const selectedDecor = decorations[decorIndex];
+  // Sticker ảnh nạp xong thì vẽ lại khung.
+  const [stickerLoads, setStickerLoads] = useState(0);
+  useEffect(() => {
+    // Kéo / sửa chữ liên tục: sticker đã nạp thì không vẽ lại thêm lần nữa.
+    if (decorationsReady(decorations)) return;
+    let live = true;
+    preloadDecorations(decorations).then(() => live && setStickerLoads((n) => n + 1));
+    return () => { live = false; };
+  }, [decorations]);
   const [background, setBackground] = useState(null);
   const [imageState, setImageState] = useState(null);
   const [retry, setRetry] = useState(0);
@@ -197,7 +208,7 @@ export function FrameEditor({
         frame.slots,
         slots.map((s) => s.photo && images[s.photo]),
         slots,
-        liveStroke ? [...decorations, liveStroke] : decorations,
+        decorations,
       );
       const ctx = c.getContext("2d");
       if (mode === "decor") {
@@ -235,7 +246,7 @@ export function FrameEditor({
     // backing bitmap instead of reallocating it on every movement.
     const request = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(request);
-  }, [bg, images, slots, selected, decorations, liveStroke, mode, selectedDecor]);
+  }, [bg, images, slots, selected, decorations, mode, selectedDecor, stickerLoads]);
 
   const setDecor = (items) => onDecorations(items);
   const patchDecor = (i, changes) =>
@@ -251,13 +262,29 @@ export function FrameEditor({
     setDecor(decorRef.current.filter((_, j) => j !== i));
     setDecorIndex(-1);
   }
+  // Nét đang ký vẽ thẳng từng đoạn lên khung (giống drawDecorations), không vẽ lại cả khung
+  // theo mỗi lần di ngón tay; nhấc tay mới lưu nét và vẽ lại một lần.
+  function drawSegment(stroke, from, to) {
+    const c = canvas.current;
+    const ctx = c.getContext("2d");
+    ctx.save();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = Math.max(1, Math.min(40, stroke.width)) * c.width / 1200;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(from[0] * c.width, from[1] * c.height);
+    ctx.lineTo(to[0] * c.width + (from === to ? 0.1 : 0), to[1] * c.height);
+    ctx.stroke();
+    ctx.restore();
+  }
   // Chạm khung ở chế độ trang trí: vẽ chữ ký, hoặc chọn rồi kéo chữ / sticker.
   function decorDown(e, p) {
     const c = canvas.current;
     if (drawing) {
-      liveRef.current = { type: "drawing", color: brush.color, width: brush.width,
-        points: [[+p.x.toFixed(4), +p.y.toFixed(4)]] };
-      setLiveStroke(liveRef.current);
+      const start = [+p.x.toFixed(4), +p.y.toFixed(4)];
+      liveRef.current = { type: "drawing", color: brush.color, width: brush.width, points: [start] };
+      drawSegment(liveRef.current, start, start);
       return;
     }
     const hit = hitDecoration(c.getContext("2d"), decorRef.current, p.x * c.width, p.y * c.height,
@@ -271,9 +298,9 @@ export function FrameEditor({
       if (!s || s.points.length >= MAX_DRAWING_POINTS) return;
       const [lx, ly] = s.points[s.points.length - 1];
       if (Math.hypot(p.x - lx, p.y - ly) < 0.002) return;
-      liveRef.current = { ...s, points: [...s.points,
-        [+clamp(p.x, 0, 1).toFixed(4), +clamp(p.y, 0, 1).toFixed(4)]] };
-      setLiveStroke(liveRef.current);
+      const next = [+clamp(p.x, 0, 1).toFixed(4), +clamp(p.y, 0, 1).toFixed(4)];
+      s.points.push(next);
+      drawSegment(s, [lx, ly], next);
       return;
     }
     const d = decorDrag.current;
@@ -287,10 +314,11 @@ export function FrameEditor({
     decorDrag.current = null;
     const stroke = liveRef.current;
     liveRef.current = null;
-    setLiveStroke(null);
     if (!stroke) return;
-    if (decorRef.current.length >= 40)
+    if (decorRef.current.length >= 40) {
+      setStickerLoads((n) => n + 1); // xóa nét chưa lưu khỏi khung
       return toast.warning("Khung đã có nhiều trang trí — xóa bớt rồi vẽ tiếp nhé.");
+    }
     setDecor([...decorRef.current, stroke]);
   }
   function undoStroke() {
@@ -325,6 +353,13 @@ export function FrameEditor({
         </div>
         {stickers && (
           <div className="decor-stickers">
+            {shopStickers.map((s) => (
+              <button key={s._id} aria-label={`Sticker ${s.name}`}
+                onClick={() => addDecor({ type: "sticker", src: s.image, size: 60,
+                  x: 0.3 + Math.random() * 0.4, y: 0.3 + Math.random() * 0.4 })}>
+                <img src={s.image} alt="" crossOrigin="anonymous" />
+              </button>
+            ))}
             {DECOR_STICKERS.map((s) => (
               <button key={s} aria-label={`Sticker ${s}`}
                 onClick={() => addDecor({ type: "sticker", text: s, size: 90,

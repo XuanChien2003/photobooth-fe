@@ -16,10 +16,18 @@ export const withAssetUrls = (catalog) => ({
   ...(catalog.frames && {
     frames: catalog.frames.map((f) => ({ ...f, image: assetUrl(f.image) })),
   }),
-  ...(catalog.settings?.bankQrImage && {
+  ...(catalog.stickers && {
+    stickers: catalog.stickers.map((s) => ({ ...s, image: assetUrl(s.image) })),
+  }),
+  ...(catalog.settings && {
     settings: {
       ...catalog.settings,
-      bankQrImage: assetUrl(catalog.settings.bankQrImage),
+      ...(catalog.settings.bankQrImage && {
+        bankQrImage: assetUrl(catalog.settings.bankQrImage),
+      }),
+      ...(catalog.settings.kiosk?.idleImage && {
+        kiosk: { ...catalog.settings.kiosk, idleImage: assetUrl(catalog.settings.kiosk.idleImage) },
+      }),
     },
   }),
 });

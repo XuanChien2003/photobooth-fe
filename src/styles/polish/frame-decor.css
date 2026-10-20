@@ -126,3 +126,11 @@
     border-color: #e2b9b0;
   }
 }
+@layer components {
+  .decor-stickers button img {
+    width: 100%;
+    height: 100%;
+    padding: 4px;
+    object-fit: contain;
+  }
+}

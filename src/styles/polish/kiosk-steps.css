@@ -19,6 +19,11 @@
       var(--studio-star-cluster) no-repeat left 22% top 30% / 32px 22px,
       radial-gradient(circle at 50% 30%, #6a4535 0%, #2a1f19 70%);
   }
+  .kiosk-tap.has-image {
+    background:
+      linear-gradient(rgba(33, 23, 19, 0.35), rgba(33, 23, 19, 0.6)),
+      var(--kiosk-idle-image) center / cover no-repeat;
+  }
   .kiosk-tap strong {
     font-size: clamp(44px, 8vw, 84px);
     letter-spacing: -1px;

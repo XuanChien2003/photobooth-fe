@@ -994,7 +994,7 @@ export function Kiosk() {
             <div className="camera-flash" key={flash} aria-hidden="true" />
           )}
           {shotLeft !== null && !confirmEnd && (
-            <div className="shot-countdown" role="timer" aria-live="polite">
+            <div className="shot-countdown" role="timer">
               <small>Tấm {Math.min(taken + 1, shotQuota)}/{shotQuota}</small>
               {shotLeft > 0 ? (
                 <strong key={shotLeft}>{shotLeft}</strong>

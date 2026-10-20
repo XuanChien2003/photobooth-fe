@@ -16,6 +16,33 @@ export const DECOR_STICKERS = [
   "😊", "😎", "🥰", "👑", "💐", "🌈", "🍀", "🔥",
 ];
 const MAX_POINTS = 600;
+// Sticker ảnh do quản trị tải lên (src là địa chỉ ảnh): nạp một lần, vẽ đồng bộ khi đã sẵn sàng.
+const stickerImages = new Map();
+function stickerImage(src) {
+  if (!stickerImages.has(src)) {
+    const image = new window.Image();
+    if (!/^(data|blob):/.test(src)) image.crossOrigin = "anonymous";
+    const entry = { image, done: false };
+    entry.ready = new Promise((resolve) => {
+      image.onload = () => { entry.done = true; resolve(image); };
+      image.onerror = () => { entry.done = true; resolve(null); };
+    });
+    image.src = src;
+    stickerImages.set(src, entry);
+  }
+  return stickerImages.get(src);
+}
+// Mọi sticker ảnh đã nạp xong (hoặc lỗi) — vẽ ngay được, không cần chờ.
+export const decorationsReady = (decorations = []) =>
+  decorations.every((d) => !d.src || stickerImage(d.src).done);
+// Chờ mọi sticker ảnh nạp xong (ảnh in phải có đủ sticker); ảnh lỗi thì bỏ qua.
+export const preloadDecorations = (decorations = []) =>
+  Promise.all(decorations.filter((d) => d.src).map((d) => stickerImage(d.src).ready));
+// Sticker ảnh cao bằng cỡ chữ × 1,6, rộng theo tỉ lệ ảnh.
+function imageSize(item, image, width) {
+  const h = sizeOf(item, width) * 1.6;
+  return { w: h * (image.naturalWidth / image.naturalHeight || 1), h };
+}
 const isColor = (value) => /^#[0-9a-fA-F]{6}$/.test(value || "");
 const unit = (value) => Math.max(0, Math.min(1, Number(value) || 0));
 
@@ -46,6 +73,15 @@ export function drawDecorations(ctx, decorations = [], width, height) {
       ctx.restore();
       continue;
     }
+    if (item.src) {
+      const image = stickerImage(item.src).image;
+      if (image.complete && image.naturalWidth) {
+        const { w, h } = imageSize(item, image, width);
+        ctx.drawImage(image, unit(item.x) * width - w / 2, unit(item.y) * height - h / 2, w, h);
+      }
+      ctx.restore();
+      continue;
+    }
     const text = String(item.text || "").slice(0, 100);
     if (text) {
       ctx.fillStyle = isColor(item.color) ? item.color : "#382b26";
@@ -65,6 +101,12 @@ export function decorationBox(ctx, item, width, height) {
     const pad = (Number(item.width) || 6) * width / 1200 + 6;
     return { x: Math.min(...xs) - pad, y: Math.min(...ys) - pad,
       w: Math.max(...xs) - Math.min(...xs) + pad * 2, h: Math.max(...ys) - Math.min(...ys) + pad * 2 };
+  }
+  if (item.src) {
+    const image = stickerImage(item.src).image;
+    const { w, h } = image.naturalWidth ? imageSize(item, image, width)
+      : { w: sizeOf(item, width) * 1.6, h: sizeOf(item, width) * 1.6 };
+    return { x: unit(item.x) * width - w / 2, y: unit(item.y) * height - h / 2, w, h };
   }
   const px = sizeOf(item, width);
   ctx.save();

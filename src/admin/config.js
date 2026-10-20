@@ -6,6 +6,7 @@ import {
   Image,
   Ticket,
   Printer,
+  Sparkles,
 } from "lucide-react";
 import {
   custom,
@@ -80,6 +81,7 @@ export const nav = [
   ["rooms", "Phòng & chi nhánh", DoorOpen],
   ["packages", "Gói chụp", Package],
   ["frames", "Khung ảnh", Image],
+  ["kiosk", "Kiosk & sticker", Sparkles],
   ["users", "Nhân viên", Users],
 ];
 

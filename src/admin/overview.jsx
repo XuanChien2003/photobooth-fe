@@ -6,6 +6,7 @@ import { useLiveData } from "../use-live-data";
 import { Button, ErrorBox, useToast } from "../studio";
 import { CounterTicket } from "../counter-ticket";
 import { RevenueByDay } from "../revenue";
+import { ShiftPanel } from "./shift-panel";
 
 const clockOf = (ms) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -18,6 +19,7 @@ export function Overview({ notify, canSeeMoney, assignedBranch }) {
   const [today, setToday] = useState([]);
   const [live, setLive] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [sales, setSales] = useState(0);
   const [error, setError] = useState("");
   const [, setTick] = useState(0);
   const lastError = useRef("");
@@ -72,6 +74,7 @@ export function Overview({ notify, canSeeMoney, assignedBranch }) {
           }).format(new Date())}
         </time>
       </div>
+      <ShiftPanel assignedBranch={assignedBranch} notify={notify} refreshKey={sales} />
       <section className="panel room-board">
         <div className="room-board-head">
           <div>
@@ -198,6 +201,7 @@ export function Overview({ notify, canSeeMoney, assignedBranch }) {
           onCreated={(t) => {
             reloadToday();
             reloadStats();
+            setSales((n) => n + 1);
             notify(`Đã cấp mã #${t.code} cho ${t.name}.`);
           }}
         />

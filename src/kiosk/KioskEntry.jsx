@@ -61,8 +61,9 @@ export function KioskEntry({
   const minSheets = includedSheets(pack);
   const perSheet = photosPerSheet(size);
   const extraPrice = Number(settings.extraPrintPrice) || 0;
-  // Đổi khổ (hoặc gói đổi giá / số tờ): bắt đầu lại từ số tờ có sẵn trong gói.
-  useEffect(() => setPrints(minSheets), [size, minSheets]);
+  // Đổi khổ, gói đổi số tờ, hoặc khách mới (về màn chờ): bắt đầu lại từ số tờ có sẵn trong gói.
+  const atStart = step === "start";
+  useEffect(() => setPrints(minSheets), [size, minSheets, atStart]);
 
   // Khách bỏ đi giữa chừng: quay về màn chờ, xóa mã đang nhập.
   useEffect(() => {
@@ -85,21 +86,25 @@ export function KioskEntry({
     };
   }, [step]);
 
-  if (step === "start")
+  if (step === "start") {
+    // Màn hình chờ: chữ và ảnh nền do chủ cửa hàng đặt trong Quản trị → Kiosk & sticker.
+    const idle = settings.kiosk || {};
     return (
       <section className="kiosk-entry kiosk-attract">
         <button
           type="button"
-          className="kiosk-tap"
+          className={`kiosk-tap ${idle.idleImage ? "has-image" : ""}`}
+          style={idle.idleImage ? { "--kiosk-idle-image": `url("${idle.idleImage}")` } : undefined}
           onClick={() => setStep("size")}
           aria-label="Chạm để bắt đầu"
         >
           <Brand />
-          <strong>Tap to start</strong>
-          <span>Chạm vào màn hình để bắt đầu</span>
+          <strong>{idle.idleTitle || "Tap to start"}</strong>
+          <span>{idle.idleSubtitle || "Chạm vào màn hình để bắt đầu"}</span>
         </button>
       </section>
     );
+  }
 
   const nav = (back, next, nextDisabled, nextLabel = "Next") => (
     <div className="kiosk-step-nav">

@@ -1,5 +1,5 @@
 import { drawSlot, slotRect, slotScale } from "../frame-utils.js";
-import { drawDecorations } from "./decorations.js";
+import { drawDecorations, preloadDecorations } from "./decorations.js";
 
 // Server print sources are 3000 px on the long edge (smaller sources are the full original).
 export const PRINT_SOURCE_EDGE = 3000;
@@ -52,6 +52,8 @@ export async function renderPrintFrame(canvas, background, frame, slots, engine,
       }
       drawSlot(ctx, source, rect, slot);
     }
+    await preloadDecorations(decorations);
+    if (!isActive()) return false;
     drawDecorations(ctx, decorations, canvas.width, canvas.height);
     return true;
   } finally {

@@ -7,6 +7,7 @@ import { nav, definitions } from "./admin/config";
 import { ResourceManager } from "./admin/resources";
 import { BookingsManager } from "./admin/bookings";
 import { Overview } from "./admin/overview";
+import { KioskContent } from "./admin/kiosk-content";
 import { useAdminSession } from "./admin/use-admin-session";
 import { LoginPage, PasswordDialog } from "./admin/auth";
 import { StorageMonitorProvider } from "./admin/storage-monitor";
@@ -51,7 +52,7 @@ export function Admin() {
           <nav id="admin-navigation" aria-label="Quản lý studio">
             {[
               ["Vận hành", ["overview", "bookings", "print", "rooms"]],
-              ["Thiết lập", ["packages", "frames", "users"]],
+              ["Thiết lập", ["packages", "frames", "kiosk", "users"]],
             ].map(([group, keys]) => {
               const entries = visibleNav.filter(([key]) => keys.includes(key));
               return entries.length ? (
@@ -135,6 +136,8 @@ export function Admin() {
                 view={printView}
                 onViewChange={setPrintView}
               />
+            ) : currentTab === "kiosk" ? (
+              <KioskContent notify={notify} />
             ) : currentTab === "bookings" ? (
               <BookingsManager notify={notify} canSeeMoney={canSeeMoney} assignedBranch={user.branch} />
             ) : definitions[currentTab] ? (
