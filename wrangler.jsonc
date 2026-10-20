@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "studio",
-  "account_id": "60387d55b30e91f155c48f0e8bcbd15a",
+  "name": "photobooth",
+  "account_id": "8b23802c92443c22e78e245ca164e662",
   "main": "cloudflare/worker.js",
   "compatibility_date": "2026-10-19",
   "workers_dev": true,
@@ -13,9 +13,8 @@
     "run_worker_first": ["/api", "/api/*"]
   },
   "vars": {
-    "API_ORIGIN": "https://photo-be-drja.onrender.com"
+    "API_ORIGIN": "https://photobooth-be-5ngq.onrender.com"
   },
-  // Keeps the free Render server awake 06:00–01:00 Vietnam time (see scheduled() in worker.js).
   "triggers": {
     "crons": ["*/10 * * * *"]
   }
