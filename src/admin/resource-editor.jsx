@@ -24,7 +24,7 @@ export function ResourceEditor({
       : frames
         ? edit._id
           ? "Chỉnh sửa khung ảnh"
-          : "Import khung"
+          : "Nhập khung"
         : edit._id
           ? "Chỉnh sửa"
           : "Thêm mới";

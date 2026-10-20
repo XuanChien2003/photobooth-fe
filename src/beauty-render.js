@@ -17,10 +17,10 @@ export const COLOR_FILTERS = {
   original: "Gốc",
   soft: "Dịu",
   warm: "Ấm",
-  film: "Film",
-  mono: "Trắng đen (B&W)",
+  film: "Phim",
+  mono: "Trắng đen",
   vintage: "Cổ điển",
-  retro: "Retro",
+  retro: "Hoài cổ",
 };
 // Dùng cho ảnh xem trước (CSS). Ảnh xuất ra tính bằng pixel (FILTER_STEPS) vì
 // Safari trên iPhone đời cũ bỏ qua ctx.filter của canvas.

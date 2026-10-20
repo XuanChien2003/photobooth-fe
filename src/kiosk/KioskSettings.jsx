@@ -50,9 +50,9 @@ export function KioskSettings({
             `Mở FUJIFILM X Acquire, chọn thư mục lưu ảnh (vd. ${PHOTO_FOLDER_EXAMPLE}).`,
             "Bấm “Chọn thư mục ảnh” bên dưới, chọn đúng thư mục đó → “Cho phép mỗi lần truy cập”.",
             "Bấm “Thử nhận ảnh từ máy ảnh” rồi chụp 1 tấm: hiện “Đã nhận DSCF….JPG” là xong.",
-            "“Camera live view”: để Tự động hoặc chọn thẻ ghi hình (USB Video), không chọn webcam máy tính.",
+            "“Hình trực tiếp từ máy ảnh”: để Tự động hoặc chọn thẻ ghi hình (USB Video), không chọn webcam máy tính.",
           ]}
-          note="Muốn bật máy là kiosk tự mở: Quản trị → Phòng & chi nhánh → Cài kiosk → tải file cài."
+          note="Muốn bật máy tính là tự mở máy chụp: Quản trị → Phòng & chi nhánh → Cài máy chụp → tải file cài."
         />
         <div className="kiosk-folder">
           <p>
@@ -93,15 +93,15 @@ export function KioskSettings({
               (firmware 2.00 trở lên) để CONNECTION SETTING → CONNECTION MODE =
               USB TETHER SHOOTING AUTO, chất lượng ảnh FINE hoặc FINE+RAW (cần
               có JPEG). Hình trực tiếp lấy qua cáp HDMI + thẻ ghi hình, không
-              dùng FUJIFILM X Webcam; khách bấm nút chụp / remote của máy ảnh
+              dùng FUJIFILM X Webcam; khách bấm nút chụp / điều khiển từ xa của máy ảnh
               (không có nút chụp trên màn hình).
             </small>
           </details>
         </div>
         <label>
-          Camera live view
+          Hình trực tiếp từ máy ảnh
           <select
-            aria-label="Camera live view"
+            aria-label="Hình trực tiếp từ máy ảnh"
             value={
               cameras.some((c) => c.deviceId === cameraId && !liveUsable(c))
                 ? ""

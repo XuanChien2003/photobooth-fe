@@ -381,7 +381,7 @@ export function Kiosk() {
               : "Không có thẻ ghi hình dùng được"
             : `${e.name}: ${e.message}`.trim();
         if (e === blocked) {
-          // Vẫn chụp được bằng nút chụp / remote của máy ảnh, chỉ thiếu hình trực tiếp.
+          // Vẫn chụp được bằng nút chụp / điều khiển từ xa của máy ảnh, chỉ thiếu hình trực tiếp.
           stream.current?.getTracks().forEach((t) => t.stop());
           stream.current = null;
           setReady(false);
@@ -473,7 +473,7 @@ export function Kiosk() {
     e.preventDefault();
     if (!device)
       return toast.warning(
-        "Kiosk chưa được gán phòng. Nhờ lễ tân mở liên kết Cài kiosk.",
+        "Máy chụp chưa được gán phòng. Nhờ lễ tân mở liên kết Cài máy chụp.",
       );
     if (!/^\d{6}$/.test(code)) return toast.warning("Mã vé gồm đúng 6 chữ số.");
     if (!canPickFolder)
@@ -983,7 +983,7 @@ export function Kiosk() {
               <PiVideoCameraSlashDuotone size={42} />
               <p>
                 Chưa có hình trực tiếp từ máy ảnh (thẻ ghi hình HDMI) — vẫn chụp
-                được bằng nút chụp / remote của máy ảnh
+                được bằng nút chụp / điều khiển từ xa của máy ảnh
               </p>
               <Button className="outline" onClick={() => start(session)}>
                 Mở lại camera

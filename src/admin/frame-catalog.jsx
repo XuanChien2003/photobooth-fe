@@ -59,7 +59,7 @@ export function FrameGrid({
         <p>
           {filtered
             ? "Thử đổi từ khóa hoặc bộ lọc để xem các khung khác."
-            : "Mang thiết kế của studio vào thư viện. Import khung từ Canva để bắt đầu."}
+            : "Mang thiết kế của studio vào thư viện. Nhập khung từ Canva để bắt đầu."}
         </p>
         {!filtered && onCreate && (
           <button className="button" type="button" onClick={onCreate}>

@@ -343,7 +343,7 @@ export function FrameEditor({
             <PiTextTBold /> Thêm chữ
           </button>
           <button aria-pressed={stickers} onClick={() => { setStickers((v) => !v); setDrawing(false); }}>
-            <PiStickerBold /> Sticker
+            <PiStickerBold /> Nhãn dán
           </button>
           <button aria-pressed={drawing} onClick={() => {
             setDrawing((v) => !v); setStickers(false); setDecorIndex(-1);
@@ -354,14 +354,14 @@ export function FrameEditor({
         {stickers && (
           <div className="decor-stickers">
             {shopStickers.map((s) => (
-              <button key={s._id} aria-label={`Sticker ${s.name}`}
+              <button key={s._id} aria-label={`Nhãn dán ${s.name}`}
                 onClick={() => addDecor({ type: "sticker", src: s.image, size: 60,
                   x: 0.3 + Math.random() * 0.4, y: 0.3 + Math.random() * 0.4 })}>
                 <img src={s.image} alt="" crossOrigin="anonymous" />
               </button>
             ))}
             {DECOR_STICKERS.map((s) => (
-              <button key={s} aria-label={`Sticker ${s}`}
+              <button key={s} aria-label={`Nhãn dán ${s}`}
                 onClick={() => addDecor({ type: "sticker", text: s, size: 90,
                   x: 0.3 + Math.random() * 0.4, y: 0.3 + Math.random() * 0.4 })}>
                 {s}
@@ -406,7 +406,7 @@ export function FrameEditor({
               swatches(item.color, (color) => patchDecor(decorIndex, { color }))}
             {item.type !== "drawing" && (
               <label>
-                Cỡ {item.type === "sticker" ? "sticker" : "chữ"}
+                Cỡ {item.type === "sticker" ? "nhãn dán" : "chữ"}
                 <input type="range" min="16" max="160" value={item.size || 36}
                   onChange={(e) => patchDecor(decorIndex, { size: Number(e.target.value) })} />
               </label>
@@ -417,7 +417,7 @@ export function FrameEditor({
           </div>
         ) : (
           <p className="muted">
-            Thêm chữ, sticker hoặc ký tên. Chạm vào một mục trên khung để chỉnh, kéo để di chuyển.
+            Thêm chữ, nhãn dán hoặc ký tên. Chạm vào một mục trên khung để chỉnh, kéo để di chuyển.
           </p>
         )}
       </div>
@@ -629,7 +629,7 @@ export function FrameEditor({
               ? "Chạm ô để chọn · kéo để di chuyển · chụm 2 ngón để phóng to"
               : drawing
                 ? "Đang ký tên · vẽ bằng ngón tay trên khung"
-                : "Chạm chữ / sticker để chỉnh · kéo để di chuyển"}
+                : "Chạm chữ / nhãn dán để chỉnh · kéo để di chuyển"}
           </p>
 
           <div className="photo-carousel" aria-label="Ảnh yêu thích">

@@ -10,7 +10,7 @@ import { money } from "../api";
 import { Brand, Button, ErrorBox, useStudio } from "../studio";
 import { canPickFolder } from "./folder.js";
 
-// Các bước trước khi chụp (kiểu Mellow): chạm để bắt đầu → chọn khổ → chọn số tờ in → nhập mã.
+// Các bước trước khi chụp: chạm để bắt đầu → chọn khổ → chọn số tờ in → nhập mã.
 export const ENTRY_STEPS = ["start", "size", "prints", "code"];
 const IDLE_MS = 90_000;
 const SIZES = {
@@ -105,18 +105,18 @@ export function KioskEntry({
           <span className="kiosk-tap-copy">
             <Brand />
             <strong>{idle.idleTitle || <>Cười lên, <mark>mình chụp nhé!</mark></>}</strong>
-            <span className="kiosk-hand">{idle.idleSubtitle || "chạm vào màn hình để bắt đầu"}</span>
-            <span className="kiosk-sticker">Tap to start</span>
+            <span className="kiosk-hand">{idle.idleSubtitle || "chụp xong in ngay · nhận ảnh trên điện thoại"}</span>
+            <span className="kiosk-sticker">Chạm để bắt đầu</span>
           </span>
         </button>
       </section>
     );
   }
 
-  const nav = (back, next, nextDisabled, nextLabel = "Next") => (
+  const nav = (back, next, nextDisabled, nextLabel = "Tiếp tục") => (
     <div className="kiosk-step-nav">
       <Button type="button" className="outline" onClick={back}>
-        <ArrowLeft size={18} /> Back
+        <ArrowLeft size={18} /> Quay lại
       </Button>
       <Button
         type={next ? "button" : "submit"}
@@ -132,8 +132,8 @@ export function KioskEntry({
     return (
       <section className="kiosk-entry">
         <div className="kiosk-entry-card kiosk-step">
-          <div className="kiosk-mast"><Brand /><span>Bước 01 / 03 · Khổ ảnh</span></div>
-          <h1>Choose the size</h1>
+          <div className="kiosk-mast"><Brand /><span>Bước 01 / 03</span></div>
+          <h1>Chọn khổ ảnh</h1>
           <p className="kiosk-hand">chọn khổ ảnh đúng với gói bạn đã mua ở quầy</p>
           <ErrorBox error={error} />
           <div className="kiosk-size-grid">
@@ -162,8 +162,8 @@ export function KioskEntry({
     return (
       <section className="kiosk-entry">
         <div className="kiosk-entry-card kiosk-step">
-          <div className="kiosk-mast"><Brand /><span>Bước 02 / 03 · Số ảnh in</span></div>
-          <h1>Choose the number of prints</h1>
+          <div className="kiosk-mast"><Brand /><span>Bước 02 / 03</span></div>
+          <h1>Chọn số ảnh in</h1>
           <p className="kiosk-hand">{SIZES[size]?.title} · tối thiểu {minSheets * perSheet} ảnh in</p>
           <div className="kiosk-counter" role="group" aria-label="Số bản in">
             <button
@@ -204,13 +204,13 @@ export function KioskEntry({
   return (
     <section className="kiosk-entry">
       <form className="kiosk-entry-card kiosk-step kiosk-code-step" onSubmit={claim}>
-        <div className="kiosk-mast"><Brand /><span>Bước 03 / 03 · Mã chụp</span></div>
+        <div className="kiosk-mast"><Brand /><span>Bước 03 / 03</span></div>
         <h1>Nhập mã chụp</h1>
         <p className="kiosk-hand">nhập mã 6 số lễ tân đã đưa cho bạn</p>
         <ErrorBox error={error} />
         {!device && (
           <p className="soft-note">
-            Kiosk chưa được gán phòng. Mở liên kết Cài kiosk trong Quản trị →
+            Máy chụp chưa được gán phòng. Mở liên kết Cài máy chụp trong Quản trị →
             Phòng & chi nhánh.
           </p>
         )}
@@ -291,7 +291,7 @@ export function KioskEntry({
           () => setStep("prints"),
           null,
           busy || !device || code.length !== 6,
-          busy ? "Đang kiểm tra…" : "Next",
+          busy ? "Đang kiểm tra…" : "Tiếp tục",
         )}
         {children}
       </form>

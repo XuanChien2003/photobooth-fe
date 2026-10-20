@@ -15,7 +15,7 @@ async function imageData(file, maxEdge, type, quality) {
   return canvas.toDataURL(type, quality);
 }
 
-// Quản trị → Kiosk & sticker: màn hình chờ (Tap to start) của máy chụp và thư viện sticker ảnh.
+// Quản trị → Máy chụp & nhãn dán: màn hình chờ của máy chụp và thư viện nhãn dán ảnh.
 export function KioskContent({ notify }) {
   const { reload } = useStudio();
   const toast = useToast();
@@ -64,34 +64,34 @@ export function KioskContent({ notify }) {
     }
   }
   const addSticker = () => run(async () => {
-    if (!name.trim()) throw new Error("Vui lòng đặt tên sticker.");
-    if (!file) throw new Error("Vui lòng chọn ảnh sticker (PNG nền trong suốt).");
+    if (!name.trim()) throw new Error("Vui lòng đặt tên nhãn dán.");
+    if (!file) throw new Error("Vui lòng chọn ảnh nhãn dán (PNG nền trong suốt).");
     // PNG nhiều chi tiết có thể vượt giới hạn máy chủ: thu nhỏ dần tới khi vừa.
     let image = "";
     for (const edge of [512, 384, 256, 192]) {
       image = await imageData(file, edge, "image/png");
       if (image.length <= 690_000) break;
     }
-    if (image.length > 690_000) throw new Error("Ảnh sticker quá nhiều chi tiết. Vui lòng chọn ảnh đơn giản hơn.");
+    if (image.length > 690_000) throw new Error("Ảnh nhãn dán quá nhiều chi tiết. Vui lòng chọn ảnh đơn giản hơn.");
     await api("/admin/stickers", { method: "POST",
       body: { name: name.trim(), image, order: stickers.length, active: true } });
     setName("");
     setFile(null);
     await loadStickers();
-  }, "Đã thêm sticker.");
+  }, "Đã thêm nhãn dán.");
   const removeSticker = (s) => {
-    if (!window.confirm(`Xóa sticker “${s.name}”? Ảnh khách đã in không bị ảnh hưởng.`)) return;
+    if (!window.confirm(`Xóa nhãn dán “${s.name}”? Ảnh khách đã in không bị ảnh hưởng.`)) return;
     run(async () => {
       await api(`/admin/stickers/${s._id}`, { method: "DELETE" });
       await loadStickers();
-    }, "Đã xóa sticker.");
+    }, "Đã xóa nhãn dán.");
   };
   return (
     <div className="kiosk-content">
       <ErrorBox error={error} />
       <section className="panel">
         <h3>Màn hình chờ của máy chụp</h3>
-        <p className="muted">Hiện khi máy chụp chưa có khách (bước “Tap to start”).</p>
+        <p className="muted">Hiện khi máy chụp chưa có khách (màn hình “Chạm để bắt đầu”).</p>
         {!idle ? (
           <p className="muted">Đang tải…</p>
         ) : (
@@ -104,7 +104,7 @@ export function KioskContent({ notify }) {
               </label>
               <label>
                 Dòng chữ nhỏ
-                <input maxLength={120} placeholder="chạm vào màn hình để bắt đầu" value={idle.idleSubtitle}
+                <input maxLength={120} placeholder="chụp xong in ngay · nhận ảnh trên điện thoại" value={idle.idleSubtitle}
                   onChange={(e) => setIdle({ ...idle, idleSubtitle: e.target.value })} />
               </label>
               <div className="idle-image-actions">
@@ -123,20 +123,20 @@ export function KioskContent({ notify }) {
             <div className={`idle-preview ${idle.idleImage ? "has-image" : ""}`} aria-label="Xem trước màn hình chờ">
               {idle.idleImage && <img className="idle-polaroid" src={assetUrl(idle.idleImage)} alt="" />}
               <strong>{idle.idleTitle || "Cười lên, mình chụp nhé!"}</strong>
-              <span>{idle.idleSubtitle || "chạm vào màn hình để bắt đầu"}</span>
-              <em>Tap to start</em>
+              <span>{idle.idleSubtitle || "chụp xong in ngay · nhận ảnh trên điện thoại"}</span>
+              <em>Chạm để bắt đầu</em>
             </div>
           </div>
         )}
       </section>
       <section className="panel">
-        <h3>Sticker của tiệm</h3>
+        <h3>Nhãn dán của tiệm</h3>
         <p className="muted">
-          Khách thấy các sticker này đầu tiên ở bước trang trí khung. Nên dùng ảnh PNG nền trong suốt.
+          Khách thấy các nhãn dán này đầu tiên ở bước trang trí khung. Nên dùng ảnh PNG nền trong suốt.
         </p>
         <div className="sticker-add">
           <label>
-            Tên sticker
+            Tên nhãn dán
             <input maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />
           </label>
           <label className="button outline">
@@ -144,7 +144,7 @@ export function KioskContent({ notify }) {
             <input type="file" accept="image/png,image/webp" hidden
               onChange={(e) => setFile(e.target.files?.[0] || null)} />
           </label>
-          <Button disabled={busy} onClick={addSticker}>Thêm sticker</Button>
+          <Button disabled={busy} onClick={addSticker}>Thêm nhãn dán</Button>
         </div>
         {stickers.length ? (
           <ul className="sticker-library">
@@ -152,7 +152,7 @@ export function KioskContent({ notify }) {
               <li key={s._id}>
                 <img src={assetUrl(s.image)} alt="" crossOrigin="anonymous" />
                 <span>{s.name}</span>
-                <button className="icon-button" aria-label={`Xóa sticker ${s.name}`}
+                <button className="icon-button" aria-label={`Xóa nhãn dán ${s.name}`}
                   disabled={busy} onClick={() => removeSticker(s)}>
                   <Trash2 size={16} />
                 </button>
@@ -160,7 +160,7 @@ export function KioskContent({ notify }) {
             ))}
           </ul>
         ) : (
-          <p className="muted">Chưa có sticker riêng — khách dùng bộ sticker emoji có sẵn.</p>
+          <p className="muted">Chưa có nhãn dán riêng — khách dùng bộ nhãn dán biểu tượng có sẵn.</p>
         )}
       </section>
     </div>

@@ -81,7 +81,7 @@ export const nav = [
   ["rooms", "Phòng & chi nhánh", DoorOpen],
   ["packages", "Gói chụp", Package],
   ["frames", "Khung ảnh", Image],
-  ["kiosk", "Kiosk & sticker", Sparkles],
+  ["kiosk", "Máy chụp & nhãn dán", Sparkles],
   ["users", "Nhân viên", Users],
 ];
 

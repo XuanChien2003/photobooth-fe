@@ -10,7 +10,7 @@ const FLAGS =
 // Liên kết kiosk chỉ có chữ, số và - _ . : / ? = — an toàn khi đặt trong script .bat / bash.
 const safe = (url) => {
   if (!/^https?:\/\/[\w.:/?=-]+$/.test(url))
-    throw new Error("Liên kết kiosk không hợp lệ.");
+    throw new Error("Liên kết máy chụp không hợp lệ.");
   return url;
 };
 
@@ -31,10 +31,10 @@ export function windowsScript(url, room) {
     'if /i not "%~f0"=="%STARTUP%" (',
     '  copy /y "%~f0" "%STARTUP%" >nul',
     '  for /f "delims=" %%D in (\'powershell -NoProfile -Command "[Environment]::GetFolderPath(\\"Desktop\\")"\') do copy /y "%~f0" "%%D\\Mo kiosk NXC.bat" >nul',
-    "  echo Da cai xong: tu lan bat may sau, kiosk se tu mo.",
+    "  echo Da cai xong: tu lan bat may sau, may chup se tu mo.",
     '  echo Lan dau: cho phep camera va chon thu muc anh trong "Cai dat may chup".',
     "  echo Bam dau tich o goc phai: toan man hinh (F11), ve cua so, hoac thu xuong taskbar.",
-    "  echo Mo lai sau khi thu nho: bam bieu tuong Chrome / Edge o taskbar. Dong kiosk: Alt+F4.",
+    "  echo Mo lai sau khi thu nho: bam bieu tuong Chrome / Edge o thanh tac vu. Dong may chup: Alt+F4.",
     "  timeout /t 6 >nul",
     ")",
     // Mở FUJIFILM X Acquire nếu chưa chạy.
@@ -69,7 +69,7 @@ export function windowsScript(url, room) {
 
 export function macScript(url, room) {
   return `#!/bin/bash
-# NXC Photobooth - tự mở kiosk phòng: ${room.replace(/[^\p{L}\p{N} .-]/gu, "")}
+# NXC Photobooth - tự mở máy chụp phòng: ${room.replace(/[^\p{L}\p{N} .-]/gu, "")}
 # Chạy một lần: mỗi lần đăng nhập Mac sẽ tự mở X Acquire rồi mở Chrome toàn màn hình.
 URL='${safe(url)}'
 DIR="$HOME/NXC-Kiosk"
@@ -97,14 +97,14 @@ cat > "$PLIST" <<PLIST
 PLIST
 launchctl unload "$PLIST" 2>/dev/null
 if ! launchctl load "$PLIST"; then
-  echo "Chưa bật được tự mở kiosk. Hãy giữ cửa sổ Terminal này để kiểm tra lỗi bên trên."
+  echo "Chưa bật được tự mở máy chụp. Hãy giữ cửa sổ Terminal này để kiểm tra lỗi bên trên."
   exit 1
 fi
-echo "Đã cài xong: từ lần bật máy sau, kiosk sẽ tự mở."
+echo "Đã cài xong: từ lần bật máy sau, máy chụp sẽ tự mở."
 echo "Lần đầu: cho phép camera và chọn thư mục ảnh trong “Cài đặt máy chụp”."
 echo "Chuyển màn phụ: đưa chuột lên mép trên, bấm nút xanh để thoát toàn màn hình, kéo cửa sổ sang màn phụ rồi bấm nút xanh để phóng to lại."
 echo "Có thể dùng Fn+F hoặc Control+Command+F tùy phiên bản Chrome; xem phím tắt trong menu Xem (View)."
-echo "Thoát kiosk: Cmd+Q. Gỡ: xóa $PLIST"
+echo "Thoát máy chụp: Cmd+Q. Gỡ: xóa $PLIST"
 `;
 }
 

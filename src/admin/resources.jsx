@@ -281,11 +281,11 @@ export function ResourceManager({ resource, notify, me }) {
           id="rooms-kiosk"
           title="cài máy chụp cho phòng"
           steps={[
-            "Bấm “Cài kiosk” ở dòng phòng → mở liên kết (hoặc quét QR) trên máy tính trong phòng bằng Chrome / Edge.",
+            "Bấm “Cài máy chụp” ở dòng phòng → mở liên kết (hoặc quét QR) trên máy tính trong phòng bằng Chrome / Edge.",
             "Trên máy chụp: mở “Cài đặt máy chụp (nhân viên)”, làm theo hướng dẫn kết nối máy ảnh.",
-            "Muốn bật máy là kiosk tự mở: trong hộp “Cài kiosk” tải “File cài cho Windows / Mac”, chạy 1 lần trên máy trong phòng.",
+            "Muốn bật máy tính là tự mở máy chụp: trong hộp “Cài máy chụp” tải “File cài cho Windows / Mac”, chạy 1 lần trên máy trong phòng.",
           ]}
-          note="Liên kết kiosk có hạn 1 năm, chỉ gửi cho nhân viên."
+          note="Liên kết máy chụp có hạn 1 năm, chỉ gửi cho nhân viên."
         />
       )}
       {isCatalog ? (
@@ -313,7 +313,7 @@ export function ResourceManager({ resource, notify, me }) {
             <Button onClick={newItem}>
               {resource === "frames" ? (
                 <>
-                  <Upload size={16} /> Import khung
+                  <Upload size={16} /> Nhập khung
                 </>
               ) : (
                 <>
@@ -452,10 +452,10 @@ export function ResourceManager({ resource, notify, me }) {
                         {resource === "rooms" && item.active && (
                           <Button
                             className="outline small room-kiosk-button"
-                            aria-label={`Cài kiosk cho ${item.name}`}
+                            aria-label={`Cài máy chụp cho ${item.name}`}
                             onClick={() => setup(item)}
                           >
-                            <Monitor size={16} aria-hidden="true" /> Cài kiosk
+                            <Monitor size={16} aria-hidden="true" /> Cài máy chụp
                           </Button>
                         )}
                       </div>
@@ -494,7 +494,7 @@ export function ResourceManager({ resource, notify, me }) {
             className="modal center"
             role="dialog"
             aria-modal="true"
-            aria-label="Cài kiosk"
+            aria-label="Cài máy chụp"
           >
             <button
               aria-label="Đóng"
@@ -503,7 +503,7 @@ export function ResourceManager({ resource, notify, me }) {
             >
               <X />
             </button>
-            <h2>Cài kiosk: {device.name}</h2>
+            <h2>Cài máy chụp: {device.name}</h2>
             <p>
               Mở liên kết này một lần trên máy tính trong phòng (hoặc quét QR),
               máy chụp sẽ tự nhớ. Liên kết có hiệu lực 1 năm; chỉ gửi cho nhân
@@ -516,7 +516,7 @@ export function ResourceManager({ resource, notify, me }) {
               target="_blank"
               rel="noreferrer"
             >
-              Mở kiosk <ExternalLink size={16} />
+              Mở máy chụp <ExternalLink size={16} />
             </a>
             <Button
               className="outline full"
@@ -526,7 +526,7 @@ export function ResourceManager({ resource, notify, me }) {
                   .then(() => notify("Đã sao chép liên kết."))
                   .catch(() =>
                     toast.error(
-                      "Không sao chép được. Hãy mở kiosk và sao chép URL.",
+                      "Không sao chép được. Hãy mở máy chụp và sao chép đường dẫn.",
                     ),
                   )
               }
@@ -535,7 +535,7 @@ export function ResourceManager({ resource, notify, me }) {
             </Button>
             <div className="kiosk-autostart">
               <h3>
-                <Power size={16} aria-hidden="true" /> Bật máy là kiosk tự mở
+                <Power size={16} aria-hidden="true" /> Bật máy tính là tự mở máy chụp
               </h3>
               <p>
                 Tải file cài về <b>máy tính trong phòng</b> rồi chạy một lần: từ
@@ -576,7 +576,7 @@ export function ResourceManager({ resource, notify, me }) {
               <small>
                 Windows: bấm dấu tích ở góc trên bên phải để chọn Toàn màn hình
                 (F11), Về cửa sổ hoặc Thu xuống taskbar. Khi đã thu nhỏ, bấm
-                biểu tượng Chrome / Edge trên taskbar để mở lại. Đóng kiosk:
+                biểu tượng Chrome / Edge trên thanh tác vụ để mở lại. Đóng máy chụp:
                 Alt+F4.
               </small>
               <p>
@@ -585,10 +585,10 @@ export function ResourceManager({ resource, notify, me }) {
                 màn phụ, đưa chuột lên mép trên, bấm nút xanh để thoát toàn
                 màn hình, kéo cửa sổ sang màn phụ rồi phóng to lại. Có thể
                 dùng Fn+F hoặc Control+Command+F tùy phiên bản trình duyệt;
-                xem phím tắt trong menu Xem (View). Đóng kiosk: Cmd+Q.
+                xem phím tắt trong menu Xem. Đóng máy chụp: Cmd+Q.
               </p>
               <p>
-                Máy đã cài bản cũ: đóng kiosk bằng Alt+F4 (Windows) hoặc Cmd+Q
+                Máy đã cài bản cũ: đóng máy chụp bằng Alt+F4 (Windows) hoặc Cmd+Q
                 (Mac), rồi tải và chạy lại file cài tương ứng một lần để cập
                 nhật cách điều khiển cửa sổ.
               </p>

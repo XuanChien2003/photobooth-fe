@@ -270,7 +270,7 @@ async function openRooms() {
 
 const roomRow = (name) => page.getByRole("row").filter({ hasText: name });
 const kioskDialog = () =>
-  page.getByRole("dialog", { name: "Cài kiosk", exact: true });
+  page.getByRole("dialog", { name: "Cài máy chụp", exact: true });
 const deviceRequests = () =>
   requests.filter((entry) => entry.path.endsWith("/device"));
 
@@ -303,7 +303,7 @@ test("staff can access active rooms and branches without room administration con
     0,
   );
   assert.equal(
-    await page.getByRole("button", { name: /^Cài kiosk cho / }).count(),
+    await page.getByRole("button", { name: /^Cài máy chụp cho / }).count(),
     2,
   );
   assert.deepEqual(
@@ -322,13 +322,13 @@ test("opening a configured kiosk uses the returned device token and displays QR 
   await mount();
   await openRooms();
   await roomRow("Phòng 01")
-    .getByRole("button", { name: "Cài kiosk cho Phòng 01", exact: true })
+    .getByRole("button", { name: "Cài máy chụp cho Phòng 01", exact: true })
     .click();
   const dialog = kioskDialog();
   await dialog.waitFor();
   const url = `http://127.0.0.1:${server.address().port}/kiosk?device=${encodeURIComponent(deviceToken)}`;
   assert.equal(
-    await dialog.getByRole("link", { name: "Mở kiosk" }).getAttribute("href"),
+    await dialog.getByRole("link", { name: "Mở máy chụp" }).getAttribute("href"),
     url,
   );
   assert.equal(await dialog.locator('svg[width="220"]').count(), 1);
@@ -345,11 +345,11 @@ test("opening a configured kiosk uses the returned device token and displays QR 
   const freshToken = `${deviceToken}.fresh`;
   devices.set("room-1", { token: freshToken, name: "Phòng 01" });
   await roomRow("Phòng 01")
-    .getByRole("button", { name: "Cài kiosk cho Phòng 01", exact: true })
+    .getByRole("button", { name: "Cài máy chụp cho Phòng 01", exact: true })
     .click();
   await dialog.waitFor();
   assert.equal(
-    await dialog.getByRole("link", { name: "Mở kiosk" }).getAttribute("href"),
+    await dialog.getByRole("link", { name: "Mở máy chụp" }).getAttribute("href"),
     `http://127.0.0.1:${server.address().port}/kiosk?device=${encodeURIComponent(freshToken)}`,
   );
   assert.deepEqual(
@@ -363,12 +363,12 @@ test("staff can create a kiosk link for a room that has never been configured", 
   await mount();
   await openRooms();
   await roomRow("Phòng 02")
-    .getByRole("button", { name: "Cài kiosk cho Phòng 02", exact: true })
+    .getByRole("button", { name: "Cài máy chụp cho Phòng 02", exact: true })
     .click();
   const dialog = kioskDialog();
   await dialog.waitFor();
   assert.match(
-    await dialog.getByRole("link", { name: "Mở kiosk" }).getAttribute("href"),
+    await dialog.getByRole("link", { name: "Mở máy chụp" }).getAttribute("href"),
     /device=fixture-device\.token_01-keep\.room-2$/,
   );
   assert.deepEqual(
@@ -388,12 +388,12 @@ test("downloaded Windows and Mac installers open the same room kiosk", async () 
   await mount();
   await openRooms();
   await roomRow("Phòng 01")
-    .getByRole("button", { name: "Cài kiosk cho Phòng 01", exact: true })
+    .getByRole("button", { name: "Cài máy chụp cho Phòng 01", exact: true })
     .click();
   const dialog = kioskDialog();
   await dialog.waitFor();
   const url = await dialog
-    .getByRole("link", { name: "Mở kiosk" })
+    .getByRole("link", { name: "Mở máy chụp" })
     .getAttribute("href");
   for (const [label, filename] of [
     ["File cài cho Windows", "cai-kiosk-NXC.bat"],
@@ -475,7 +475,7 @@ test("staff mobile navigation closes after opening rooms and kiosk dialog fits t
     fullPage: true,
   });
   await roomRow("Phòng 01")
-    .getByRole("button", { name: "Cài kiosk cho Phòng 01", exact: true })
+    .getByRole("button", { name: "Cài máy chụp cho Phòng 01", exact: true })
     .click();
   const dialog = kioskDialog();
   await dialog.waitFor();
@@ -490,9 +490,9 @@ test("staff mobile navigation closes after opening rooms and kiosk dialog fits t
     box.x >= 0 && box.x + box.width <= 390,
     "Kiosk dialog must fit mobile width",
   );
-  await dialog.getByRole("link", { name: "Mở kiosk" }).scrollIntoViewIfNeeded();
+  await dialog.getByRole("link", { name: "Mở máy chụp" }).scrollIntoViewIfNeeded();
   assert.equal(
-    await dialog.getByRole("link", { name: "Mở kiosk" }).isVisible(),
+    await dialog.getByRole("link", { name: "Mở máy chụp" }).isVisible(),
     true,
   );
   await page.screenshot({

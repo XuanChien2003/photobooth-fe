@@ -45,7 +45,8 @@
 
   /* Chữ nhỏ nằm thẳng trên nền sao: quầng màu nền che sao phía sau để chữ không bị lẫn */
   :is(.kiosk-hand, .kiosk-mast, .kiosk-price small, .kiosk-entry-card > p, .kiosk-done-card > p,
-    .studio-meta, .studio-head, .studio-steps button, .theme-status, .frame-hint) {
+    .studio-meta, .studio-head, .studio-steps button, .theme-status, .frame-hint,
+    .idle-preview strong, .idle-preview span) {
     text-shadow: 0 0 3px var(--mellow-kraft), 0 0 8px var(--mellow-kraft), 0 0 12px var(--mellow-kraft);
   }
 
