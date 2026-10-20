@@ -1,0 +1,478 @@
+/*
+  System: Mellow — Tạp chí (B) × Sổ lưu niệm (C), chọn cùng chủ tiệm.
+  Type:   tiêu đề Playfair Display 700/900 (+500 nghiêng) · giao diện Be Vietnam Pro 400–700
+          · chữ viết tay Patrick Hand chỉ cho lời nhắn phía khách (không dùng trong quản trị).
+  Color:  giấy #f8f2ec (quản trị) · kraft #e8d6c2 + vân giấy (phía khách) · thẻ #fffaf3
+          · mực #3f2c25 · nâu cacao #522e22 (nút chính) · bóng sticker #2f1a12 · be #e9d8c8
+          · kẻ #e5d9cf · bút dạ #ecb9c1 · sao #d7a0a9 / #b69a83 (studio-star-cluster.svg).
+  Moves:  B — tiêu đề serif lớn, dòng mục lục chữ in hoa + kẻ đậm 3px, nút khối nâu.
+          C — thẻ giấy dán băng keo, ảnh nghiêng nhẹ, nút sticker viền kem + bóng cứng.
+  Touch:  nút kiosk ≥ 64px, điện thoại ≥ 44px. Nền tối chỉ giữ ở màn live view (phòng chụp).
+*/
+/* Chữ số của tiêu đề lấy từ Be Vietnam Pro: số kiểu cổ của Playfair (1, 0 thấp như chữ thường)
+   khó đọc ở mã vé, giá tiền và đồng hồ đếm ngược. */
+@font-face {
+  font-family: "Mellow Figures";
+  src: url("/fonts/be-vietnam-pro-700.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0030-0039;
+}
+@layer components {
+  :root {
+    --mellow-display: "Mellow Figures", "Playfair Display", Georgia, serif;
+    --mellow-hand: "Patrick Hand", "Segoe Print", cursive;
+    --mellow-paper: #f8f2ec;
+    --mellow-kraft: #e8d6c2;
+    --mellow-kraft-deep: #dcc4ab;
+    --mellow-card: #fffaf3;
+    --mellow-ink: #3f2c25;
+    --mellow-cocoa: #522e22;
+    --mellow-cocoa-deep: #2f1a12;
+    --mellow-muted: #7a5a48;
+    --mellow-line: #e5d9cf;
+    --mellow-blush: #ecb9c1;
+    --mellow-tape: rgba(233, 216, 200, 0.88);
+    --mellow-paper-shadow: 0 6px 18px rgba(74, 50, 38, 0.18), 0 1px 2px rgba(74, 50, 38, 0.12);
+    --mellow-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .3 0 0 0 0 .18 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Playfair mặc định dùng số kiểu cổ (1, 0 thấp như chữ thường): mã vé, giá, đồng hồ cần số đều. */
+
+  /* ── Mảnh ghép dùng chung phía khách ─────────────────────────── */
+  .kiosk-hand,
+  .kiosk-entry-card > p.kiosk-hand {
+    margin: 0;
+    color: var(--mellow-muted);
+    font: 400 24px/1.3 var(--mellow-hand);
+  }
+  /* Nút sticker: viền kem dày + bóng cứng, nhấn xuống như dán thật */
+  .kiosk-sticker,
+  :is(.kiosk-entry, .kiosk-done, .studio, .kiosk-confirm) .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 52px;
+    padding: 14px 26px;
+    border: 3px solid var(--mellow-card);
+    border-radius: 18px;
+    background: var(--mellow-cocoa);
+    color: var(--mellow-card);
+    font: 700 16px/1.2 "Be Vietnam Pro", sans-serif;
+    box-shadow: 0 5px 0 var(--mellow-cocoa-deep), 0 10px 18px rgba(47, 26, 18, 0.2);
+    transform: none;
+    transition: translate 0.1s, box-shadow 0.1s;
+  }
+  .kiosk-sticker {
+    padding: 18px 40px;
+    font-size: 22px;
+    rotate: -1.5deg;
+  }
+  :is(.kiosk-entry, .kiosk-done, .studio, .kiosk-confirm) .button:hover:not(:disabled) {
+    background: #5e3628;
+    color: var(--mellow-card);
+    border-color: var(--mellow-card);
+    transform: none;
+  }
+  :is(.kiosk-entry, .kiosk-done, .studio, .kiosk-confirm) .button:active:not(:disabled) {
+    translate: 0 3px;
+    box-shadow: 0 2px 0 var(--mellow-cocoa-deep), 0 4px 8px rgba(47, 26, 18, 0.2);
+  }
+  :is(.kiosk-entry, .kiosk-done, .studio, .kiosk-confirm) .button.outline {
+    border: 2px solid var(--mellow-cocoa);
+    background: var(--mellow-card);
+    color: var(--mellow-cocoa);
+    box-shadow: 0 4px 0 #cdb49c;
+  }
+  :is(.kiosk-entry, .kiosk-done, .studio, .kiosk-confirm) .button.outline:hover:not(:disabled) {
+    background: #f6ebdf;
+    color: var(--mellow-cocoa);
+    border-color: var(--mellow-cocoa);
+  }
+  :is(.kiosk-entry, .kiosk-done, .studio, .kiosk-confirm) .button:disabled {
+    opacity: 0.5;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+  .studio .button.small {
+    min-height: 44px;
+    padding: 10px 16px;
+    border-radius: 14px;
+    font-size: 14px;
+  }
+
+  /* ── Kiosk: các bước trước khi chụp và màn nhận ảnh — nền kraft sáng ── */
+  .kiosk-entry,
+  .kiosk-done {
+    --booth-bg: var(--mellow-kraft);
+    --booth-panel: var(--mellow-card);
+    --booth-line: #cdb49c;
+    --booth-text: var(--mellow-ink);
+    --booth-muted: var(--mellow-muted);
+    background: var(--mellow-grain), var(--mellow-kraft);
+    color: var(--mellow-ink);
+  }
+  /* Bố cục giữa màn hình nhưng không cắt đầu nội dung khi cao hơn màn hình */
+  .kiosk-entry {
+    place-items: safe center;
+  }
+  /* Chùm sao cũ ở góc thẻ bị trùng dòng mục lục; sao giờ nằm trên màn chờ và cạnh logo */
+  .kiosk-entry-card.kiosk-step::before {
+    content: none;
+  }
+  .kiosk-mast .brand {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+  .kiosk-mast .brand small {
+    margin: 0;
+    color: var(--mellow-ink);
+    font-size: 13px;
+    letter-spacing: 0.12em;
+  }
+  .kiosk-mast > span {
+    padding-right: 52px;
+    background: var(--studio-star-cluster) right center / 42px 28px no-repeat;
+  }
+  .kiosk-entry h1,
+  .kiosk-done h1 {
+    color: var(--mellow-ink);
+    font-family: var(--mellow-display);
+    font-weight: 900;
+  }
+  .kiosk-entry-card > p,
+  .kiosk-done-card > p {
+    color: var(--mellow-muted);
+  }
+  .kiosk-entry .code-slots span {
+    height: 80px;
+    border: 2px solid #cdb49c;
+    border-radius: 10px;
+    background: var(--mellow-card);
+    color: var(--mellow-ink);
+    font: 700 40px/1 var(--mellow-display);
+    box-shadow: inset 0 -3px 0 rgba(74, 50, 38, 0.06);
+  }
+  .kiosk-entry .code-slots span.filled {
+    border-color: var(--mellow-cocoa);
+  }
+  .kiosk-entry .code-slots span.current {
+    border-color: var(--mellow-cocoa);
+    box-shadow: 0 0 0 5px rgba(82, 46, 34, 0.14);
+  }
+  .kiosk-entry .keypad button {
+    min-height: 66px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--mellow-card);
+    color: var(--mellow-ink);
+    font: 700 30px/1 var(--mellow-display);
+    box-shadow: 0 4px 0 #cdb49c;
+  }
+  .kiosk-entry .keypad button:hover {
+    background: #fff;
+  }
+  .kiosk-entry .keypad button:active {
+    translate: 0 3px;
+    box-shadow: 0 1px 0 #cdb49c;
+  }
+  .kiosk-entry .keypad .keypad-action {
+    background: var(--mellow-kraft-deep);
+    color: var(--mellow-cocoa);
+    font: 700 18px/1 "Be Vietnam Pro", sans-serif;
+  }
+  .kiosk-entry .error-box {
+    border-color: #d99a8c;
+    background: #fbe9e4;
+    color: #7a2e22;
+    font-size: 15px;
+  }
+  .kiosk-entry .soft-note {
+    border-color: #cdb49c;
+    background: rgba(255, 250, 243, 0.75);
+    color: var(--mellow-muted);
+  }
+  .kiosk-settings,
+  .kiosk-settings summary {
+    color: var(--mellow-muted);
+  }
+  .kiosk-settings {
+    border-color: #cdb49c;
+  }
+  .kiosk-entry-icon {
+    background: var(--mellow-card);
+    color: var(--mellow-cocoa);
+    box-shadow: var(--mellow-paper-shadow);
+  }
+  .kiosk-done .kiosk-session-status {
+    color: var(--mellow-cocoa);
+    letter-spacing: 0.12em;
+  }
+  .kiosk-qr-box {
+    position: relative;
+    padding: 16px;
+    background: var(--mellow-card);
+    box-shadow: var(--mellow-paper-shadow);
+    rotate: -1.5deg;
+  }
+  .kiosk-qr-box::before {
+    content: "";
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    width: 100px;
+    height: 28px;
+    translate: -50% 0;
+    rotate: 3deg;
+    background: var(--mellow-tape);
+  }
+  .kiosk-done :is(.kiosk-done-steps, .kiosk-done-retention, .kiosk-done-fallback, .kiosk-done-sync) {
+    color: var(--mellow-muted);
+  }
+
+  /* Chữ in đậm trong màn nhận ảnh từng là chữ sáng cho nền tối */
+  .kiosk-done :is(strong, b) {
+    color: var(--mellow-cocoa);
+  }
+  .kiosk-done .kiosk-done-steps svg {
+    color: var(--mellow-cocoa);
+  }
+  /* Màn ngang (kiosk): mã QR dán bên trái, hướng dẫn bên phải — vừa một màn hình, không cuộn */
+  @media (min-width: 960px) and (orientation: landscape) {
+    .kiosk-done .kiosk-done-card {
+      grid-template-columns: auto minmax(0, 1fr);
+      column-gap: 72px;
+      align-items: center;
+      justify-items: start;
+      width: min(1100px, 100%);
+      text-align: left;
+    }
+    .kiosk-done .kiosk-done-card > * {
+      grid-column: 2;
+    }
+    .kiosk-done .kiosk-done-card > .kiosk-qr-box {
+      grid-column: 1;
+      grid-row: 1 / span 20;
+      align-self: center;
+    }
+    .kiosk-done .kiosk-done-card > .button {
+      width: 100%;
+    }
+    .kiosk-done .kiosk-done-card h1 {
+      font-size: 44px;
+    }
+  }
+
+  /* Live view: nền tối giữ nguyên, chỉ đổi chữ tiêu đề và số đếm */
+  .self-booth .booth-package strong {
+    font-family: var(--mellow-display);
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+  .self-booth .session-clock {
+    font-family: var(--mellow-display);
+  }
+
+  /* ── Album của khách (điện thoại) ─────────────────────────────── */
+  body:has(.studio-page) {
+    background: var(--mellow-grain), var(--mellow-kraft);
+  }
+  body:has(.studio-page) .site-header {
+    border-bottom: 3px solid var(--mellow-ink);
+    background: var(--mellow-card);
+  }
+  .studio-page .studio-meta {
+    border-bottom-color: #cdb49c;
+  }
+  .studio-album-ticket strong,
+  .studio-meta-heading strong {
+    font-family: var(--mellow-display);
+  }
+  .studio-steps {
+    border-bottom: 3px solid var(--mellow-ink);
+  }
+  .studio-steps button {
+    color: var(--mellow-muted);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .studio-steps button.active {
+    border-bottom: 5px solid var(--mellow-cocoa);
+    color: var(--mellow-ink);
+  }
+  .studio h2,
+  .studio-head h2 {
+    font-family: var(--mellow-display);
+    font-weight: 900;
+    letter-spacing: -0.01em;
+  }
+  .studio h3,
+  .frame-nav strong {
+    font-family: var(--mellow-display);
+    font-weight: 700;
+  }
+  /* Ảnh như polaroid: viền giấy kem, nghiêng nhẹ xen kẽ */
+  .studio-grid {
+    gap: 22px;
+  }
+  .studio-photo {
+    border: 6px solid var(--mellow-card);
+    border-radius: 3px;
+    box-shadow: var(--mellow-paper-shadow);
+  }
+  .studio-grid > :nth-child(4n + 2) { rotate: 0.8deg; }
+  .studio-grid > :nth-child(4n + 3) { rotate: -0.7deg; }
+  .studio-grid > :nth-child(4n) { rotate: 0.5deg; }
+  .studio-grid .is-fav .studio-photo,
+  .studio-grid .is-picked .studio-photo {
+    border-color: var(--mellow-card);
+    outline: 3px dashed var(--mellow-cocoa);
+    outline-offset: 3px;
+  }
+  .studio-upload-tile {
+    border: 2px dashed var(--mellow-cocoa);
+    border-radius: 3px;
+    background: rgba(255, 250, 243, 0.55);
+  }
+  .studio-upload-tile strong {
+    font-family: var(--mellow-display);
+    font-size: 18px;
+  }
+  .studio-upload-tile span {
+    font: 400 17px/1.2 var(--mellow-hand);
+  }
+  .studio-actions.gallery-bar {
+    border-top: 3px solid var(--mellow-ink);
+    background: var(--mellow-card);
+  }
+  /* Bộ chủ đề: thẻ giấy dán băng keo, nghiêng nhẹ, viền đứt khi chọn */
+  .theme-list {
+    gap: 30px;
+    padding-top: 12px;
+  }
+  .theme-list > button {
+    position: relative;
+    padding: 14px 14px 16px;
+    border: 0;
+    border-radius: 2px;
+    background: var(--mellow-card);
+    box-shadow: var(--mellow-paper-shadow);
+  }
+  .theme-list > button:nth-child(odd) { rotate: -1deg; }
+  .theme-list > button:nth-child(even) { rotate: 1deg; }
+  .theme-list > button::before {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    top: -12px;
+    left: 50%;
+    width: 84px;
+    height: 24px;
+    translate: -50% 0;
+    rotate: -3deg;
+    background: var(--mellow-tape);
+  }
+  .theme-list > button.active {
+    outline: 3px dashed var(--mellow-cocoa);
+    outline-offset: 5px;
+  }
+  .theme-list .theme-big-preview {
+    border-radius: 2px;
+    background: var(--mellow-kraft-deep);
+  }
+  .theme-card-title strong,
+  .theme-card-title h3 {
+    font-family: var(--mellow-display);
+    font-size: 22px;
+  }
+  /* Thanh hành động cuối màn hình điện thoại: nút vừa tay, không quá to */
+  .studio .studio-actions .button {
+    min-height: 50px;
+    padding: 12px 20px;
+    font-size: 15px;
+  }
+  .studio :is(.slot-tools, .panel) {
+    border-color: var(--mellow-line);
+    border-radius: 6px;
+    background: var(--mellow-card);
+    box-shadow: var(--mellow-paper-shadow);
+  }
+
+  /* ── Quản trị: biên tập (B), nền giấy sạch để đọc số liệu ───────── */
+  .admin-shell .admin-header h2 {
+    font-family: var(--mellow-display);
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .admin-content .panel h3,
+  .admin-content section > h3,
+  .kiosk-content h3 {
+    font-family: var(--mellow-display);
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+  .admin-nav-label {
+    display: block;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--mellow-ink);
+    color: var(--mellow-ink);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .stat-card strong,
+  .shift-stats strong {
+    font-family: var(--mellow-display);
+    font-weight: 700;
+  }
+  .admin-login .login-art :is(h1, h2),
+  .admin-login .login-form h2 {
+    font-family: var(--mellow-display);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  /* Xem trước màn chờ trong Quản trị → Kiosk & sticker (giống kiosk thật) */
+  .idle-preview,
+  .idle-preview.has-image {
+    position: relative;
+    grid-auto-flow: row;
+    gap: 10px;
+    background: var(--mellow-grain), var(--mellow-kraft);
+    color: var(--mellow-ink);
+  }
+  .idle-preview strong {
+    font: 900 clamp(22px, 3vw, 34px) / 1.05 var(--mellow-display);
+  }
+  .idle-preview span {
+    color: var(--mellow-muted);
+    font: 400 18px var(--mellow-hand);
+  }
+  .idle-preview em {
+    padding: 8px 18px;
+    border: 2px solid var(--mellow-card);
+    border-radius: 12px;
+    background: var(--mellow-cocoa);
+    color: var(--mellow-card);
+    font-style: normal;
+    font-weight: 700;
+    box-shadow: 0 3px 0 var(--mellow-cocoa-deep);
+  }
+  .idle-polaroid {
+    width: 96px;
+    aspect-ratio: 4 / 5;
+    padding: 6px 6px 18px;
+    background: var(--mellow-card);
+    object-fit: cover;
+    box-shadow: var(--mellow-paper-shadow);
+    rotate: -4deg;
+  }
+}

@@ -13,6 +13,8 @@
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
+    "@fontsource/patrick-hand": "5.1.1",
+    "@fontsource/playfair-display": "5.1.1",
     "@mediapipe/tasks-vision": "^1.0.1",
     "lucide-react": "^0.468.0",
     "qrcode.react": "^4.2.0",

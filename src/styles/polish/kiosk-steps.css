@@ -1,131 +1,247 @@
-/* Kiosk kiểu Mellow: màn chờ, chọn khổ, chọn số bản in, đếm ngược từng tấm (tông nâu be + sao). */
+/* Kiosk kiểu Mellow: màn chờ, chọn khổ, chọn số bản in, nhập mã, đếm ngược từng tấm.
+   Hệ thống “Tạp chí × Sổ lưu niệm” — token và kiểu nút dùng chung ở mellow-theme.css. */
 @layer components {
+  /* ── Màn chờ: ảnh polaroid dán băng keo + tiêu đề có nét bút dạ + nút sticker ── */
   .kiosk-attract {
     padding: 0;
   }
   .kiosk-tap {
-    display: grid;
-    place-content: center;
-    justify-items: center;
-    gap: 18px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(32px, 6vw, 96px);
     width: 100%;
     min-height: 100dvh;
+    padding: 48px clamp(24px, 6vw, 96px);
     border: 0;
-    color: var(--booth-text);
+    background: transparent;
+    color: var(--mellow-ink);
+    font: inherit;
+    text-align: left;
     cursor: pointer;
-    background:
-      var(--studio-star-cluster) no-repeat right 12% top 18% / 72px 48px,
-      var(--studio-star-cluster) no-repeat left 10% bottom 16% / 56px 38px,
-      var(--studio-star-cluster) no-repeat left 22% top 30% / 32px 22px,
-      radial-gradient(circle at 50% 30%, #6a4535 0%, #2a1f19 70%);
   }
-  .kiosk-tap.has-image {
-    background:
-      linear-gradient(rgba(33, 23, 19, 0.35), rgba(33, 23, 19, 0.6)),
-      var(--kiosk-idle-image) center / cover no-repeat;
+  .kiosk-tap::before,
+  .kiosk-tap::after {
+    content: "";
+    position: absolute;
+    aspect-ratio: 3 / 2;
+    background: var(--studio-star-cluster) center / contain no-repeat;
+    pointer-events: none;
+  }
+  .kiosk-tap::before {
+    top: 7%;
+    right: 7%;
+    width: 96px;
+    rotate: 8deg;
+  }
+  .kiosk-tap::after {
+    bottom: 8%;
+    left: 6%;
+    width: 64px;
+    rotate: -12deg;
+  }
+  .kiosk-polaroid {
+    position: relative;
+    flex: 0 0 auto;
+    width: min(34vw, 420px);
+    padding: 14px 14px 56px;
+    background: var(--mellow-card);
+    box-shadow: var(--mellow-paper-shadow);
+    rotate: -4deg;
+  }
+  .kiosk-polaroid::before {
+    content: "";
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    width: 120px;
+    height: 32px;
+    translate: -50% 0;
+    rotate: -3deg;
+    background: var(--mellow-tape);
+  }
+  .kiosk-polaroid img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+  }
+  .kiosk-tap-copy {
+    display: grid;
+    justify-items: start;
+    gap: 18px;
+    max-width: 640px;
+  }
+  .kiosk-tap:not(.has-image) .kiosk-tap-copy {
+    justify-items: center;
+    text-align: center;
+  }
+  .kiosk-tap-copy .brand-logo {
+    width: 72px;
+    height: 72px;
   }
   .kiosk-tap strong {
-    font-size: clamp(44px, 8vw, 84px);
-    letter-spacing: -1px;
-    color: #f3e4d6;
-    animation: kiosk-pulse 2.2s ease-in-out infinite;
+    font: 900 clamp(48px, 7vw, 96px) / 0.98 var(--mellow-display);
+    letter-spacing: -0.02em;
+    text-wrap: balance;
   }
-  .kiosk-tap span {
-    color: var(--booth-muted);
-    font-size: 20px;
+  .kiosk-tap mark {
+    background: linear-gradient(transparent 60%, var(--mellow-blush) 60% 90%, transparent 90%);
+    color: inherit;
   }
-  @keyframes kiosk-pulse {
-    50% { opacity: 0.55; transform: scale(0.97); }
+  .kiosk-tap .kiosk-sticker {
+    margin-top: 10px;
+    animation: kiosk-nudge 2.4s ease-in-out infinite;
+  }
+  @keyframes kiosk-nudge {
+    50% { translate: 0 -4px; }
   }
 
-  .kiosk-step {
-    width: min(720px, 100%);
-    gap: 18px;
-    padding-top: 28px;
-    background: var(--studio-star-cluster) no-repeat right 8px top 0 / 48px 32px;
+  /* ── Bước 1–3: dòng mục lục, tiêu đề serif, chú thích viết tay ── */
+  .kiosk-entry .kiosk-step {
+    width: min(760px, 100%);
+    gap: 20px;
   }
-  .kiosk-step h1 {
-    font-size: clamp(30px, 5vw, 44px);
+  .kiosk-entry .kiosk-code-step {
+    width: min(540px, 100%);
+    gap: 12px;
   }
+  .kiosk-entry:has(.kiosk-code-step) {
+    padding-block: 20px;
+  }
+  .kiosk-code-step .kiosk-mast .brand small {
+    display: none;
+  }
+  .kiosk-entry .kiosk-code-step h1 {
+    font-size: 44px;
+  }
+  .kiosk-entry .kiosk-code-step .code-slots {
+    margin: 4px 0 0;
+  }
+  .kiosk-entry .kiosk-code-step .code-slots span {
+    height: 70px;
+  }
+  .kiosk-entry .kiosk-code-step .keypad button {
+    min-height: 56px;
+  }
+  .kiosk-mast {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--mellow-ink);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .kiosk-mast .brand-logo {
+    width: 44px;
+    height: 44px;
+  }
+  .kiosk-entry .kiosk-step h1 {
+    margin: 6px 0 0;
+    font: 900 clamp(38px, 5.4vw, 60px) / 1 var(--mellow-display);
+    letter-spacing: -0.02em;
+  }
+
+  /* Thẻ khổ ảnh: giấy dán băng keo, nghiêng nhẹ, viền đứt khi chọn */
   .kiosk-size-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 18px;
+    gap: 40px;
     width: 100%;
+    padding: 18px 12px 6px;
   }
   .kiosk-size {
+    position: relative;
     display: grid;
     justify-items: center;
     gap: 8px;
-    padding: 26px 16px;
-    border: 3px solid var(--booth-line);
-    border-radius: 22px;
-    background: var(--booth-panel);
-    color: var(--booth-text);
+    padding: 24px 18px 26px;
+    border: 0;
+    background: var(--mellow-card);
+    color: var(--mellow-ink);
     font: inherit;
+    box-shadow: var(--mellow-paper-shadow);
     cursor: pointer;
-    transition: border-color 0.15s, transform 0.15s;
+    transition: rotate 0.15s, scale 0.15s;
+  }
+  .kiosk-size:first-child { rotate: -2.5deg; }
+  .kiosk-size:last-child { rotate: 2deg; }
+  .kiosk-size::before {
+    content: "";
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    width: 96px;
+    height: 28px;
+    translate: -50% 0;
+    rotate: -4deg;
+    background: var(--mellow-tape);
   }
   .kiosk-size:active {
-    transform: scale(0.98);
+    scale: 0.98;
   }
   .kiosk-size.active {
-    border-color: #e9d8c8;
-    background: #4a372c;
-    box-shadow: 0 0 0 6px rgba(233, 216, 200, 0.16);
+    outline: 4px dashed var(--mellow-cocoa);
+    outline-offset: 8px;
   }
   .kiosk-size:disabled {
-    opacity: 0.4;
+    opacity: 0.45;
     cursor: not-allowed;
   }
   .kiosk-size strong {
-    font-size: 26px;
+    font: 700 30px/1.1 var(--mellow-display);
   }
   .kiosk-size small {
-    color: var(--booth-muted);
+    color: var(--mellow-muted);
     font-size: 15px;
   }
   .kiosk-size b {
     font-size: 22px;
-    color: #f3d9c4;
+    color: var(--mellow-cocoa);
   }
-  /* Hình minh họa khổ: khung to = 2 ảnh lớn, khung bé = 2 dải nhỏ cạnh nhau */
+  /* Minh họa khổ: khung to = 2 ảnh lớn, khung bé = 2 dải nhỏ */
   .kiosk-size-art {
     display: flex;
     gap: 6px;
-    height: 120px;
+    height: 132px;
     padding: 8px;
-    border-radius: 8px;
-    background: #f6ece2;
+    background: var(--mellow-kraft-deep);
   }
   .kiosk-size-art i {
     display: block;
-    border-radius: 4px;
     background: linear-gradient(160deg, #c9a88f, #8a6450);
   }
-  .kiosk-size.full .kiosk-size-art i {
-    width: 40px;
-  }
-  .kiosk-size.strip .kiosk-size-art i {
-    width: 22px;
-  }
+  .kiosk-size.full .kiosk-size-art i { width: 44px; }
+  .kiosk-size.strip .kiosk-size-art i { width: 24px; }
 
+  /* Số bản in: nút tròn kiểu sticker, số lớn serif */
   .kiosk-counter {
     display: flex;
     align-items: center;
-    gap: 28px;
+    gap: 32px;
   }
   .kiosk-counter button {
     display: grid;
     place-items: center;
-    width: 84px;
-    height: 84px;
-    border: 3px solid var(--booth-line);
+    width: 92px;
+    height: 92px;
+    border: 4px solid var(--mellow-card);
     border-radius: 50%;
-    background: var(--booth-panel);
-    color: var(--booth-text);
-    font-size: 34px;
+    background: var(--mellow-cocoa);
+    color: var(--mellow-card);
+    font-size: 36px;
+    box-shadow: 0 6px 0 var(--mellow-cocoa-deep), 0 10px 18px rgba(47, 26, 18, 0.25);
     cursor: pointer;
+  }
+  .kiosk-counter button:active:not(:disabled) {
+    translate: 0 4px;
+    box-shadow: 0 2px 0 var(--mellow-cocoa-deep);
   }
   .kiosk-counter button:disabled {
     opacity: 0.35;
@@ -133,9 +249,7 @@
   }
   .kiosk-counter output {
     min-width: 2ch;
-    font-size: 72px;
-    font-weight: 700;
-    color: #fff;
+    font: 900 96px/1 var(--mellow-display);
     text-align: center;
   }
   .kiosk-price {
@@ -144,90 +258,76 @@
     justify-items: center;
   }
   .kiosk-price strong {
-    font-size: 34px;
-    color: #f3d9c4;
+    font: 700 40px/1.1 var(--mellow-display);
+    color: var(--mellow-cocoa);
   }
   .kiosk-price small {
-    max-width: 440px;
-    color: var(--booth-muted);
+    max-width: 460px;
+    color: var(--mellow-muted);
+    font-size: 15px;
+    text-align: center;
   }
 
+  /* Back / Next */
   .kiosk-step-nav {
     display: grid;
     grid-template-columns: 1fr 1.6fr;
-    gap: 14px;
+    gap: 16px;
     width: 100%;
-    margin-top: 8px;
+    margin-top: 10px;
   }
   .kiosk-step-nav .button {
-    min-height: 64px;
-    border-radius: 14px;
-    font-size: 19px;
-  }
-  .kiosk-step-nav .button:not(.outline) {
-    background: #e9d8c8;
-    border-color: #e9d8c8;
-    color: #35241b;
-  }
-  .kiosk-step-nav .button.outline {
-    background: transparent;
-    border-color: var(--booth-line);
-    color: var(--booth-text);
-  }
-  .kiosk-step-nav .button:not(.outline):hover,
-  .kiosk-step-nav .button:not(.outline):active {
-    background: #f6eadf;
-    border-color: #f6eadf;
-    color: #35241b;
-  }
-  .kiosk-step-nav .button:not(.outline):disabled {
-    background: #6b5343;
-    border-color: #6b5343;
-    color: #d5c4b6;
-  }
-  .kiosk-step-nav .button.outline:hover {
-    background: rgba(233, 216, 200, 0.08);
-    color: var(--booth-text);
+    min-height: 68px;
+    font-size: 20px;
   }
 
+  /* ── Đếm ngược từng tấm trên live view (nền tối của phòng chụp) ── */
   .shot-countdown {
     position: absolute;
     inset: 0;
     display: grid;
     place-content: center;
     justify-items: center;
-    gap: 4px;
+    gap: 6px;
     pointer-events: none;
     text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
   }
   .shot-countdown small {
-    padding: 6px 14px;
-    border-radius: 999px;
-    background: rgba(33, 26, 22, 0.7);
-    color: #f3e4d6;
+    padding: 6px 16px;
+    background: var(--mellow-card);
+    color: var(--mellow-ink);
     font-size: 18px;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-shadow: none;
+    rotate: -2deg;
   }
   .shot-countdown strong {
     color: #fff;
-    font-size: clamp(96px, 18vw, 200px);
-    line-height: 1;
+    font: 900 clamp(110px, 20vw, 220px) / 1 var(--mellow-display);
     animation: shot-tick 1s ease-out;
   }
   .shot-countdown strong.smile {
-    font-size: clamp(44px, 7vw, 80px);
+    font: 400 clamp(56px, 8vw, 96px) / 1 var(--mellow-hand);
   }
   @keyframes shot-tick {
     from { opacity: 0.2; transform: scale(1.4); }
   }
 
-  @media (max-width: 560px) {
+  @media (max-width: 760px) {
+    .kiosk-tap {
+      flex-direction: column;
+    }
+    .kiosk-polaroid {
+      width: min(70vw, 320px);
+    }
     .kiosk-size-grid {
       grid-template-columns: 1fr;
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    .kiosk-tap strong,
+    .kiosk-tap .kiosk-sticker,
     .shot-countdown strong {
       animation: none;
     }

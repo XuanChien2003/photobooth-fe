@@ -19,6 +19,8 @@
     margin: 0;
   }
   .shift-head select {
+    width: auto;
+    min-width: 220px;
     min-height: 40px;
   }
   .shift-status {

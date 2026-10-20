@@ -47,3 +47,5 @@
 @import "./styles/polish/kiosk-steps.css";
 @import "./styles/polish/frame-decor.css";
 @import "./styles/polish/shift-and-kiosk-admin.css";
+/* Giao diện Mellow (Tạp chí × Sổ lưu niệm) — nạp sau cùng để ghi đè các lớp trên. */
+@import "./styles/polish/mellow-theme.css";

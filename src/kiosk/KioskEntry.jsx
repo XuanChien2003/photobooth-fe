@@ -94,13 +94,20 @@ export function KioskEntry({
         <button
           type="button"
           className={`kiosk-tap ${idle.idleImage ? "has-image" : ""}`}
-          style={idle.idleImage ? { "--kiosk-idle-image": `url("${idle.idleImage}")` } : undefined}
           onClick={() => setStep("size")}
           aria-label="Chạm để bắt đầu"
         >
-          <Brand />
-          <strong>{idle.idleTitle || "Tap to start"}</strong>
-          <span>{idle.idleSubtitle || "Chạm vào màn hình để bắt đầu"}</span>
+          {idle.idleImage && (
+            <span className="kiosk-polaroid" aria-hidden="true">
+              <img src={idle.idleImage} alt="" />
+            </span>
+          )}
+          <span className="kiosk-tap-copy">
+            <Brand />
+            <strong>{idle.idleTitle || <>Cười lên, <mark>mình chụp nhé!</mark></>}</strong>
+            <span className="kiosk-hand">{idle.idleSubtitle || "chạm vào màn hình để bắt đầu"}</span>
+            <span className="kiosk-sticker">Tap to start</span>
+          </span>
         </button>
       </section>
     );
@@ -125,9 +132,9 @@ export function KioskEntry({
     return (
       <section className="kiosk-entry">
         <div className="kiosk-entry-card kiosk-step">
-          <div className="kiosk-entry-brand"><Brand /></div>
+          <div className="kiosk-mast"><Brand /><span>Bước 01 / 03 · Khổ ảnh</span></div>
           <h1>Choose the size</h1>
-          <p>Chọn khổ ảnh đúng với gói bạn đã mua ở quầy.</p>
+          <p className="kiosk-hand">chọn khổ ảnh đúng với gói bạn đã mua ở quầy</p>
           <ErrorBox error={error} />
           <div className="kiosk-size-grid">
             {Object.entries(SIZES).map(([key, info]) => (
@@ -155,9 +162,9 @@ export function KioskEntry({
     return (
       <section className="kiosk-entry">
         <div className="kiosk-entry-card kiosk-step">
-          <div className="kiosk-entry-brand"><Brand /></div>
+          <div className="kiosk-mast"><Brand /><span>Bước 02 / 03 · Số ảnh in</span></div>
           <h1>Choose the number of prints</h1>
-          <p>{SIZES[size]?.title} · tối thiểu {minSheets * perSheet} ảnh in</p>
+          <p className="kiosk-hand">{SIZES[size]?.title} · tối thiểu {minSheets * perSheet} ảnh in</p>
           <div className="kiosk-counter" role="group" aria-label="Số bản in">
             <button
               type="button"
@@ -196,12 +203,10 @@ export function KioskEntry({
 
   return (
     <section className="kiosk-entry">
-      <form className="kiosk-entry-card" onSubmit={claim}>
-        <div className="kiosk-entry-brand">
-          <Brand />
-        </div>
+      <form className="kiosk-entry-card kiosk-step kiosk-code-step" onSubmit={claim}>
+        <div className="kiosk-mast"><Brand /><span>Bước 03 / 03 · Mã chụp</span></div>
         <h1>Nhập mã chụp</h1>
-        <p>Nhập mã vé 6 số lễ tân đã cấp cho bạn.</p>
+        <p className="kiosk-hand">nhập mã 6 số lễ tân đã đưa cho bạn</p>
         <ErrorBox error={error} />
         {!device && (
           <p className="soft-note">

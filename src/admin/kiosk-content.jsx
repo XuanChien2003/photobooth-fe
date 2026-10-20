@@ -99,12 +99,12 @@ export function KioskContent({ notify }) {
             <div className="idle-fields">
               <label>
                 Dòng chữ lớn
-                <input maxLength={60} placeholder="Tap to start" value={idle.idleTitle}
+                <input maxLength={60} placeholder="Cười lên, mình chụp nhé!" value={idle.idleTitle}
                   onChange={(e) => setIdle({ ...idle, idleTitle: e.target.value })} />
               </label>
               <label>
                 Dòng chữ nhỏ
-                <input maxLength={120} placeholder="Chạm vào màn hình để bắt đầu" value={idle.idleSubtitle}
+                <input maxLength={120} placeholder="chạm vào màn hình để bắt đầu" value={idle.idleSubtitle}
                   onChange={(e) => setIdle({ ...idle, idleSubtitle: e.target.value })} />
               </label>
               <div className="idle-image-actions">
@@ -120,13 +120,11 @@ export function KioskContent({ notify }) {
               </div>
               <Button disabled={busy} onClick={saveIdle}>{busy ? "Đang lưu…" : "Lưu màn hình chờ"}</Button>
             </div>
-            <div
-              className={`idle-preview ${idle.idleImage ? "has-image" : ""}`}
-              style={idle.idleImage ? { "--kiosk-idle-image": `url("${assetUrl(idle.idleImage)}")` } : undefined}
-              aria-label="Xem trước màn hình chờ"
-            >
-              <strong>{idle.idleTitle || "Tap to start"}</strong>
-              <span>{idle.idleSubtitle || "Chạm vào màn hình để bắt đầu"}</span>
+            <div className={`idle-preview ${idle.idleImage ? "has-image" : ""}`} aria-label="Xem trước màn hình chờ">
+              {idle.idleImage && <img className="idle-polaroid" src={assetUrl(idle.idleImage)} alt="" />}
+              <strong>{idle.idleTitle || "Cười lên, mình chụp nhé!"}</strong>
+              <span>{idle.idleSubtitle || "chạm vào màn hình để bắt đầu"}</span>
+              <em>Tap to start</em>
             </div>
           </div>
         )}

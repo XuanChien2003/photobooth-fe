@@ -13,6 +13,11 @@ import { useLiveData } from "./use-live-data";
 import { ServerStatus } from "./server-status";
 import { useKeepServerAwake } from "./use-connectivity";
 import { StudioContext, Brand, ToastProvider } from "./studio";
+// Font tiêu đề (Playfair Display) và chữ viết tay (Patrick Hand) đóng gói kèm app, có bộ chữ tiếng Việt.
+import "@fontsource/playfair-display/700.css";
+import "@fontsource/playfair-display/900.css";
+import "@fontsource/playfair-display/500-italic.css";
+import "@fontsource/patrick-hand/400.css";
 import "./tailwind.css";
 
 // An album opened from its QR code: ask for the album while the album screen's code is still
