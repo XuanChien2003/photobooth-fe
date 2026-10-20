@@ -49,3 +49,4 @@
 @import "./styles/polish/shift-and-kiosk-admin.css";
 /* Giao diện Mellow (Tạp chí × Sổ lưu niệm) — nạp sau cùng để ghi đè các lớp trên. */
 @import "./styles/polish/mellow-theme.css";
+@import "./styles/polish/admin-mellow.css";

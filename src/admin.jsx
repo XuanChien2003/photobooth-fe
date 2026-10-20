@@ -13,6 +13,12 @@ import { LoginPage, PasswordDialog } from "./admin/auth";
 import { StorageMonitorProvider } from "./admin/storage-monitor";
 import { StorageWarning } from "./admin/storage-warning";
 
+// Nhóm menu quản trị (thứ tự này cũng là số mục 01, 02… trên menu và đầu trang).
+const NAV_GROUPS = [
+  ["Vận hành", ["overview", "bookings", "print", "rooms"]],
+  ["Thiết lập", ["packages", "frames", "kiosk", "users"]],
+];
+
 export function Admin() {
   const [tab, setTab] = useState("overview");
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -36,6 +42,14 @@ export function Admin() {
   const canSeeMoney = user.role === "admin";
   const activeNav = nav.find(([key]) => key === currentTab);
   const HeaderIcon = activeNav?.[2];
+  // Menu như mục lục tạp chí: đánh số 01, 02… theo đúng thứ tự hiển thị; đầu trang ghi “Mục 0X · Nhóm”.
+  const sections = NAV_GROUPS.map(([group, keys]) => [
+    group,
+    visibleNav.filter(([key]) => keys.includes(key)),
+  ]).filter(([, entries]) => entries.length);
+  const order = sections.flatMap(([group, entries]) => entries.map(([key]) => [key, group]));
+  const position = order.findIndex(([key]) => key === currentTab);
+  const sectionNumber = (index) => String(index + 1).padStart(2, "0");
   return (
     <StorageMonitorProvider key={user._id || user.email}>
       <div className="admin-shell">
@@ -50,12 +64,8 @@ export function Admin() {
             {mobileMenu ? "Đóng menu" : "Menu quản lý"}
           </button>
           <nav id="admin-navigation" aria-label="Quản lý studio">
-            {[
-              ["Vận hành", ["overview", "bookings", "print", "rooms"]],
-              ["Thiết lập", ["packages", "frames", "kiosk", "users"]],
-            ].map(([group, keys]) => {
-              const entries = visibleNav.filter(([key]) => keys.includes(key));
-              return entries.length ? (
+            {sections.map(([group, entries]) => {
+              return (
                 <div className="admin-nav-group" key={group}>
                   <span className="admin-nav-label">{group}</span>
                   {entries.map(([key, label, Icon]) => (
@@ -71,6 +81,9 @@ export function Admin() {
                         })
                       }
                     >
+                      <span className="admin-nav-number" aria-hidden="true">
+                        {sectionNumber(order.findIndex(([k]) => k === key))}
+                      </span>
                       <Icon size={18} />
                       <span className="admin-nav-text">{label}</span>
                       {key === "print" && pendingPrints > 0 && (
@@ -79,7 +92,7 @@ export function Admin() {
                     </button>
                   ))}
                 </div>
-              ) : null;
+              );
             })}
           </nav>
           <div className="sidebar-bottom">
@@ -99,6 +112,11 @@ export function Admin() {
         <div className="admin-main">
           <header className="admin-header">
             <div>
+              {position >= 0 && (
+                <span className="admin-eyebrow">
+                  Mục {sectionNumber(position)} · {order[position][1]}
+                </span>
+              )}
               <h2>
                 {HeaderIcon && <HeaderIcon size={26} aria-hidden="true" />}
                 {activeNav?.[1]}

@@ -1,0 +1,308 @@
+/*
+  Quản trị theo hệ thống Mellow (xem mellow-theme.css): Tạp chí (B) là chính, Sổ lưu niệm (C) điểm xuyết.
+  - Menu = mục lục: số 01, 02… serif nghiêng thay cho icon, nhãn nhóm chữ in hoa + kẻ đậm, nền kraft.
+  - Đầu trang: dòng “Mục 0X · Nhóm” + tiêu đề serif lớn + kẻ đậm 3px.
+  - Bề mặt: giấy kem #fffaf3, kẻ mảnh, bóng giấy nhẹ, bo 6px. Băng keo chỉ ở logo, thẻ gói và thẻ khung.
+  - Không xoay thẻ và không dùng chữ viết tay trong quản trị: bảng số liệu phải thẳng hàng, dễ đọc.
+*/
+@layer components {
+  .admin-shell {
+    background: var(--mellow-grain), var(--mellow-paper);
+  }
+  .admin-shell .admin-main {
+    background: transparent;
+  }
+
+  /* ── Mục lục (sidebar) ─────────────────────────────────────── */
+  .admin-shell .admin-sidebar {
+    border-right: 1px solid #d9c3ad;
+    background: var(--mellow-grain), var(--mellow-kraft);
+  }
+  .admin-shell .admin-sidebar .brand {
+    position: relative;
+    margin: 6px 12px 30px;
+  }
+  .admin-shell .admin-sidebar .brand-logo,
+  .admin-login .login-art .brand-logo {
+    padding: 5px 5px 14px;
+    border-radius: 2px;
+    background: var(--mellow-card);
+    box-shadow: var(--mellow-paper-shadow);
+    rotate: -3deg;
+  }
+  .admin-shell .admin-sidebar .brand::before {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    top: -9px;
+    left: 18px;
+    width: 46px;
+    height: 16px;
+    rotate: -6deg;
+    background: var(--mellow-tape);
+    box-shadow: 0 0 0 1px rgba(160, 130, 110, 0.12);
+  }
+  .admin-shell .admin-nav-label {
+    margin: 0 10px 8px;
+    border-bottom-color: var(--mellow-ink);
+  }
+  .admin-shell .admin-nav-group + .admin-nav-group {
+    margin-top: 22px;
+  }
+  .admin-shell .admin-nav-group button {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px;
+    min-height: 46px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    color: var(--mellow-ink);
+    font-size: 14.5px;
+    font-weight: 500;
+  }
+  .admin-shell .admin-nav-group button > svg {
+    display: none;
+  }
+  .admin-nav-number {
+    color: #a3826c;
+    font: italic 500 17px/1 var(--mellow-display);
+  }
+  .admin-shell .admin-nav-group button:hover:not(.active) {
+    background: rgba(255, 250, 243, 0.6);
+  }
+  .admin-shell .admin-nav-group button.active {
+    background: var(--mellow-cocoa);
+    color: var(--mellow-card);
+    font-weight: 700;
+    box-shadow: 0 3px 0 var(--mellow-cocoa-deep);
+  }
+  .admin-shell .admin-nav-group button.active .admin-nav-number {
+    color: var(--mellow-blush);
+  }
+  .admin-shell .sidebar-bottom {
+    border-top-color: #cdb49c;
+  }
+  .admin-shell .sidebar-bottom button {
+    color: var(--mellow-muted);
+  }
+
+  /* ── Đầu trang kiểu tạp chí ────────────────────────────────── */
+  .admin-shell .admin-header {
+    border-bottom: 3px solid var(--mellow-ink);
+    background: var(--mellow-paper);
+  }
+  .admin-eyebrow {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--mellow-cocoa);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .admin-shell .admin-header h2 {
+    font-size: 34px;
+    line-height: 1.1;
+  }
+  .admin-shell .admin-header h2 > svg {
+    display: none;
+  }
+  .admin-shell .admin-user > div {
+    border: 2px solid var(--mellow-card);
+    background: var(--mellow-cocoa);
+    color: var(--mellow-card);
+    font: 700 18px var(--mellow-display);
+    box-shadow: 0 2px 0 var(--mellow-cocoa-deep);
+  }
+
+  /* ── Bề mặt chung: giấy kem, kẻ mảnh, bóng nhẹ ─────────────── */
+  .admin-content :is(.panel, .table-wrap, .guide, .stats-grid, .print-day-note) {
+    border: 1px solid var(--mellow-line);
+    border-radius: 6px;
+    background: var(--mellow-card);
+    box-shadow: 0 1px 0 rgba(74, 50, 38, 0.05), 0 10px 24px -14px rgba(74, 50, 38, 0.22);
+  }
+  .admin-content .overview-date {
+    color: var(--mellow-muted);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .admin-content :is(.room-board-head, .revenue-head) h3,
+  .admin-content .catalog-intro-copy :is(h2, h3, strong) {
+    font-family: var(--mellow-display);
+    font-weight: 700;
+  }
+
+  /* Nút quản trị: khối nâu, đáy cứng nhẹ (gợi nút sticker phía khách nhưng gọn hơn) */
+  .admin-shell .admin-content .button:not(.outline),
+  .admin-shell .modal .button:not(.outline) {
+    border-color: var(--mellow-cocoa);
+    border-radius: 8px;
+    background: var(--mellow-cocoa);
+    color: var(--mellow-card);
+    box-shadow: 0 3px 0 var(--mellow-cocoa-deep);
+  }
+  .admin-shell .admin-content .button:not(.outline):active,
+  .admin-shell .modal .button:not(.outline):active {
+    translate: 0 2px;
+    box-shadow: 0 1px 0 var(--mellow-cocoa-deep);
+  }
+  .admin-shell .admin-content .button.outline,
+  .admin-shell .modal .button.outline {
+    border: 1.5px solid #cdb49c;
+    border-radius: 8px;
+    background: var(--mellow-card);
+    color: var(--mellow-cocoa);
+  }
+
+  /* Ô nhập và bộ lọc */
+  .admin-content :is(.search-box, .catalog-search, .toolbar-filter, .toolbar-date, .toolbar-status) ,
+  .admin-content :is(input, select):not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+    border-color: #dccab8;
+    border-radius: 8px;
+    background-color: var(--mellow-card);
+  }
+
+  /* Cảnh báo dung lượng: giấy ghi chú vàng dán băng keo */
+  .admin-content .storage-warning {
+    position: relative;
+    border: 1px solid #e6cf9f;
+    border-radius: 4px;
+    background: #fbf1da;
+    box-shadow: 0 8px 20px -14px rgba(120, 90, 30, 0.35);
+  }
+  .admin-content .storage-warning::before {
+    content: "";
+    position: absolute;
+    top: -9px;
+    left: 34px;
+    width: 64px;
+    height: 18px;
+    rotate: -4deg;
+    background: var(--mellow-tape);
+  }
+
+  /* ── Tổng quan ─────────────────────────────────────────────── */
+  .admin-content .stats-grid {
+    overflow: hidden;
+  }
+  .admin-content .stat-card {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .admin-content .stat-card + .stat-card {
+    border-left: 1px solid var(--mellow-line);
+  }
+  .admin-content .stat-card strong {
+    color: var(--mellow-ink);
+    font-size: 34px;
+  }
+  .admin-content .room-tile {
+    position: relative;
+    border: 1px solid var(--mellow-line);
+    border-radius: 4px;
+    background: #fffdf9;
+  }
+  .admin-content .room-tile.free {
+    border-style: dashed;
+    border-color: #cdb49c;
+  }
+  .admin-content .revenue-summary strong {
+    font-family: var(--mellow-display);
+    font-weight: 700;
+  }
+  .admin-content .revenue-bar {
+    border-radius: 2px 2px 0 0;
+    background: var(--mellow-cocoa);
+  }
+  .admin-content .revenue-day.is-today .revenue-bar {
+    background: #c98a96;
+  }
+  .admin-content .occupancy-bar {
+    background: var(--mellow-cocoa);
+  }
+
+  /* ── Bảng (vé, phòng, nhân viên, chi tiết doanh thu) ───────── */
+  .admin-content table th {
+    border-bottom: 2px solid var(--mellow-ink);
+    background: transparent;
+    color: var(--mellow-ink);
+    font-size: 11.5px;
+    letter-spacing: 0.1em;
+  }
+  .admin-content table tbody tr:hover {
+    background: #fbf3ea;
+  }
+  .admin-content .booking-table td:first-child strong {
+    font-family: var(--mellow-display);
+  }
+
+  /* Thanh chuyển chế độ (Hàng chờ in) */
+  .admin-content .segmented {
+    border: 1px solid #dccab8;
+    border-radius: 10px;
+    background: var(--mellow-kraft);
+  }
+  .admin-content .segmented button.active {
+    background: var(--mellow-cocoa);
+    color: var(--mellow-card);
+    box-shadow: 0 2px 0 var(--mellow-cocoa-deep);
+  }
+
+  /* ── Gói chụp & khung ảnh: thẻ giấy dán băng keo ───────────── */
+  .admin-content :is(.package-card, .frame-catalog-card) {
+    position: relative;
+    overflow: visible;
+    border: 1px solid var(--mellow-line);
+    border-radius: 4px;
+    background: var(--mellow-card);
+    box-shadow: var(--mellow-paper-shadow);
+  }
+  .admin-content :is(.package-card, .frame-catalog-card)::before {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    top: -10px;
+    left: 50%;
+    width: 72px;
+    height: 20px;
+    translate: -50% 0;
+    rotate: -3deg;
+    background: var(--mellow-tape);
+  }
+  .admin-content .package-card-name,
+  .admin-content .frame-catalog-card-title {
+    font-family: var(--mellow-display);
+    font-weight: 700;
+  }
+  .admin-content .package-card-price strong,
+  .admin-content .package-card-price b {
+    color: var(--mellow-cocoa);
+    font-family: var(--mellow-display);
+  }
+  .admin-content .frame-catalog-preview {
+    border-radius: 3px 3px 0 0;
+    background: var(--mellow-kraft-deep);
+  }
+  .admin-content .frame-catalog-group-title {
+    font-family: var(--mellow-display);
+    font-weight: 700;
+  }
+
+  /* Nhãn trạng thái và dòng phụ nằm trong tiêu đề thẻ: giữ chữ giao diện, không dùng serif */
+  .admin-content :is(.frame-catalog-status, .package-card-status),
+  .admin-content .frame-catalog-group-title :is(small, span, p) {
+    font-family: "Be Vietnam Pro", sans-serif;
+    font-weight: 500;
+  }
+
+  /* Đăng nhập: giữ nền nâu đậm, thêm vân giấy và logo polaroid */
+  .admin-login .login-art {
+    background-color: #33221b;
+  }
+}
