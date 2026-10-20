@@ -5,6 +5,8 @@
   Color:  giấy #f8f2ec (quản trị) · kraft #e8d6c2 + vân giấy (phía khách) · thẻ #fffaf3
           · mực #3f2c25 · nâu cacao #522e22 (nút chính) · bóng sticker #2f1a12 · be #e9d8c8
           · kẻ #e5d9cf · bút dạ #ecb9c1 · sao #d7a0a9 / #b69a83 (studio-star-cluster.svg).
+  Nền:    nâu be rắc sao đen nhỏ (star-pattern.svg; quản trị dùng bản nhạt star-pattern-soft.svg),
+          chỉ ở lớp nền — thẻ, bảng, ô nhập vẫn là giấy trơn để dễ đọc.
   Moves:  B — tiêu đề serif lớn, dòng mục lục chữ in hoa + kẻ đậm 3px, nút khối nâu.
           C — thẻ giấy dán băng keo, ảnh nghiêng nhẹ, nút sticker viền kem + bóng cứng.
   Touch:  nút kiosk ≥ 64px, điện thoại ≥ 44px. Nền tối chỉ giữ ở màn live view (phòng chụp).
@@ -33,11 +35,19 @@
     --mellow-line: #e5d9cf;
     --mellow-blush: #ecb9c1;
     --mellow-tape: rgba(233, 216, 200, 0.88);
+    --mellow-stars: url("/star-pattern.svg");
+    --mellow-stars-soft: url("/star-pattern-soft.svg");
     --mellow-paper-shadow: 0 6px 18px rgba(74, 50, 38, 0.18), 0 1px 2px rgba(74, 50, 38, 0.12);
     --mellow-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .3 0 0 0 0 .18 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   /* Playfair mặc định dùng số kiểu cổ (1, 0 thấp như chữ thường): mã vé, giá, đồng hồ cần số đều. */
+
+  /* Chữ nhỏ nằm thẳng trên nền sao: quầng màu nền che sao phía sau để chữ không bị lẫn */
+  :is(.kiosk-hand, .kiosk-mast, .kiosk-price small, .kiosk-entry-card > p, .kiosk-done-card > p,
+    .studio-meta, .studio-head, .studio-steps button, .theme-status, .frame-hint) {
+    text-shadow: 0 0 3px var(--mellow-kraft), 0 0 8px var(--mellow-kraft), 0 0 12px var(--mellow-kraft);
+  }
 
   /* ── Mảnh ghép dùng chung phía khách ─────────────────────────── */
   .kiosk-hand,
@@ -110,7 +120,7 @@
     --booth-line: #cdb49c;
     --booth-text: var(--mellow-ink);
     --booth-muted: var(--mellow-muted);
-    background: var(--mellow-grain), var(--mellow-kraft);
+    background: var(--mellow-stars), var(--mellow-grain), var(--mellow-kraft);
     color: var(--mellow-ink);
   }
   /* Bố cục giữa màn hình nhưng không cắt đầu nội dung khi cao hơn màn hình */
@@ -277,8 +287,9 @@
   }
 
   /* ── Album của khách (điện thoại) ─────────────────────────────── */
+  /* Album trên điện thoại nhiều chữ nhỏ nằm thẳng trên nền: dùng sao nhạt */
   body:has(.studio-page) {
-    background: var(--mellow-grain), var(--mellow-kraft);
+    background: var(--mellow-stars-soft), var(--mellow-grain), var(--mellow-kraft);
   }
   body:has(.studio-page) .site-header {
     border-bottom: 3px solid var(--mellow-ink);
@@ -337,7 +348,7 @@
   .studio-upload-tile {
     border: 2px dashed var(--mellow-cocoa);
     border-radius: 3px;
-    background: rgba(255, 250, 243, 0.55);
+    background: rgba(255, 250, 243, 0.9);
   }
   .studio-upload-tile strong {
     font-family: var(--mellow-display);
@@ -446,7 +457,7 @@
     position: relative;
     grid-auto-flow: row;
     gap: 10px;
-    background: var(--mellow-grain), var(--mellow-kraft);
+    background: var(--mellow-stars), var(--mellow-grain), var(--mellow-kraft);
     color: var(--mellow-ink);
   }
   .idle-preview strong {

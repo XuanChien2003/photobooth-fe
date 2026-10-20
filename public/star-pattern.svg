@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220">
+  <!-- Nền sao đen nhỏ lặp lại; cùng hình ngôi sao 5 cánh với studio-star-cluster.svg. -->
+  <defs><path id="s" d="m0-5 1.55 3.14 3.47.5-2.51 2.45.59 3.46L0 2.92l-3.1 1.63.59-3.46-2.51-2.45 3.47-.5Z"/></defs>
+  <g fill="#241812" fill-opacity=".72">
+    <use href="#s" transform="translate(22 28) scale(0.55) rotate(-12)"/>
+    <use href="#s" transform="translate(118 16) scale(0.34) rotate(20)"/>
+    <use href="#s" transform="translate(188 70) scale(0.7) rotate(8)"/>
+    <use href="#s" transform="translate(66 102) scale(0.4) rotate(-25)"/>
+    <use href="#s" transform="translate(150 148) scale(0.5) rotate(15)"/>
+    <use href="#s" transform="translate(30 184) scale(0.75) rotate(-5)"/>
+    <use href="#s" transform="translate(206 204) scale(0.3) rotate(0)"/>
+    <use href="#s" transform="translate(98 210) scale(0.45) rotate(30)"/>
+    <use href="#s" transform="translate(176 24) scale(0.28) rotate(-18)"/>
+    <use href="#s" transform="translate(128 92) scale(0.32) rotate(12)"/>
+    <use href="#s" transform="translate(12 124) scale(0.3) rotate(40)"/>
+    <use href="#s" transform="translate(84 160) scale(0.26) rotate(-30)"/>
+  </g>
+</svg>

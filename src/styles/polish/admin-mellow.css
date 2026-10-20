@@ -2,12 +2,12 @@
   Quản trị theo hệ thống Mellow (xem mellow-theme.css): Tạp chí (B) là chính, Sổ lưu niệm (C) điểm xuyết.
   - Menu = mục lục: số 01, 02… serif nghiêng thay cho icon, nhãn nhóm chữ in hoa + kẻ đậm, nền kraft.
   - Đầu trang: dòng “Mục 0X · Nhóm” + tiêu đề serif lớn + kẻ đậm 3px.
-  - Bề mặt: giấy kem #fffaf3, kẻ mảnh, bóng giấy nhẹ, bo 6px. Băng keo chỉ ở logo, thẻ gói và thẻ khung.
+  - Nền nâu be rắc sao đen nhỏ (bản nhạt); bề mặt nội dung: giấy kem #fffaf3, kẻ mảnh, bóng giấy nhẹ, bo 6px. Băng keo chỉ ở logo, thẻ gói và thẻ khung.
   - Không xoay thẻ và không dùng chữ viết tay trong quản trị: bảng số liệu phải thẳng hàng, dễ đọc.
 */
 @layer components {
   .admin-shell {
-    background: var(--mellow-grain), var(--mellow-paper);
+    background: var(--mellow-stars-soft), var(--mellow-grain), var(--mellow-kraft);
   }
   .admin-shell .admin-main {
     background: transparent;
@@ -16,7 +16,8 @@
   /* ── Mục lục (sidebar) ─────────────────────────────────────── */
   .admin-shell .admin-sidebar {
     border-right: 1px solid #d9c3ad;
-    background: var(--mellow-grain), var(--mellow-kraft);
+    /* Mục lục giữ nền trơn (không sao) để số mục và tên trang luôn rõ */
+    background: var(--mellow-grain), var(--mellow-kraft-deep);
   }
   .admin-shell .admin-sidebar .brand {
     position: relative;
@@ -122,6 +123,9 @@
     border-radius: 6px;
     background: var(--mellow-card);
     box-shadow: 0 1px 0 rgba(74, 50, 38, 0.05), 0 10px 24px -14px rgba(74, 50, 38, 0.22);
+  }
+  .admin-content :is(.overview-date, .catalog-results, .catalog-intro-copy, .admin-toolbar > span, .frame-catalog-group-header) {
+    text-shadow: 0 0 3px var(--mellow-kraft), 0 0 8px var(--mellow-kraft), 0 0 12px var(--mellow-kraft);
   }
   .admin-content .overview-date {
     color: var(--mellow-muted);
