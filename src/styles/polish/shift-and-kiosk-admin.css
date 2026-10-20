@@ -197,3 +197,32 @@
     }
   }
 }
+
+/* Căn hàng ô nhập và nút: .panel label có sẵn margin 20px phía dưới làm nút tụt thấp hơn ô nhập.
+   Bỏ margin trong các hàng form này; ô nhập và nút cùng cao 48px. */
+@layer components {
+  .panel :is(.shift-form, .sticker-add, .idle-fields, .idle-image-actions) label {
+    margin: 0;
+  }
+  .panel :is(.shift-form, .sticker-add) {
+    align-items: end;
+  }
+  .panel :is(.shift-form, .sticker-add) input:not([type="file"]) {
+    height: 48px;
+    min-height: 48px;
+  }
+  .panel :is(.shift-form, .sticker-add, .idle-image-actions) .button {
+    flex-direction: row;
+    gap: 8px;
+    height: 48px;
+    min-height: 48px;
+    margin: 0;
+    padding-block: 0;
+  }
+  .panel .sticker-add > label:not(.button) {
+    flex: 1 1 240px;
+  }
+  .panel .shift-form > p {
+    margin: 0;
+  }
+}
