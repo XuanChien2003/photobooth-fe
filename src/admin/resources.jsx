@@ -138,6 +138,10 @@ export function ResourceManager({ resource, notify, me }) {
           type === "number"
             ? key === "duration"
               ? 15
+              : key === "shots"
+                ? 12
+                : key === "countdownSeconds"
+                  ? 10
               : 0
             : type === "color"
               ? key === "color"

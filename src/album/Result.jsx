@@ -87,7 +87,7 @@ export function Result({
         if (!live) return;
         const canvas = document.createElement("canvas");
         Object.assign(canvas, frameOutputSize(frame, bg));
-        if (!await renderPrintFrame(canvas, bg, frame, l.slots, engine, adjustOf, () => live)) {
+        if (!await renderPrintFrame(canvas, bg, frame, l.slots, engine, adjustOf, () => live, l.decorations)) {
           canvas.width = canvas.height = 0;
           return;
         }

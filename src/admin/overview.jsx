@@ -12,7 +12,7 @@ const clockOf = (ms) => {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
 
-export function Overview({ notify, canSeeMoney }) {
+export function Overview({ notify, canSeeMoney, assignedBranch }) {
   const toast = useToast();
   const [stats, setStats] = useState(null);
   const [today, setToday] = useState([]);
@@ -193,6 +193,7 @@ export function Overview({ notify, canSeeMoney }) {
       )}
       {creating && (
         <CounterTicket
+          assignedBranch={assignedBranch}
           onClose={() => setCreating(false)}
           onCreated={(t) => {
             reloadToday();

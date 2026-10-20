@@ -1,11 +1,50 @@
+import { useEffect } from "react";
 import {
+  PiArrowLeftBold as ArrowLeft,
   PiArrowRightBold as ArrowRight,
   PiBackspaceBold,
+  PiMinusBold,
+  PiPlusBold,
 } from "react-icons/pi";
-import { Brand, Button, ErrorBox } from "../studio";
+import { money } from "../api";
+import { Brand, Button, ErrorBox, useStudio } from "../studio";
 import { canPickFolder } from "./folder.js";
 
+// Các bước trước khi chụp (kiểu Mellow): chạm để bắt đầu → chọn khổ → chọn số tờ in → nhập mã.
+export const ENTRY_STEPS = ["start", "size", "prints", "code"];
+const IDLE_MS = 90_000;
+const SIZES = {
+  strip: { title: "Khung bé", detail: "2 ảnh nhỏ · tờ 10 × 15 cm cắt đôi" },
+  full: { title: "Khung to", detail: "2 ảnh lớn · tờ 10 × 15 cm nguyên bản" },
+};
+
+// Gói rẻ nhất của mỗi khổ quyết định giá hiển thị trên kiosk.
+export function sizeOptions(packages = []) {
+  const bySize = {};
+  for (const p of packages)
+    if (p.active !== false && SIZES[p.printSize || "full"] && !bySize[p.printSize || "full"])
+      bySize[p.printSize || "full"] = p;
+  return bySize;
+}
+
+// Khổ bé: một tờ 10 × 15 cm cắt thành 2 ảnh; khổ to: mỗi tờ là một ảnh.
+export const photosPerSheet = (size) => (size === "strip" ? 2 : 1);
+export const includedSheets = (pack) => Math.max(1, Number(pack?.prints) || 1);
+
+// prints tính theo tờ (như vé); phần vượt số tờ của gói tính theo giá in thêm mỗi tờ.
+export function printsPrice(pack, sheets, extraPrice) {
+  if (!pack) return 0;
+  return (Number(pack.price) || 0) +
+    Math.max(0, sheets - includedSheets(pack)) * (Number(extraPrice) || 0);
+}
+
 export function KioskEntry({
+  step,
+  setStep,
+  size,
+  setSize,
+  prints,
+  setPrints,
   claim,
   error,
   device,
@@ -16,13 +55,147 @@ export function KioskEntry({
   folderAccess,
   children,
 }) {
+  const { packages = [], settings = {} } = useStudio();
+  const options = sizeOptions(packages);
+  const pack = options[size];
+  const minSheets = includedSheets(pack);
+  const perSheet = photosPerSheet(size);
+  const extraPrice = Number(settings.extraPrintPrice) || 0;
+  // Đổi khổ (hoặc gói đổi giá / số tờ): bắt đầu lại từ số tờ có sẵn trong gói.
+  useEffect(() => setPrints(minSheets), [size, minSheets]);
+
+  // Khách bỏ đi giữa chừng: quay về màn chờ, xóa mã đang nhập.
+  useEffect(() => {
+    if (step === "start") return;
+    let timer;
+    const reset = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        setCode("");
+        setStep("start");
+      }, IDLE_MS);
+    };
+    reset();
+    window.addEventListener("pointerdown", reset);
+    window.addEventListener("keydown", reset);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("pointerdown", reset);
+      window.removeEventListener("keydown", reset);
+    };
+  }, [step]);
+
+  if (step === "start")
+    return (
+      <section className="kiosk-entry kiosk-attract">
+        <button
+          type="button"
+          className="kiosk-tap"
+          onClick={() => setStep("size")}
+          aria-label="Chạm để bắt đầu"
+        >
+          <Brand />
+          <strong>Tap to start</strong>
+          <span>Chạm vào màn hình để bắt đầu</span>
+        </button>
+      </section>
+    );
+
+  const nav = (back, next, nextDisabled, nextLabel = "Next") => (
+    <div className="kiosk-step-nav">
+      <Button type="button" className="outline" onClick={back}>
+        <ArrowLeft size={18} /> Back
+      </Button>
+      <Button
+        type={next ? "button" : "submit"}
+        disabled={nextDisabled}
+        onClick={next || undefined}
+      >
+        {nextLabel} <ArrowRight size={18} />
+      </Button>
+    </div>
+  );
+
+  if (step === "size")
+    return (
+      <section className="kiosk-entry">
+        <div className="kiosk-entry-card kiosk-step">
+          <div className="kiosk-entry-brand"><Brand /></div>
+          <h1>Choose the size</h1>
+          <p>Chọn khổ ảnh đúng với gói bạn đã mua ở quầy.</p>
+          <ErrorBox error={error} />
+          <div className="kiosk-size-grid">
+            {Object.entries(SIZES).map(([key, info]) => (
+              <button
+                type="button"
+                key={key}
+                className={`kiosk-size ${key} ${size === key ? "active" : ""}`}
+                aria-pressed={size === key}
+                disabled={!options[key]}
+                onClick={() => setSize(key)}
+              >
+                <span className="kiosk-size-art" aria-hidden="true"><i /><i /></span>
+                <strong>{info.title}</strong>
+                <small>{info.detail}</small>
+                <b>{options[key] ? money(options[key].price) : "Chưa mở bán"}</b>
+              </button>
+            ))}
+          </div>
+          {nav(() => setStep("start"), () => setStep("prints"), !pack)}
+        </div>
+      </section>
+    );
+
+  if (step === "prints")
+    return (
+      <section className="kiosk-entry">
+        <div className="kiosk-entry-card kiosk-step">
+          <div className="kiosk-entry-brand"><Brand /></div>
+          <h1>Choose the number of prints</h1>
+          <p>{SIZES[size]?.title} · tối thiểu {minSheets * perSheet} ảnh in</p>
+          <div className="kiosk-counter" role="group" aria-label="Số bản in">
+            <button
+              type="button"
+              aria-label="Bớt ảnh in"
+              disabled={prints <= minSheets}
+              onClick={() => setPrints((n) => Math.max(minSheets, n - 1))}
+            >
+              <PiMinusBold />
+            </button>
+            <output aria-live="polite">{prints * perSheet}</output>
+            <button
+              type="button"
+              aria-label="Thêm ảnh in"
+              disabled={prints >= 20}
+              onClick={() => setPrints((n) => Math.min(20, n + 1))}
+            >
+              <PiPlusBold />
+            </button>
+          </div>
+          <div className="kiosk-price">
+            <strong>{money(printsPrice(pack, prints, extraPrice))}</strong>
+            <small>
+              {prints} tờ 10 × 15 cm{perSheet > 1 ? ` · cắt thành ${prints * perSheet} ảnh nhỏ` : ""}
+            </small>
+            {prints > minSheets && (
+              <small>
+                Gồm {prints - minSheets} tờ in thêm × {money(extraPrice)} — thanh
+                toán phần thêm tại quầy trước khi nhận ảnh.
+              </small>
+            )}
+          </div>
+          {nav(() => setStep("size"), () => setStep("code"), false)}
+        </div>
+      </section>
+    );
+
   return (
     <section className="kiosk-entry">
       <form className="kiosk-entry-card" onSubmit={claim}>
         <div className="kiosk-entry-brand">
           <Brand />
         </div>
-        <h1>Bắt đầu buổi chụp</h1>
+        <h1>Nhập mã chụp</h1>
         <p>Nhập mã vé 6 số lễ tân đã cấp cho bạn.</p>
         <ErrorBox error={error} />
         {!device && (
@@ -104,12 +277,12 @@ export function KioskEntry({
             đặt máy chụp” bên dưới để {folder ? "cho phép" : "chọn"} thư mục.
           </p>
         )}
-        <Button
-          className="full kiosk-start"
-          disabled={busy || !device || code.length !== 6}
-        >
-          {busy ? "Đang kiểm tra…" : "Bắt đầu chụp"} <ArrowRight size={18} />
-        </Button>
+        {nav(
+          () => setStep("prints"),
+          null,
+          busy || !device || code.length !== 6,
+          busy ? "Đang kiểm tra…" : "Next",
+        )}
         {children}
       </form>
     </section>

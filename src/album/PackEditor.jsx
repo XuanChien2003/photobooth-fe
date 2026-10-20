@@ -7,11 +7,13 @@ export function PackEditor({
   engine,
   pack,
   layouts,
+  decorations,
   index,
   photos,
   adjustOf,
   onIndex,
   onLayouts,
+  onDecorations,
   onReshuffle,
   onBack,
   onNext,
@@ -57,9 +59,11 @@ export function PackEditor({
             : frame.name
         }
         slots={layouts[frame._id]}
+        decorations={decorations[frame._id] || []}
         photos={photos}
         adjustOf={adjustOf}
         onSlots={(slots) => onLayouts({ [frame._id]: slots })}
+        onDecorations={(items) => onDecorations(frame._id, items)}
         onReshuffle={onReshuffle}
         onBack={onBack}
         onNext={next}

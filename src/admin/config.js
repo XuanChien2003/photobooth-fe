@@ -41,6 +41,8 @@ export const RESOURCE_RULES = {
     description: ["Mô tả", maxLength(1000)],
     price: ["Giá", required, intRange(0, 100000000), priceVND],
     duration: ["Thời gian chụp", required, intRange(1, 30)],
+    shots: ["Số ảnh được chụp", required, intRange(1, 40)],
+    countdownSeconds: ["Đếm ngược mỗi ảnh", required, intRange(1, 30)],
     prints: ["Số tờ in", required, intRange(0, 20)],
   },
   frames: {
@@ -58,6 +60,7 @@ export const RESOURCE_RULES = {
   users: {
     name: ["Tên nhân viên", required, maxLength(200)],
     email: ["Email", required, isEmail],
+    branch: ["Chi nhánh", maxLength(200)],
     password: [
       "Mật khẩu",
       custom(
@@ -91,6 +94,9 @@ export const definitions = {
     ["description", "Mô tả", "textarea"],
     ["price", "Giá (VND)", "number"],
     ["duration", "Thời gian chụp (phút)", "number"],
+    ["shots", "Số ảnh được chụp", "number"],
+    ["countdownSeconds", "Đếm ngược trước mỗi ảnh (giây)", "number"],
+    ["printSize", "Kiểu in", "printSize"],
     ["prints", "Số tờ in 10 × 15 kèm gói", "number"],
   ],
   frames: [
@@ -105,5 +111,6 @@ export const definitions = {
     ["email", "Email", "email"],
     ["password", "Mật khẩu (để trống khi không đổi)", "password"],
     ["role", "Vai trò", "role"],
+    ["branch", "Chi nhánh được phân công (bắt buộc với nhân viên)"],
   ],
 };

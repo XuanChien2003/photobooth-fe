@@ -23,10 +23,11 @@ import { CounterTicket } from "../counter-ticket";
 import { ExtraPrints } from "../extra-prints";
 import { TableHeading } from "./table-heading";
 
-export function BookingsManager({ notify, canSeeMoney }) {
+export function BookingsManager({ notify, canSeeMoney, assignedBranch }) {
   const toast = useToast();
   const lastError = useRef("");
   const [creating, setCreating] = useState(false);
+  const [collecting, setCollecting] = useState(null);
   const [items, setItems] = useState([]);
   const [query, setQuery] = useState("");
   const [date, setDate] = useState("");
@@ -141,7 +142,7 @@ export function BookingsManager({ notify, canSeeMoney }) {
         id="bookings-flow"
         title="một lượt khách"
         steps={[
-          "Thu tiền → bấm “Tạo mã chụp”, chọn gói, tích “đã nhận đủ tiền” → đọc mã 6 số cho khách.",
+          "Chọn gói → tạo phiếu chụp → xác nhận đã thu tiền → đọc mã 6 số cho khách. Mã hết hạn sau 2 giờ.",
           "Khách vào phòng, nhập mã trên máy chụp và chụp bằng nút / remote của máy ảnh.",
           "Chụp xong máy chụp hiện mã QR: khách quét để lấy ảnh, ghép khung, gửi in.",
           "Khách quên quét QR: bấm “QR nhận ảnh” ở dòng vé để hiện lại. Muốn in thêm: “Bán thêm tờ in”.",
@@ -221,7 +222,7 @@ export function BookingsManager({ notify, canSeeMoney }) {
               <tr key={b._id}>
                 <td data-label="Mã vé / Khách">
                   <strong>
-                    #{b.code} · {b.name}
+                    {b.code ? `#${b.code}` : "Chưa cấp mã"} · {b.name}
                   </strong>
                   <small>{b.phone}</small>
                 </td>
@@ -238,6 +239,11 @@ export function BookingsManager({ notify, canSeeMoney }) {
                       (b.status === "confirmed" ? "Chưa vào phòng" : "—")}{" "}
                     · In {b.printSheets || 0}/{b.prints ?? 1} tờ
                   </small>
+                  {b.requestedExtraPrints > 0 && (
+                    <span className="badge pending">
+                      Khách chọn thêm {b.requestedExtraPrints} bản in — chờ thu
+                    </span>
+                  )}
                 </td>
                 <td data-label="Thanh toán">
                   {canSeeMoney && <strong>{money(b.total)}</strong>}
@@ -256,19 +262,22 @@ export function BookingsManager({ notify, canSeeMoney }) {
                     {b.status === "completed" && !b.mediaDeleted && (
                       <button onClick={() => setAlbumQr(b)}>QR nhận ảnh</button>
                     )}
-                    <Link to={`/album/${b.accessToken}`} target="_blank">
-                      Mở album ↗
-                    </Link>
+                    {b.accessToken && <Link to={`/album/${b.accessToken}`} target="_blank">Mở album ↗</Link>}
+                    {b.status === "pending" && b.source === "counter" && (
+                      <button onClick={() => setCollecting(b)}>Xác nhận đã thu</button>
+                    )}
                     {b.paid &&
                       ["confirmed", "checked_in", "completed"].includes(
                         b.status,
                       ) &&
                       !b.mediaDeleted && (
                         <button onClick={() => setSelling(b)}>
-                          + Bán thêm tờ in
+                          {b.requestedExtraPrints > 0
+                            ? `Thu tiền ${b.requestedExtraPrints} bản in thêm`
+                            : "+ Bán thêm tờ in"}
                         </button>
                       )}
-                    {b.status === "confirmed" && (
+                    {canSeeMoney && b.status === "confirmed" && (
                       <button
                         disabled={busyId === b._id}
                         onClick={() => update(b, { status: "cancelled" })}
@@ -294,9 +303,11 @@ export function BookingsManager({ notify, canSeeMoney }) {
         Hiển thị tối đa 500 vé gần nhất theo bộ lọc. Dữ liệu tự cập nhật mỗi 20
         giây.
       </p>
-      {creating && (
+      {(creating || collecting) && (
         <CounterTicket
-          onClose={() => setCreating(false)}
+          assignedBranch={assignedBranch}
+          initialDraft={collecting}
+          onClose={() => { setCreating(false); setCollecting(null); load(); }}
           onCreated={(t) => {
             load();
             notify(`Đã cấp mã #${t.code} cho ${t.name}.`);

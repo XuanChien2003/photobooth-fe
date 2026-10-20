@@ -127,7 +127,7 @@ export function Admin() {
             <ErrorBox error={error} />
             <PrintAlerts onCount={setPendingPrints} />
             {currentTab === "overview" ? (
-              <Overview notify={notify} canSeeMoney={canSeeMoney} />
+              <Overview notify={notify} canSeeMoney={canSeeMoney} assignedBranch={user.branch} />
             ) : currentTab === "print" ? (
               <PrintQueue
                 pendingCount={pendingPrints}
@@ -136,7 +136,7 @@ export function Admin() {
                 onViewChange={setPrintView}
               />
             ) : currentTab === "bookings" ? (
-              <BookingsManager notify={notify} canSeeMoney={canSeeMoney} />
+              <BookingsManager notify={notify} canSeeMoney={canSeeMoney} assignedBranch={user.branch} />
             ) : definitions[currentTab] ? (
               <ResourceManager
                 key={currentTab}

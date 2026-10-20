@@ -1,0 +1,128 @@
+/* Trang trí khung: chữ, sticker, ký tên vẽ tay (nút to cho màn cảm ứng). */
+@layer components {
+  .editor-mode {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 4px;
+    border-radius: 12px;
+    background: #f1e7dd;
+  }
+  .editor-mode button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: #6b5246;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .editor-mode button[aria-selected="true"] {
+    background: #fff;
+    color: #3f2c25;
+    box-shadow: 0 1px 4px rgba(63, 44, 37, 0.15);
+  }
+  .decor-tools,
+  .decor-edit {
+    display: grid;
+    gap: 14px;
+  }
+  .decor-edit label {
+    display: grid;
+    gap: 6px;
+    font-weight: 600;
+  }
+  .decor-edit input:not([type="range"]) {
+    min-height: 48px;
+    font-size: 17px;
+  }
+  .decor-add {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .decor-add button {
+    display: grid;
+    justify-items: center;
+    gap: 4px;
+    min-height: 64px;
+    padding: 8px 4px;
+    border: 1px solid var(--line, #e5d9cf);
+    border-radius: 12px;
+    background: #fbf6f1;
+    color: #3f2c25;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .decor-add button svg {
+    font-size: 22px;
+  }
+  .decor-add button[aria-pressed="true"] {
+    border-color: #7a4b36;
+    background: #efe2d6;
+  }
+  .decor-stickers {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+    gap: 6px;
+  }
+  .decor-stickers button {
+    height: 52px;
+    border: 1px solid var(--line, #e5d9cf);
+    border-radius: 10px;
+    background: #fff;
+    font-size: 28px;
+    cursor: pointer;
+  }
+  .decor-colors {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+  }
+  .decor-colors button {
+    aspect-ratio: 1;
+    min-height: 38px;
+    border: 2px solid #d8c8ba;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  .decor-colors button[aria-checked="true"] {
+    outline: 3px solid #7a4b36;
+    outline-offset: 2px;
+  }
+  .decor-fonts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .decor-fonts button {
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--line, #e5d9cf);
+    border-radius: 999px;
+    background: #fff;
+    color: #3f2c25;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  .decor-fonts button[aria-checked="true"] {
+    border-color: #7a4b36;
+    background: #efe2d6;
+  }
+  .decor-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .decor-edit .button.danger {
+    color: #a33a2c;
+    border-color: #e2b9b0;
+  }
+}

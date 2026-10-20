@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createRequire } from "node:module";
 import { cleanCameraJpeg, cleanJpegParts, exifOrientation } from "../src/kiosk/jpeg-clean.js";
-import { cleanJpegMetadata } from "../../Photo_BE/src/services/jpeg-metadata.js";
+import { cleanJpegMetadata } from "../../photobooth-be/src/services/jpeg-metadata.js";
 
 // The booth's cleaner must give exactly the bytes the server's would: the stored original is the
 // same whichever way a photo travelled. Sample JPEGs come from the server's own image library.
-const sharp = createRequire(new URL("../../Photo_BE/package.json", import.meta.url))("sharp");
+const sharp = createRequire(new URL("../../photobooth-be/package.json", import.meta.url))("sharp");
 const base = (options = {}) => sharp({ create: { width: 320, height: 200, channels: 3,
   noise: { type: "gaussian", mean: 120, sigma: 30 } } });
 const samples = async () => {

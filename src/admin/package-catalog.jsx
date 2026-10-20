@@ -95,7 +95,7 @@ export function PackageCatalog({
 
             <p className="package-card-included">
               <Images size={17} aria-hidden="true" />
-              Không giới hạn ảnh chụp
+              {item.shots || 12} ảnh · {item.countdownSeconds || 10} giây/ảnh · {item.printSize === "strip" ? "2 dải nhỏ" : "ảnh lớn 10 × 15"}
             </p>
 
             <div className="package-card-actions">

@@ -101,6 +101,7 @@ async function sendRequest(path, options = {}) {
             : "Không thể kết nối máy chủ. Vui lòng thử lại."),
       );
       error.status = res.status;
+      error.data = data;
       error.retryAfterMs = retryAfter(res.headers.get("Retry-After"));
       // A proxy page instead of this API's JSON: the server itself is not running yet.
       if (!parsed && GATEWAY_STATUSES.has(res.status)) error.code = "UNAVAILABLE";

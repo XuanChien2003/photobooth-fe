@@ -8,6 +8,12 @@ import {
   PiPlusBold,
   PiShuffleBold,
   PiXBold,
+  PiImageBold,
+  PiSparkleBold,
+  PiTextTBold,
+  PiStickerBold,
+  PiSignatureBold,
+  PiTrashBold,
 } from "react-icons/pi";
 import { Button, useToast } from "../studio";
 import {
@@ -18,8 +24,17 @@ import {
 } from "../frame-utils";
 import { clamp, hitSlot } from "./utils";
 import { ActionBar, SheetPhoto, CarouselThumb } from "./shared";
+import {
+  DECOR_COLORS,
+  DECOR_FONTS,
+  DECOR_STICKERS,
+  MAX_DRAWING_POINTS,
+  decorationBox,
+  hitDecoration,
+} from "./decorations";
 
 const EMPTY_IMAGES = Object.freeze({});
+const NO_DECORATIONS = Object.freeze([]);
 
 // ─── Bước 3: Ghép ảnh vào khung — chạm ô trống để chọn ảnh, được dùng trùng ─
 export function FrameEditor({
@@ -27,15 +42,29 @@ export function FrameEditor({
   frame,
   title,
   slots,
+  decorations = NO_DECORATIONS,
   photos,
   adjustOf,
   onSlots,
+  onDecorations = () => {},
   onReshuffle,
   onBack,
   onNext,
 }) {
   const toast = useToast();
   const canvas = useRef(null);
+  // "photo": chỉnh ảnh trong ô; "decor": thêm chữ / sticker / ký tên lên khung.
+  const [mode, setMode] = useState("photo");
+  const [decorIndex, setDecorIndex] = useState(-1);
+  const [stickers, setStickers] = useState(false);
+  const [drawing, setDrawing] = useState(false);
+  const [brush, setBrush] = useState({ color: "#382b26", width: 6 });
+  const [liveStroke, setLiveStroke] = useState(null);
+  const decorRef = useRef(decorations);
+  decorRef.current = decorations;
+  const decorDrag = useRef(null);
+  const liveRef = useRef(null);
+  const selectedDecor = decorations[decorIndex];
   const [background, setBackground] = useState(null);
   const [imageState, setImageState] = useState(null);
   const [retry, setRetry] = useState(0);
@@ -168,8 +197,18 @@ export function FrameEditor({
         frame.slots,
         slots.map((s) => s.photo && images[s.photo]),
         slots,
+        liveStroke ? [...decorations, liveStroke] : decorations,
       );
       const ctx = c.getContext("2d");
+      if (mode === "decor") {
+        if (!selectedDecor) return;
+        const b = decorationBox(ctx, selectedDecor, c.width, c.height);
+        ctx.lineWidth = Math.max(2, c.width / 400);
+        ctx.strokeStyle = "#7a4b36";
+        ctx.setLineDash([ctx.lineWidth * 3, ctx.lineWidth * 2]);
+        ctx.strokeRect(b.x, b.y, b.w, b.h);
+        return;
+      }
       // Ô trống: nền hồng nhạt + dấu "+" để khách biết chạm vào chọn ảnh.
       frame.slots.forEach((slot, i) => {
         if (slots[i]?.photo) return;
@@ -196,7 +235,159 @@ export function FrameEditor({
     // backing bitmap instead of reallocating it on every movement.
     const request = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(request);
-  }, [bg, images, slots, selected]);
+  }, [bg, images, slots, selected, decorations, liveStroke, mode, selectedDecor]);
+
+  const setDecor = (items) => onDecorations(items);
+  const patchDecor = (i, changes) =>
+    setDecor(decorRef.current.map((d, j) => (j === i ? { ...d, ...changes } : d)));
+  function addDecor(item) {
+    if (decorRef.current.length >= 40)
+      return toast.warning("Khung đã có nhiều trang trí — xóa bớt rồi thêm tiếp nhé.");
+    setDecor([...decorRef.current, item]);
+    setDecorIndex(decorRef.current.length);
+    setDrawing(false);
+  }
+  function removeDecor(i) {
+    setDecor(decorRef.current.filter((_, j) => j !== i));
+    setDecorIndex(-1);
+  }
+  // Chạm khung ở chế độ trang trí: vẽ chữ ký, hoặc chọn rồi kéo chữ / sticker.
+  function decorDown(e, p) {
+    const c = canvas.current;
+    if (drawing) {
+      liveRef.current = { type: "drawing", color: brush.color, width: brush.width,
+        points: [[+p.x.toFixed(4), +p.y.toFixed(4)]] };
+      setLiveStroke(liveRef.current);
+      return;
+    }
+    const hit = hitDecoration(c.getContext("2d"), decorRef.current, p.x * c.width, p.y * c.height,
+      c.width, c.height);
+    setDecorIndex(hit);
+    decorDrag.current = hit >= 0 ? { index: hit, origin: p, start: decorRef.current[hit] } : null;
+  }
+  function decorMove(p) {
+    if (drawing) {
+      const s = liveRef.current;
+      if (!s || s.points.length >= MAX_DRAWING_POINTS) return;
+      const [lx, ly] = s.points[s.points.length - 1];
+      if (Math.hypot(p.x - lx, p.y - ly) < 0.002) return;
+      liveRef.current = { ...s, points: [...s.points,
+        [+clamp(p.x, 0, 1).toFixed(4), +clamp(p.y, 0, 1).toFixed(4)]] };
+      setLiveStroke(liveRef.current);
+      return;
+    }
+    const d = decorDrag.current;
+    if (!d) return;
+    const dx = p.x - d.origin.x, dy = p.y - d.origin.y;
+    patchDecor(d.index, d.start.type === "drawing"
+      ? { points: d.start.points.map(([x, y]) => [clamp(x + dx, 0, 1), clamp(y + dy, 0, 1)]) }
+      : { x: clamp(d.start.x + dx, 0, 1), y: clamp(d.start.y + dy, 0, 1) });
+  }
+  function decorUp() {
+    decorDrag.current = null;
+    const stroke = liveRef.current;
+    liveRef.current = null;
+    setLiveStroke(null);
+    if (!stroke) return;
+    if (decorRef.current.length >= 40)
+      return toast.warning("Khung đã có nhiều trang trí — xóa bớt rồi vẽ tiếp nhé.");
+    setDecor([...decorRef.current, stroke]);
+  }
+  function undoStroke() {
+    const last = decorRef.current.map((d) => d.type).lastIndexOf("drawing");
+    if (last >= 0) removeDecor(last);
+  }
+  const swatches = (value, onPick) => (
+    <div className="decor-colors" role="radiogroup" aria-label="Màu">
+      {DECOR_COLORS.map((color) => (
+        <button key={color} role="radio" aria-checked={value === color} aria-label={color}
+          style={{ background: color }} onClick={() => onPick(color)} />
+      ))}
+    </div>
+  );
+  function decorPanel() {
+    const item = selectedDecor;
+    return (
+      <div className="decor-tools">
+        <div className="decor-add">
+          <button onClick={() => addDecor({ type: "text", text: "Kỷ niệm của tụi mình",
+            font: "handwritten", color: "#382b26", size: 56, x: 0.5, y: 0.92 })}>
+            <PiTextTBold /> Thêm chữ
+          </button>
+          <button aria-pressed={stickers} onClick={() => { setStickers((v) => !v); setDrawing(false); }}>
+            <PiStickerBold /> Sticker
+          </button>
+          <button aria-pressed={drawing} onClick={() => {
+            setDrawing((v) => !v); setStickers(false); setDecorIndex(-1);
+          }}>
+            <PiSignatureBold /> Ký tên
+          </button>
+        </div>
+        {stickers && (
+          <div className="decor-stickers">
+            {DECOR_STICKERS.map((s) => (
+              <button key={s} aria-label={`Sticker ${s}`}
+                onClick={() => addDecor({ type: "sticker", text: s, size: 90,
+                  x: 0.3 + Math.random() * 0.4, y: 0.3 + Math.random() * 0.4 })}>
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+        {drawing ? (
+          <div className="decor-edit">
+            <p className="muted">Dùng ngón tay ký hoặc vẽ trực tiếp lên khung.</p>
+            {swatches(brush.color, (color) => setBrush((b) => ({ ...b, color })))}
+            <label>
+              Độ dày nét
+              <input type="range" min="2" max="24" value={brush.width}
+                onChange={(e) => setBrush((b) => ({ ...b, width: Number(e.target.value) }))} />
+            </label>
+            <div className="decor-row">
+              <Button className="outline" onClick={undoStroke}>Hoàn tác nét</Button>
+              <Button onClick={() => setDrawing(false)}>Xong</Button>
+            </div>
+          </div>
+        ) : item ? (
+          <div className="decor-edit">
+            {item.type !== "drawing" && item.type !== "sticker" && (
+              <>
+                <label>
+                  Nội dung
+                  <input value={item.text || ""} maxLength={100}
+                    onChange={(e) => patchDecor(decorIndex, { text: e.target.value })} />
+                </label>
+                <div className="decor-fonts" role="radiogroup" aria-label="Phông chữ">
+                  {Object.entries(DECOR_FONTS).map(([key, f]) => (
+                    <button key={key} role="radio" aria-checked={(item.font || "sans") === key}
+                      style={{ fontFamily: f.css }} onClick={() => patchDecor(decorIndex, { font: key })}>
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            {item.type !== "sticker" &&
+              swatches(item.color, (color) => patchDecor(decorIndex, { color }))}
+            {item.type !== "drawing" && (
+              <label>
+                Cỡ {item.type === "sticker" ? "sticker" : "chữ"}
+                <input type="range" min="16" max="160" value={item.size || 36}
+                  onChange={(e) => patchDecor(decorIndex, { size: Number(e.target.value) })} />
+              </label>
+            )}
+            <Button className="outline danger" onClick={() => removeDecor(decorIndex)}>
+              <PiTrashBold /> Xóa mục này
+            </Button>
+          </div>
+        ) : (
+          <p className="muted">
+            Thêm chữ, sticker hoặc ký tên. Chạm vào một mục trên khung để chỉnh, kéo để di chuyển.
+          </p>
+        )}
+      </div>
+    );
+  }
 
   const update = (i, changes) =>
     onSlots(
@@ -213,6 +404,7 @@ export function FrameEditor({
   function onDown(e) {
     const g = gesture.current;
     canvas.current.setPointerCapture(e.pointerId);
+    if (mode === "decor") return decorDown(e, point(e.clientX, e.clientY));
     g.pointers.set(e.pointerId, point(e.clientX, e.clientY));
     if (g.pointers.size === 1) {
       const hit = hitSlot(frame.slots, point(e.clientX, e.clientY));
@@ -225,6 +417,7 @@ export function FrameEditor({
   }
   function onMove(e) {
     const g = gesture.current;
+    if (mode === "decor") return decorMove(point(e.clientX, e.clientY));
     if (!g.pointers.has(e.pointerId)) return;
     g.pointers.set(e.pointerId, point(e.clientX, e.clientY));
     if (!slotsRef.current[g.slot]?.photo) return;
@@ -244,6 +437,7 @@ export function FrameEditor({
   }
   function onUp(e) {
     const g = gesture.current;
+    if (mode === "decor") return decorUp();
     g.pointers.delete(e.pointerId);
     const tap = g.tap;
     if (
@@ -372,6 +566,7 @@ export function FrameEditor({
               onPointerUp={onUp}
               onPointerCancel={onUp}
               onWheel={(e) =>
+                mode === "photo" &&
                 current.photo &&
                 update(selected, {
                   zoom: clamp(
@@ -395,7 +590,11 @@ export function FrameEditor({
             </Button>
           )}
           <p className="frame-hint">
-            Chạm ô để chọn · kéo để di chuyển · chụm 2 ngón để phóng to
+            {mode === "photo"
+              ? "Chạm ô để chọn · kéo để di chuyển · chụm 2 ngón để phóng to"
+              : drawing
+                ? "Đang ký tên · vẽ bằng ngón tay trên khung"
+                : "Chạm chữ / sticker để chỉnh · kéo để di chuyển"}
           </p>
 
           <div className="photo-carousel" aria-label="Ảnh yêu thích">
@@ -420,7 +619,17 @@ export function FrameEditor({
             ))}
           </div>
         </div>
-        <div className="slot-tools" aria-label={`Ô ${selected + 1}`}>
+        <div className="slot-tools" aria-label={mode === "photo" ? `Ô ${selected + 1}` : "Trang trí khung"}>
+          <div className="editor-mode" role="tablist" aria-label="Chế độ chỉnh">
+            <button role="tab" aria-selected={mode === "photo"}
+              onClick={() => { setMode("photo"); setDrawing(false); setStickers(false); }}>
+              <PiImageBold /> Ảnh
+            </button>
+            <button role="tab" aria-selected={mode === "decor"} onClick={() => setMode("decor")}>
+              <PiSparkleBold /> Trang trí
+            </button>
+          </div>
+          {mode === "decor" ? decorPanel() : (<>
           <div className="slot-tools-head">
             <strong>Ô {selected + 1}</strong>
             <div className="slot-tools-actions">
@@ -497,6 +706,7 @@ export function FrameEditor({
               <b>{current.rotate}°</b>
             </div>
           </fieldset>
+          </>)}
         </div>
       </div>
 

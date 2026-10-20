@@ -1,4 +1,5 @@
 import { drawSlot, slotRect, slotScale } from "../frame-utils.js";
+import { drawDecorations } from "./decorations.js";
 
 // Server print sources are 3000 px on the long edge (smaller sources are the full original).
 export const PRINT_SOURCE_EDGE = 3000;
@@ -12,7 +13,7 @@ export const PRINT_SOURCE_EDGE = 3000;
 // a fraction of the 15 MB original. Only a slot zoomed beyond what that copy holds switches
 // to the camera original, so a print is never upscaled.
 export async function renderPrintFrame(canvas, background, frame, slots, engine, adjustOf,
-  isActive = () => true) {
+  isActive = () => true, decorations = []) {
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
@@ -51,6 +52,7 @@ export async function renderPrintFrame(canvas, background, frame, slots, engine,
       }
       drawSlot(ctx, source, rect, slot);
     }
+    drawDecorations(ctx, decorations, canvas.width, canvas.height);
     return true;
   } finally {
     release();

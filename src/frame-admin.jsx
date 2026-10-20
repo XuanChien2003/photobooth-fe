@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ScanSearch, Trash2, Upload } from "lucide-react";
 import { detectSlots, loadFrameImage } from "./frame-utils";
 import { useToast } from "./studio";
@@ -160,6 +160,92 @@ export function FrameImageField({ value, onChange }) {
           </button>
         </div>
       )}
+      {value.image && <FrameZoneEditor image={value.image} slots={value.slots || []}
+        onChange={(slots) => onChange({ image: value.image, slots })} />}
+    </div>
+  );
+}
+
+const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
+function FrameZoneEditor({ image, slots, onChange }) {
+  const canvas = useRef(null);
+  const gesture = useRef(null);
+  const [selected, setSelected] = useState(0);
+  const update = (index, patch) => onChange(slots.map((slot, i) =>
+    i === index ? { ...slot, ...patch } : slot));
+  const dragStart = (event, index, mode) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const bounds = canvas.current.getBoundingClientRect();
+    gesture.current = { index, mode, x: event.clientX, y: event.clientY,
+      width: bounds.width, height: bounds.height, slot: { ...slots[index] } };
+    setSelected(index);
+  };
+  const dragMove = (event) => {
+    const drag = gesture.current;
+    if (!drag || drag.index >= slots.length) return;
+    const dx = (event.clientX - drag.x) / drag.width;
+    const dy = (event.clientY - drag.y) / drag.height;
+    if (drag.mode === "resize") update(drag.index, {
+      w: clamp(drag.slot.w + dx, 0.04, 1 - drag.slot.x),
+      h: clamp(drag.slot.h + dy, 0.04, 1 - drag.slot.y),
+    });
+    else update(drag.index, {
+      x: clamp(drag.slot.x + dx, 0, 1 - drag.slot.w),
+      y: clamp(drag.slot.y + dy, 0, 1 - drag.slot.h),
+    });
+  };
+  const slot = slots[selected];
+  return (
+    <div className="frame-zone-editor">
+      <div className="frame-zone-toolbar">
+        <button type="button" onClick={() => {
+          if (slots.length >= 40) return;
+          onChange([...slots, { x: 0.1, y: 0.1, w: 0.38, h: 0.3 }]);
+          setSelected(slots.length);
+        }}>＋ Thêm vùng ảnh</button>
+        <span>{slots.length} vùng ảnh · Kéo để di chuyển, kéo góc để đổi kích thước</span>
+      </div>
+      <div className="frame-zone-layout">
+        <div ref={canvas} className="frame-zone-canvas">
+          <img src={image} alt="Nền khung đang chỉnh sửa" draggable="false" />
+          {slots.map((area, index) => (
+            <div key={index} className={`frame-zone-slot ${selected === index ? "selected" : ""}`}
+              style={{ left: `${area.x * 100}%`, top: `${area.y * 100}%`,
+                width: `${area.w * 100}%`, height: `${area.h * 100}%` }}
+              onPointerDown={(event) => dragStart(event, index, "move")}
+              onPointerMove={dragMove}
+              onPointerUp={() => { gesture.current = null; }}
+              onPointerCancel={() => { gesture.current = null; }}>
+              <strong>{index + 1}</strong>
+              <span className="frame-zone-resize" aria-label={`Đổi kích thước vùng ${index + 1}`}
+                onPointerDown={(event) => { event.stopPropagation(); dragStart(event, index, "resize"); }}
+                onPointerMove={dragMove}
+                onPointerUp={() => { gesture.current = null; }} />
+            </div>
+          ))}
+        </div>
+        {slot && <aside className="frame-zone-inspector">
+          <h4>Vùng ảnh {selected + 1}</h4>
+          {[["x", "X"], ["y", "Y"], ["w", "Rộng"], ["h", "Cao"]].map(([key, label]) => (
+            <label key={key}>{label}
+              <input type="number" min="0" max="100" step="0.1"
+                value={Math.round(slot[key] * 1000) / 10}
+                onChange={(event) => {
+                  const next = clamp(Number(event.target.value) / 100,
+                    key === "w" || key === "h" ? 0.04 : 0,
+                    key === "x" ? 1 - slot.w : key === "y" ? 1 - slot.h :
+                      key === "w" ? 1 - slot.x : 1 - slot.y);
+                  update(selected, { [key]: next });
+                }} />%
+            </label>
+          ))}
+          <button type="button" className="text-link" onClick={() => {
+            onChange(slots.filter((_, index) => index !== selected));
+            setSelected(Math.max(0, selected - 1));
+          }}>Xóa vùng ảnh</button>
+        </aside>}
+      </div>
     </div>
   );
 }

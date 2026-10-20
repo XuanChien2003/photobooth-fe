@@ -5,7 +5,6 @@ import { Button, ErrorBox, useStudio, useToast } from "./studio";
 import {
   FieldError,
   chosen,
-  custom,
   maxLength,
   phoneVN,
   useValidation,
@@ -13,12 +12,9 @@ import {
 
 const RULES = {
   package: ["Gói chụp", chosen],
+  branch: ["Chi nhánh", chosen],
   name: ["Tên khách", maxLength(100)],
   phone: ["Số điện thoại khách", phoneVN],
-  received: [
-    "Xác nhận",
-    custom((v) => v === true, "Vui lòng xác nhận đã nhận đủ tiền của khách."),
-  ],
 };
 
 // Trạng thái phòng lúc cấp mã, để gợi ý khách vào phòng đang trống.
@@ -29,8 +25,10 @@ const roomStatus = (r, offset = 0) =>
       ? "khách đang vào phòng"
       : "đang trống";
 
-export function CounterTicket({ onClose, onCreated }) {
+export function CounterTicket({ onClose, onCreated, initialDraft = null, assignedBranch = "" }) {
   const { packages = [], rooms = [], settings = {} } = useStudio();
+  const branches = [...new Set(rooms.map((r) => r.branch).filter(Boolean))]
+    .filter((name) => !assignedBranch || name === assignedBranch);
   const [live, setLive] = useState(null);
   useEffect(() => {
     api("/admin/rooms/live").then(
@@ -41,11 +39,12 @@ export function CounterTicket({ onClose, onCreated }) {
   const [form, setForm] = useState({
     package: packages[0]?._id || "",
     room: "",
+    branch: initialDraft?.branch || assignedBranch || branches[0] || "",
     name: "",
     phone: "",
     paymentMethod: "cash",
   });
-  const [ticket, setTicket] = useState(null);
+  const [ticket, setTicket] = useState(initialDraft);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -88,7 +87,7 @@ export function CounterTicket({ onClose, onCreated }) {
   async function create(e) {
     e.preventDefault();
     if (lock.current) return;
-    if (!v.check({ ...form, received }, RULES)) return;
+    if (!v.check(form, RULES)) return;
     if (quote?.key !== quoteKey || quote.error)
       return toast.warning(
         quote?.error || "Đang tính tiền, vui lòng đợi một chút.",
@@ -100,17 +99,43 @@ export function CounterTicket({ onClose, onCreated }) {
       const fingerprint = JSON.stringify(form);
       if (request.current?.fingerprint !== fingerprint)
         request.current = { fingerprint, key: crypto.randomUUID() };
-      const result = await api("/admin/tickets", {
+      const result = await api("/admin/tickets/draft", {
         method: "POST",
         body: {
-          ...form,
-          paymentReceived: true,
+          name: form.name,
+          phone: form.phone,
+          room: form.room,
+          branch: form.branch,
+          package: form.package,
           expectedTotal: quote.total,
           requestKey: request.current.key,
         },
       });
       setTicket(result);
-      onCreated(result);
+    } catch (e) {
+      setError(e.message);
+      toast.error(e.message);
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+  async function activate() {
+    if (lock.current || !ticket || !received) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      const active = await api(`/admin/tickets/${ticket._id}/activate`, {
+        method: "PATCH",
+        body: {
+          paymentReceived: true,
+          paymentMethod: form.paymentMethod,
+          expectedTotal: ticket.total,
+        },
+      });
+      setTicket(active);
+      onCreated(active);
     } catch (e) {
       setError(e.message);
       toast.error(e.message);
@@ -129,7 +154,7 @@ export function CounterTicket({ onClose, onCreated }) {
       >
         <div className="modal-header">
           <h2 id="counter-title">
-            {ticket ? "Mã chụp đã sẵn sàng" : "Tạo mã chụp cho khách"}
+            {ticket?.code ? "Mã chụp đã sẵn sàng" : ticket ? "Chờ xác nhận đã thu" : "Tạo mã chụp cho khách"}
           </h2>
           <button
             className="icon-button"
@@ -141,7 +166,7 @@ export function CounterTicket({ onClose, onCreated }) {
           </button>
         </div>
         <ErrorBox error={error} />
-        {ticket ? (
+        {ticket?.code ? (
           <div className="counter-receipt">
             <span className="badge confirmed">
               <Check size={14} /> Đã nhận {money(ticket.total)}
@@ -162,7 +187,7 @@ export function CounterTicket({ onClose, onCreated }) {
               {ticket.packageName} · {ticket.prints} tờ in 10 × 15 cm
             </p>
             <p className="soft-note">
-              Mã dùng trong ngày, ở phòng nào cũng được. Chụp xong, máy chụp
+              Mã dùng một lần trong 2 giờ từ lúc xác nhận đã thu, ở phòng nào cũng được. Chụp xong, máy chụp
               hiện mã QR để khách quét nhận ảnh trên điện thoại.
             </p>
             <Button
@@ -186,12 +211,33 @@ export function CounterTicket({ onClose, onCreated }) {
               Xong
             </Button>
           </div>
+        ) : ticket ? (
+          <div className="counter-receipt">
+            <p>Đã ghi nhận gói <strong>{ticket.packageName}</strong>. Chưa cấp mã cho khách.</p>
+            <div className="summary-total"><span>Tiền cần thu</span><strong>{money(ticket.total)}</strong></div>
+            <label>
+              Thanh toán
+              <select value={form.paymentMethod} onChange={(e) => change("paymentMethod", e.target.value)}>
+                <option value="cash">Tiền mặt</option>
+                <option value="transfer">Chuyển khoản</option>
+              </select>
+            </label>
+            {form.paymentMethod === "transfer" && settings.bankAccount && (
+              <p className="soft-note">{settings.bank} · {settings.bankAccount} · {settings.bankOwner}</p>
+            )}
+            <label className="checkbox">
+              <input type="checkbox" checked={received} onChange={(e) => setReceived(e.target.checked)} />
+              <span>Tôi đã nhận đủ tiền mặt hoặc kiểm tra chuyển khoản đã vào tài khoản.</span>
+            </label>
+            <Button className="full" disabled={busy || !received} onClick={activate}>
+              {busy ? "Đang kích hoạt…" : "Xác nhận đã thu & hiện mã 6 số"}
+            </Button>
+          </div>
         ) : (
           <form className="transaction-form" onSubmit={create} noValidate>
             <div className="transaction-fields">
               <p>
-                Chọn gói, nhận tiền rồi cấp mã. Mã dùng được ở mọi phòng chụp
-                trong ngày.
+                Chọn gói và tạo phiếu trước. Mã 6 số chỉ xuất hiện sau khi xác nhận đã thu tiền.
               </p>
               <label>
                 Gói chụp
@@ -213,10 +259,19 @@ export function CounterTicket({ onClose, onCreated }) {
               </label>
               {pack && (
                 <p className="muted">
-                  {pack.duration} phút · không giới hạn ảnh · {pack.prints} tờ
+                  {pack.shots || "—"} ảnh · {pack.countdownSeconds || 10} giây/ảnh · {pack.prints} tờ
                   in 10 × 15 cm
                 </p>
               )}
+              <label>
+                Chi nhánh
+                <select value={form.branch} onChange={(e) => {
+                  setForm((current) => ({ ...current, branch: e.target.value, room: "" }));
+                }}>
+                  <option value="">Chọn chi nhánh</option>
+                  {branches.map((name) => <option key={name} value={name}>{name}</option>)}
+                </select>
+              </label>
               <label>
                 Phòng gợi ý cho khách (không bắt buộc)
                 <select
@@ -225,7 +280,7 @@ export function CounterTicket({ onClose, onCreated }) {
                   onChange={(e) => change("room", e.target.value)}
                 >
                   <option value="">Phòng trống bất kỳ</option>
-                  {(live?.rooms || rooms).map((r) => (
+                  {(live?.rooms || rooms).filter((r) => r.branch === form.branch).map((r) => (
                     <option key={r._id} value={r._id}>
                       {r.name}
                       {r.status ? ` — ${roomStatus(r, live.offset)}` : ""}
@@ -262,9 +317,7 @@ export function CounterTicket({ onClose, onCreated }) {
                       />
                     </div>
                   )}
-                  <small>
-                    Kiểm tra tiền đã vào tài khoản trước khi cấp mã chụp.
-                  </small>
+                  <small>Kiểm tra tiền đã vào tài khoản ở bước xác nhận tiếp theo.</small>
                 </div>
               )}
               <details
@@ -317,22 +370,8 @@ export function CounterTicket({ onClose, onCreated }) {
                 </strong>
               </div>
               {quote?.key === quoteKey && <ErrorBox error={quote.error} />}
-              <label className="checkbox">
-                <input
-                  name="received"
-                  type="checkbox"
-                  aria-invalid={Boolean(v.errors.received)}
-                  checked={received}
-                  onChange={(e) => {
-                    setReceived(e.target.checked);
-                    v.clear("received");
-                  }}
-                />
-                <span>Tôi đã nhận đủ tiền mặt hoặc kiểm tra chuyển khoản.</span>
-              </label>
-              <FieldError error={v.errors.received} />
               <Button className="full" disabled={busy}>
-                {busy ? "Đang tạo mã…" : "Xác nhận thanh toán & tạo mã"}
+                {busy ? "Đang tạo phiếu…" : "Tạo phiếu chụp"}
               </Button>
             </div>
           </form>

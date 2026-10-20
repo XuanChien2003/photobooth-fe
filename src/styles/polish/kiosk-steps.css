@@ -1,0 +1,230 @@
+/* Kiosk kiểu Mellow: màn chờ, chọn khổ, chọn số bản in, đếm ngược từng tấm (tông nâu be + sao). */
+@layer components {
+  .kiosk-attract {
+    padding: 0;
+  }
+  .kiosk-tap {
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 18px;
+    width: 100%;
+    min-height: 100dvh;
+    border: 0;
+    color: var(--booth-text);
+    cursor: pointer;
+    background:
+      var(--studio-star-cluster) no-repeat right 12% top 18% / 72px 48px,
+      var(--studio-star-cluster) no-repeat left 10% bottom 16% / 56px 38px,
+      var(--studio-star-cluster) no-repeat left 22% top 30% / 32px 22px,
+      radial-gradient(circle at 50% 30%, #6a4535 0%, #2a1f19 70%);
+  }
+  .kiosk-tap strong {
+    font-size: clamp(44px, 8vw, 84px);
+    letter-spacing: -1px;
+    color: #f3e4d6;
+    animation: kiosk-pulse 2.2s ease-in-out infinite;
+  }
+  .kiosk-tap span {
+    color: var(--booth-muted);
+    font-size: 20px;
+  }
+  @keyframes kiosk-pulse {
+    50% { opacity: 0.55; transform: scale(0.97); }
+  }
+
+  .kiosk-step {
+    width: min(720px, 100%);
+    gap: 18px;
+    padding-top: 28px;
+    background: var(--studio-star-cluster) no-repeat right 8px top 0 / 48px 32px;
+  }
+  .kiosk-step h1 {
+    font-size: clamp(30px, 5vw, 44px);
+  }
+  .kiosk-size-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+    width: 100%;
+  }
+  .kiosk-size {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    padding: 26px 16px;
+    border: 3px solid var(--booth-line);
+    border-radius: 22px;
+    background: var(--booth-panel);
+    color: var(--booth-text);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .kiosk-size:active {
+    transform: scale(0.98);
+  }
+  .kiosk-size.active {
+    border-color: #e9d8c8;
+    background: #4a372c;
+    box-shadow: 0 0 0 6px rgba(233, 216, 200, 0.16);
+  }
+  .kiosk-size:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .kiosk-size strong {
+    font-size: 26px;
+  }
+  .kiosk-size small {
+    color: var(--booth-muted);
+    font-size: 15px;
+  }
+  .kiosk-size b {
+    font-size: 22px;
+    color: #f3d9c4;
+  }
+  /* Hình minh họa khổ: khung to = 2 ảnh lớn, khung bé = 2 dải nhỏ cạnh nhau */
+  .kiosk-size-art {
+    display: flex;
+    gap: 6px;
+    height: 120px;
+    padding: 8px;
+    border-radius: 8px;
+    background: #f6ece2;
+  }
+  .kiosk-size-art i {
+    display: block;
+    border-radius: 4px;
+    background: linear-gradient(160deg, #c9a88f, #8a6450);
+  }
+  .kiosk-size.full .kiosk-size-art i {
+    width: 40px;
+  }
+  .kiosk-size.strip .kiosk-size-art i {
+    width: 22px;
+  }
+
+  .kiosk-counter {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+  }
+  .kiosk-counter button {
+    display: grid;
+    place-items: center;
+    width: 84px;
+    height: 84px;
+    border: 3px solid var(--booth-line);
+    border-radius: 50%;
+    background: var(--booth-panel);
+    color: var(--booth-text);
+    font-size: 34px;
+    cursor: pointer;
+  }
+  .kiosk-counter button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .kiosk-counter output {
+    min-width: 2ch;
+    font-size: 72px;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+  }
+  .kiosk-price {
+    display: grid;
+    gap: 6px;
+    justify-items: center;
+  }
+  .kiosk-price strong {
+    font-size: 34px;
+    color: #f3d9c4;
+  }
+  .kiosk-price small {
+    max-width: 440px;
+    color: var(--booth-muted);
+  }
+
+  .kiosk-step-nav {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    gap: 14px;
+    width: 100%;
+    margin-top: 8px;
+  }
+  .kiosk-step-nav .button {
+    min-height: 64px;
+    border-radius: 14px;
+    font-size: 19px;
+  }
+  .kiosk-step-nav .button:not(.outline) {
+    background: #e9d8c8;
+    border-color: #e9d8c8;
+    color: #35241b;
+  }
+  .kiosk-step-nav .button.outline {
+    background: transparent;
+    border-color: var(--booth-line);
+    color: var(--booth-text);
+  }
+  .kiosk-step-nav .button:not(.outline):hover,
+  .kiosk-step-nav .button:not(.outline):active {
+    background: #f6eadf;
+    border-color: #f6eadf;
+    color: #35241b;
+  }
+  .kiosk-step-nav .button:not(.outline):disabled {
+    background: #6b5343;
+    border-color: #6b5343;
+    color: #d5c4b6;
+  }
+  .kiosk-step-nav .button.outline:hover {
+    background: rgba(233, 216, 200, 0.08);
+    color: var(--booth-text);
+  }
+
+  .shot-countdown {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 4px;
+    pointer-events: none;
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+  }
+  .shot-countdown small {
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(33, 26, 22, 0.7);
+    color: #f3e4d6;
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .shot-countdown strong {
+    color: #fff;
+    font-size: clamp(96px, 18vw, 200px);
+    line-height: 1;
+    animation: shot-tick 1s ease-out;
+  }
+  .shot-countdown strong.smile {
+    font-size: clamp(44px, 7vw, 80px);
+  }
+  @keyframes shot-tick {
+    from { opacity: 0.2; transform: scale(1.4); }
+  }
+
+  @media (max-width: 560px) {
+    .kiosk-size-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .kiosk-tap strong,
+    .shot-countdown strong {
+      animation: none;
+    }
+  }
+}

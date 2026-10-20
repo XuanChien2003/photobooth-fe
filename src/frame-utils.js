@@ -1,6 +1,7 @@
 import { imageRect } from "./image-utils.js";
 import { compareFrameOrder } from "./frame-catalog-data.js";
 import { createCanvasCache } from "./canvas-cache.js";
+import { drawDecorations } from "./album/decorations.js";
 
 // Khung ảnh thiết kế sẵn (xuất từ Canva...): các ô đặt ảnh là vùng trắng
 // hoặc trong suốt. Tự dò các ô này, trả về tọa độ tỉ lệ 0–1, xếp trái→phải, trên→dưới.
@@ -173,7 +174,7 @@ export function drawSlot(ctx, image, rect, t = DEFAULT_TRANSFORM) {
 }
 
 // Ghép khung: nền khung trước, ảnh đặt vào các ô trắng/trong suốt.
-export function composeLayout(canvas, frameImage, slots, images, transforms) {
+export function composeLayout(canvas, frameImage, slots, images, transforms, decorations = []) {
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
@@ -189,6 +190,7 @@ export function composeLayout(canvas, frameImage, slots, images, transforms) {
         transforms[i],
       );
   });
+  drawDecorations(ctx, decorations, canvas.width, canvas.height);
   return canvas;
 }
 
@@ -280,7 +282,7 @@ export function packPrintSheets(outputs) {
         half.frames = 2;
         half = null;
       } else {
-        half = { canvas: blank(), frames: 1 };
+        half = { canvas: blank(), frames: 1, source: canvas };
         placeOn(
           half.canvas.getContext("2d"),
           canvas,
@@ -296,6 +298,12 @@ export function packPrintSheets(outputs) {
       placeOn(sheet.getContext("2d"), canvas, 0, 0, sheet.width, sheet.height);
       sheets.push({ canvas: sheet, frames: 1 });
     }
+  }
+  // A single strip design still fills both halves of its 4×6 sheet.
+  // The DS-RX1 driver cuts the sheet after printing when 2inch cut is enabled.
+  if (half) {
+    placeOn(half.canvas.getContext("2d"), half.source, SHEET.w / 2, 0, SHEET.w / 2, SHEET.h);
+    half.frames = 2;
   }
   return sheets;
 }

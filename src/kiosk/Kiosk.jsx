@@ -71,6 +71,9 @@ export function Kiosk() {
   const device =
     params.get("device") || localStorage.getItem("harrod-device") || "";
   const [code, setCode] = useState(""),
+    [step, setStep] = useState("start"),
+    [size, setSize] = useState("full"),
+    [prints, setPrints] = useState(1),
     [session, setSession] = useState(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -486,7 +489,7 @@ export function Kiosk() {
     try {
       const claimed = await api("/kiosk/claim", {
         method: "POST",
-        body: { code, device },
+        body: { code, device, printSize: size, prints },
       });
       if (claimed.completed) {
         // Khách chụp xong nhưng quên quét QR: hiện lại mã QR nhận ảnh.
@@ -503,6 +506,12 @@ export function Kiosk() {
     } catch (e) {
       setError(e.message);
       toast.error(e.message);
+      // Mã đúng nhưng khác khổ đã mua: quay lại bước chọn khổ, giữ mã để nhập lại nhanh.
+      if (e.status === 409 && e.data?.printSize) {
+        setSize(e.data.printSize);
+        setStep("size");
+        return;
+      }
       // Mã sai: xóa ô mã để khách nhập lại ngay (ô giới hạn 6 số nên mã sai đầy ô sẽ chặn gõ tiếp).
       // Lỗi khác (mạng, mã đang dùng ở phòng khác…) giữ mã để bấm thử lại.
       if (e.status === 400) setCode("");
@@ -642,6 +651,8 @@ export function Kiosk() {
       setSession(null);
       setTimeUp(false);
       setCode("");
+      setStep("start");
+      setError("");
       trackPending([]);
       shown.current = {};
     }, "zoom");
@@ -745,6 +756,9 @@ export function Kiosk() {
   async function importCameraPhoto(file, path) {
     const s = current.current;
     if (!s) return;
+    const quota = Number(s.booking.shots) || Infinity;
+    const savedCount = s.booking.photos.filter((p) => p.kind === "original").length;
+    if (savedCount + pendingRef.current.length + readingRef.current >= quota) return true;
     trackReading(1);
     try {
       const { id, image, preview, mirrored } = await prepareCameraPhoto(
@@ -791,7 +805,9 @@ export function Kiosk() {
       done ||
       !folder ||
       folderAccess !== "granted" ||
-      !s?.booking.captureStartedAt
+      !s?.booking.captureStartedAt ||
+      (Number(s.booking.shots) > 0 &&
+        s.booking.photos.filter((p) => p.kind === "original").length + pending.length >= s.booking.shots)
     )
       return;
     const stopWatching = watchCameraFolder({
@@ -825,7 +841,37 @@ export function Kiosk() {
     folderAccess,
     session?.accessToken,
     session?.booking.captureStartedAt,
+    session?.booking.photos.length,
+    session?.booking.shots,
+    pending.length,
   ]);
+  useEffect(() => {
+    const quota = Number(session?.booking.shots);
+    if (!quota || done || finishing.current || unsaved > 0 ||
+      session.booking.status !== "checked_in") return;
+    const count = session.booking.photos.filter((p) => p.kind === "original").length;
+    if (count >= quota) finish();
+  }, [session?.booking.photos.length, session?.booking.shots, session?.booking.status, unsaved, done]);
+  // Đếm ngược trước mỗi tấm: chạy lại mỗi khi máy chụp nhận thêm một ảnh, dừng khi đủ số tấm của gói.
+  const savedKeys = new Set((session?.booking.photos || []).map((p) => p.clientKey).filter(Boolean));
+  const taken = (session?.booking.photos || []).filter((p) => p.kind === "original").length +
+    pending.filter((p) => !savedKeys.has(p.id)).length;
+  const shotQuota = Number(session?.booking.shots) || 0;
+  const counting = Boolean(session?.booking.captureStartedAt) &&
+    session?.booking.status === "checked_in" && !done && !timeUp && shotQuota > 0 && taken < shotQuota;
+  const [shotLeft, setShotLeft] = useState(null);
+  useEffect(() => {
+    if (!counting) return setShotLeft(null);
+    const seconds = Number(session.booking.countdownSeconds) || 10;
+    const end = Date.now() + seconds * 1000;
+    setShotLeft(seconds);
+    const timer = setInterval(() => {
+      const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+      setShotLeft(left);
+      if (!left) clearInterval(timer);
+    }, 200);
+    return () => clearInterval(timer);
+  }, [counting, taken]);
   if (done)
     return (
       <KioskDone
@@ -838,6 +884,15 @@ export function Kiosk() {
   if (!session)
     return (
       <KioskEntry
+        step={step}
+        setStep={(next) => {
+          setError("");
+          transition(() => setStep(next), "fade");
+        }}
+        size={size}
+        setSize={setSize}
+        prints={prints}
+        setPrints={setPrints}
         claim={claim}
         error={error}
         device={device}
@@ -886,7 +941,9 @@ export function Kiosk() {
             {session.booking.roomName} · VÉ {session.booking.code}
           </span>
           <strong>{session.booking.packageName}</strong>
-          <small>Không giới hạn số ảnh</small>
+          <small>{Number(session.booking.shots) > 0
+            ? `${photos.length}/${session.booking.shots} ảnh · ${session.booking.countdownSeconds || 10} giây/ảnh`
+            : "Chụp ảnh theo thời gian gói"}</small>
         </div>
         <div
           className={`session-clock ${remaining < 60 ? "urgent" : ""}`}
@@ -935,6 +992,16 @@ export function Kiosk() {
           )}
           {flash > 0 && (
             <div className="camera-flash" key={flash} aria-hidden="true" />
+          )}
+          {shotLeft !== null && !confirmEnd && (
+            <div className="shot-countdown" role="timer" aria-live="polite">
+              <small>Tấm {Math.min(taken + 1, shotQuota)}/{shotQuota}</small>
+              {shotLeft > 0 ? (
+                <strong key={shotLeft}>{shotLeft}</strong>
+              ) : (
+                <strong className="smile">Cười lên! 📸</strong>
+              )}
+            </div>
           )}
           {confirmEnd && (
             <div

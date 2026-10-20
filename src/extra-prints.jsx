@@ -81,7 +81,11 @@ export function ExtraPrints({ booking, onClose, onSold, canEditPrice = false }) 
   const toast = useToast();
   const v = useValidation();
   const price = Number(settings.extraPrintPrice) || 0;
-  const [form, setForm] = useState({ sheets: "1", paymentMethod: "cash" });
+  // Khách đã chọn thêm bản in trên kiosk: điền sẵn số tờ cần thu.
+  const [form, setForm] = useState({
+    sheets: String(Math.min(20, booking.requestedExtraPrints || 1)),
+    paymentMethod: "cash",
+  });
   const [received, setReceived] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");

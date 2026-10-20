@@ -171,7 +171,7 @@ export function ResourceEditor({
                   </li>
                   <li>
                     <InfinityIcon size={17} aria-hidden="true" />
-                    Không giới hạn ảnh
+                    {Number(edit.shots) || 0} ảnh · {Number(edit.countdownSeconds) || 10} giây/ảnh
                   </li>
                 </ul>
               </aside>

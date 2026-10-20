@@ -57,6 +57,7 @@ export function AlbumStudio({
     packId: "",
     frameIndex: 0,
     layouts: {}, // { [frameId]: [{ photo | null, zoom, x, y, rotate }] } — một ảnh dùng được cho nhiều ô
+    decorations: {},
     autoFill: false,
   });
   const patch = (changes) => setState((s) => ({ ...s, ...changes }));
@@ -416,6 +417,7 @@ export function AlbumStudio({
           engine={engine}
           pack={pack}
           layouts={state.layouts}
+          decorations={state.decorations || {}}
           index={Math.min(state.frameIndex, pack.frames.length - 1)}
           photos={carousel}
           adjustOf={adjustOf}
@@ -425,6 +427,8 @@ export function AlbumStudio({
           onLayouts={(layouts) =>
             setState((s) => ({ ...s, layouts: { ...s.layouts, ...layouts } }))
           }
+          onDecorations={(frameId, items) => setState((s) => ({ ...s,
+            decorations: { ...s.decorations, [frameId]: items } }))}
           onReshuffle={reshuffle}
           onBack={() => go(1)}
           onNext={() => go(3)}
@@ -443,6 +447,7 @@ export function AlbumStudio({
             frameId: f._id,
             name: f.name,
             slots: state.layouts[f._id],
+            decorations: (state.decorations || {})[f._id] || [],
           }))}
           adjustOf={adjustOf}
           themeName={pack.name}

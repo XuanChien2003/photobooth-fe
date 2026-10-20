@@ -18,8 +18,9 @@ export const COLOR_FILTERS = {
   soft: "Dịu",
   warm: "Ấm",
   film: "Film",
-  mono: "Đen trắng",
+  mono: "Trắng đen (B&W)",
   vintage: "Cổ điển",
+  retro: "Retro",
 };
 // Dùng cho ảnh xem trước (CSS). Ảnh xuất ra tính bằng pixel (FILTER_STEPS) vì
 // Safari trên iPhone đời cũ bỏ qua ctx.filter của canvas.
@@ -29,6 +30,7 @@ export const FILTER_CSS = {
   film: "contrast(1.12) saturate(.8) sepia(.12)",
   mono: "grayscale(1)",
   vintage: "sepia(.4) contrast(.9)",
+  retro: "contrast(1.15) saturate(1.35) sepia(.18) brightness(1.03)",
 };
 const FILTER_STEPS = {
   soft: [
@@ -49,6 +51,12 @@ const FILTER_STEPS = {
   vintage: [
     ["sepia", 0.4],
     ["contrast", 0.9],
+  ],
+  retro: [
+    ["contrast", 1.15],
+    ["saturate", 1.35],
+    ["sepia", 0.18],
+    ["brightness", 1.03],
   ],
 };
 export const ADJUST_LABELS = {

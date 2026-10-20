@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { after, beforeEach, test } from "node:test";
 import { createRequire } from "node:module";
 import { savePhoto, resetDirectUploads } from "../src/kiosk/direct-upload.js";
-import { cleanJpegMetadata } from "../../Photo_BE/src/services/jpeg-metadata.js";
+import { cleanJpegMetadata } from "../../photobooth-be/src/services/jpeg-metadata.js";
 
-const sharp = createRequire(new URL("../../Photo_BE/package.json", import.meta.url))("sharp");
+const sharp = createRequire(new URL("../../photobooth-be/package.json", import.meta.url))("sharp");
 const originalFetch = globalThis.fetch;
 after(() => { globalThis.fetch = originalFetch; });
 beforeEach(() => resetDirectUploads());
