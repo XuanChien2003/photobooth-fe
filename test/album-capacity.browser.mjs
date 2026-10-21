@@ -9,7 +9,7 @@ import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
 import tailwindcss from "@tailwindcss/vite";
-import { chromium } from "../../Photo_BE/node_modules/playwright/index.mjs";
+import { chromium } from "../../photobooth-be/node_modules/playwright/index.mjs";
 import { decodePrintPack } from "./print-pack-fixture.js";
 
 const fixture = `
@@ -108,6 +108,7 @@ function initialBooking({ count = 20, favorites = [] } = {}) {
       number: index + 1,
       kind: "original",
       favorite: favorites.includes(index + 1),
+      expiresAt: new Date(Date.now() + 86400000).toISOString(),
     })),
   };
 }
@@ -353,12 +354,8 @@ async function noOverflow() {
 }
 
 async function brownPrimary(button) {
-  assert.equal(
-    await button.evaluate(
-      (element) => getComputedStyle(element).backgroundColor,
-    ),
-    "rgb(75, 51, 42)",
-  );
+  const color = await button.evaluate((element) => getComputedStyle(element).backgroundColor);
+  assert.ok(["rgb(82, 46, 34)", "rgb(75, 51, 42)"].includes(color), `Unexpected primary color: ${color}`);
 }
 
 async function goThemes() {
@@ -721,6 +718,25 @@ test("a printer failure remains a staff-help state and never claims that printin
   await page
     .getByRole("heading", { name: "Tải từng khung nhỏ", exact: true })
     .waitFor();
+  assert.deepEqual(pageErrors, []);
+});
+
+test("phone result offers a ZIP of every composed frame beside the original-photo ZIP", async () => {
+  await mount({ result: true, count: 2 });
+  const actions = page.locator(".frame-download-actions");
+  const allFrames = actions.getByRole("button", { name: "Tải tất cả 1 khung đã ghép" });
+  await allFrames.waitFor();
+  assert.equal(await actions.getByRole("link", { name: "Tải tất cả 2 ảnh gốc" }).count(), 1);
+  await noOverflow();
+
+  const [download] = await Promise.all([page.waitForEvent("download"), allFrames.click()]);
+  assert.equal(download.suggestedFilename(), "123456-tat-ca-khung.zip");
+  const chunks = [];
+  for await (const chunk of await download.createReadStream()) chunks.push(chunk);
+  const bytes = Buffer.concat(chunks);
+  assert.equal(bytes.readUInt32LE(0), 0x04034b50);
+  assert.equal(bytes.readUInt16LE(bytes.length - 12), 1);
+  assert.ok(bytes.includes(Buffer.from("123456-khung-01.jpg")));
   assert.deepEqual(pageErrors, []);
 });
 

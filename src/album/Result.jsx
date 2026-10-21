@@ -12,7 +12,8 @@ import {
   loadFrameImage,
   packPrintSheets,
 } from "../frame-utils";
-import { pad, prepareImage, saveImage } from "./utils";
+import { pad, prepareImage, saveBlob, saveImage } from "./utils";
+import { zipBlobs } from "./zip-blobs";
 import { ActionBar } from "./shared";
 import { PrintConfirmation } from "./PrintConfirmation";
 import { usePrintRequest } from "./use-print-request";
@@ -149,6 +150,28 @@ export function Result({
       if (result !== "cancelled") toast.success(`Đã lưu “${output.name}”.`);
     } catch (e) {
       toast.error(`Không lưu được ảnh: ${e.message}`);
+    } finally {
+      downloadPending.current = false;
+      setDownloading(null);
+    }
+  }
+  async function downloadAllFrames() {
+    if (downloadPending.current) return;
+    downloadPending.current = true;
+    setDownloading("all");
+    try {
+      const files = [];
+      for (const [index, output] of outputs.entries()) {
+        files.push({
+          name: `${booking.code}-khung-${pad(index + 1)}.jpg`,
+          blob: await prepareImage(output.canvas),
+        });
+      }
+      const archive = await zipBlobs(files);
+      const result = await saveBlob(archive, `${booking.code}-tat-ca-khung.zip`);
+      if (result !== "cancelled") toast.success(`Đã lưu ${files.length} khung trong file ZIP.`);
+    } catch (e) {
+      toast.error(`Không tải được tất cả khung: ${e.message}`);
     } finally {
       downloadPending.current = false;
       setDownloading(null);
@@ -298,40 +321,51 @@ export function Result({
           );
         })}
       </div>
-      {outputs.length > 0 && (
+      {(outputs.length > 0 || originalCount > 0) && (
         <section className="frame-list">
-          <h3>Tải từng khung nhỏ</h3>
-          <p>({outputs.length} khung – chạm Tải → chọn Lưu ảnh)</p>
-          {outputs.map((o, i) => (
-            <div className="frame-row" key={i}>
-              <img src={o.url} alt="" />
-              <span>{o.name}</span>
+          {outputs.length > 0 && (
+            <>
+              <h3>Tải từng khung nhỏ</h3>
+              <p>({outputs.length} khung – chạm Tải → chọn Lưu ảnh)</p>
+              {outputs.map((o, i) => (
+                <div className="frame-row" key={i}>
+                  <img src={o.url} alt="" />
+                  <span>{o.name}</span>
+                  <Button
+                    className="outline small"
+                    disabled={downloading !== null}
+                    aria-busy={downloading === i}
+                    onClick={() => download(o, i)}
+                  >
+                    <PiDownloadSimpleBold />{" "}
+                    {downloading === i ? "Đang chuẩn bị…" : "Tải"}
+                  </Button>
+                </div>
+              ))}
+            </>
+          )}
+          <div className="frame-download-actions">
+            {outputs.length > 0 && (
               <Button
-                className="outline small"
+                className="outline"
                 disabled={downloading !== null}
-                aria-busy={downloading === i}
-                onClick={() => download(o, i)}
+                aria-busy={downloading === "all"}
+                onClick={downloadAllFrames}
               >
                 <PiDownloadSimpleBold />{" "}
-                {downloading === i ? "Đang chuẩn bị…" : "Tải"}
+                {downloading === "all" ? "Đang chuẩn bị ZIP…" : `Tải tất cả ${outputs.length} khung đã ghép`}
               </Button>
-            </div>
-          ))}
-        </section>
-      )}
-      {originalCount > 0 && (
-        <section className="original-download">
-          <div>
-            <h3>Tải tất cả ảnh đã chụp</h3>
-            <p>{originalCount} ảnh gốc, đầy đủ chất lượng · tải chung trong một file ZIP.</p>
+            )}
+            {originalCount > 0 && (
+              <a
+                className="button outline"
+                href={getApiUrl(`/api/albums/${token}/download`)}
+                onClick={() => toast.info(`Đang chuẩn bị file ZIP ${originalCount} ảnh gốc, vui lòng đợi…`)}
+              >
+                <PiDownloadSimpleBold /> Tải tất cả {originalCount} ảnh gốc
+              </a>
+            )}
           </div>
-          <a
-            className="button outline"
-            href={getApiUrl(`/api/albums/${token}/download`)}
-            onClick={() => toast.info(`Đang chuẩn bị file ZIP ${originalCount} ảnh gốc, vui lòng đợi…`)}
-          >
-            <PiDownloadSimpleBold /> Tải tất cả ảnh gốc
-          </a>
         </section>
       )}
       {job && (

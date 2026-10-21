@@ -49,7 +49,7 @@ export async function saveImage(canvas, name) {
 }
 
 export async function saveBlob(blob, name) {
-  const file = new File([blob], name, { type: "image/jpeg" });
+  const file = new File([blob], name, { type: blob.type || "image/jpeg" });
   try {
     if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({ files: [file] });

@@ -1,12 +1,19 @@
 # Frontend trên Cloudflare Workers
 
+## Hai địa chỉ đang sử dụng
+
+- `photobooth.ngathanh.workers.dev`: cấu hình `wrangler.jsonc`, API Render `photobooth-be-5ngq.onrender.com`; triển khai bằng `npm run deploy:cloudflare`.
+- `studio.selfbooth.workers.dev`: cấu hình `wrangler.studio.jsonc`, API Render `photo-be-drja.onrender.com`; triển khai bằng `npm run deploy:studio`.
+
+Hai Worker thuộc hai tài khoản Cloudflare khác nhau. Đăng nhập đúng tài khoản trước mỗi lần triển khai; không thay `API_ORIGIN` của trang này bằng backend của trang kia. Phần hướng dẫn bên dưới mô tả cấu hình lịch sử của `studio`.
+
 Frontend chạy bằng Workers Static Assets; backend vẫn là Render, dữ liệu vẫn ở
 MongoDB và bucket R2 riêng tư `nxc-media`. Không cần chuyển hay nén lại ảnh.
 
-## Kết nối Git để tự triển khai
+## Kết nối Git để tự triển khai `studio`
 
 Trong Cloudflare → **Workers & Pages → Create application → Import a repository**,
-chọn GitHub **XuanChien2003/Photo_FE**, nhánh **main**:
+chọn GitHub **XuanChien2003/photobooth-fe**, nhánh **main**. Nếu Worker `studio` còn kết nối repo cũ `Photo_FE`, commit vào repo hiện tại sẽ không tự cập nhật Worker đó; dùng lệnh CLI bên dưới hoặc cập nhật kết nối Git:
 
 | Mục | Giá trị |
 | --- | --- |
@@ -14,7 +21,7 @@ chọn GitHub **XuanChien2003/Photo_FE**, nhánh **main**:
 | Root directory | để trống (repo này đã là frontend) |
 | Build command | `npm run build:cloudflare` |
 | Deploy command | `npx wrangler@4 deploy` |
-| API_ORIGIN | đã có trong `wrangler.jsonc`: `https://photo-be-drja.onrender.com` |
+| API_ORIGIN | đã có trong `wrangler.studio.jsonc`: `https://photo-be-drja.onrender.com` |
 
 Chọn Workers, không dùng cách kéo thư mục `dist` lên Pages: cách đó thiếu proxy API.
 Địa chỉ miễn phí được Cloudflare cấp khi triển khai:
@@ -28,7 +35,7 @@ Hoặc triển khai bằng CLI trong repo này:
 
 ```sh
 npx wrangler@4 login
-npm run deploy:cloudflare
+npm run deploy:studio
 ```
 
 Lần đầu cần đăng nhập và cấp quyền triển khai vào tài khoản Cloudflare của tiệm.

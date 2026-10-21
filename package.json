@@ -8,6 +8,7 @@
     "build": "vite build",
     "build:cloudflare": "node scripts/build-cloudflare.mjs",
     "deploy:cloudflare": "npm run build:cloudflare && npx wrangler@4 deploy",
+    "deploy:studio": "npm run build:cloudflare && npx wrangler@4 deploy --config wrangler.studio.jsonc",
     "preview:cloudflare": "npx wrangler@4 dev",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --test test/*.test.js"
