@@ -72,8 +72,6 @@ export function Kiosk() {
     params.get("device") || localStorage.getItem("harrod-device") || "";
   const [code, setCode] = useState(""),
     [step, setStep] = useState("start"),
-    [size, setSize] = useState("full"),
-    [prints, setPrints] = useState(1),
     [session, setSession] = useState(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -489,7 +487,7 @@ export function Kiosk() {
     try {
       const claimed = await api("/kiosk/claim", {
         method: "POST",
-        body: { code, device, printSize: size, prints },
+        body: { code, device },
       });
       if (claimed.completed) {
         // Khách chụp xong nhưng quên quét QR: hiện lại mã QR nhận ảnh.
@@ -506,12 +504,6 @@ export function Kiosk() {
     } catch (e) {
       setError(e.message);
       toast.error(e.message);
-      // Mã đúng nhưng khác khổ đã mua: quay lại bước chọn khổ, giữ mã để nhập lại nhanh.
-      if (e.status === 409 && e.data?.printSize) {
-        setSize(e.data.printSize);
-        setStep("size");
-        return;
-      }
       // Mã sai: xóa ô mã để khách nhập lại ngay (ô giới hạn 6 số nên mã sai đầy ô sẽ chặn gõ tiếp).
       // Lỗi khác (mạng, mã đang dùng ở phòng khác…) giữ mã để bấm thử lại.
       if (e.status === 400) setCode("");
@@ -889,10 +881,6 @@ export function Kiosk() {
           setError("");
           transition(() => setStep(next), "fade");
         }}
-        size={size}
-        setSize={setSize}
-        prints={prints}
-        setPrints={setPrints}
         claim={claim}
         error={error}
         device={device}

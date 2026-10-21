@@ -135,6 +135,7 @@ test("waiting for HDMI camera permission cannot block starting or receiving ten 
       window.testCameraFolder = await window.showDirectoryPicker();
       window.renderKiosk();
     });
+    await page.getByRole('button', { name: 'Chạm để bắt đầu' }).click();
     await page.getByText('Cài đặt máy chụp (nhân viên)').click();
     await page.getByRole('button',{name:/Chọn thư mục ảnh/}).click();
     await page.getByText(/Đã chọn thư mục ảnh “camera-fixture”/).first().waitFor();
@@ -243,6 +244,7 @@ test("with storage allowing uploads, camera originals go straight to it and the 
       window.testCameraFolder = await window.showDirectoryPicker();
       window.renderKiosk();
     });
+    await page.getByRole('button', { name: 'Chạm để bắt đầu' }).click();
     await page.getByText('Cài đặt máy chụp (nhân viên)').click();
     await page.getByRole('button',{name:/Chọn thư mục ảnh/}).click();
     await page.getByText(/Đã chọn thư mục ảnh “camera-direct”/).first().waitFor();
@@ -307,6 +309,7 @@ test("a kiosk session recovers after failed start requests without a page reload
       Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { value: () => new Promise(() => {}) });
       window.renderKiosk();
     });
+    await page.getByRole('button', { name: 'Chạm để bắt đầu' }).click();
     await page.getByText('Cài đặt máy chụp (nhân viên)').click();
     await page.getByRole('button', { name: /Chọn thư mục ảnh/ }).click();
     await page.getByRole('textbox', { name: 'Mã vé' }).fill('123456');
@@ -358,6 +361,7 @@ test("time-up while offline retries finishing with growing pauses, one notice, t
       Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { value: () => new Promise(() => {}) });
       window.renderKiosk();
     });
+    await page.getByRole('button', { name: 'Chạm để bắt đầu' }).click();
     await page.getByText('Cài đặt máy chụp (nhân viên)').click();
     await page.getByRole('button', { name: /Chọn thư mục ảnh/ }).click();
     await page.getByRole('textbox', { name: 'Mã vé' }).fill('654321');

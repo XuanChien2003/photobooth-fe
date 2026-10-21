@@ -301,6 +301,10 @@ try {
     );
   };
   await kiosk.goto(kioskUrl);
+  await kiosk.getByRole("button", { name: "Chạm để bắt đầu" }).click();
+  await kiosk.getByRole("heading", { name: "Nhập mã chụp" }).waitFor();
+  assert.equal(await kiosk.getByText("Chọn khổ ảnh").count(), 0);
+  assert.equal(await kiosk.getByText("Chọn số ảnh in").count(), 0);
   assert.equal(
     await kiosk.getByRole("button", { name: "Chụp ảnh" }).count(),
     0,
