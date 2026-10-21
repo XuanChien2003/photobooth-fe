@@ -327,6 +327,9 @@
     }
   }
   @media (max-width: 600px) {
+    .admin-shell .catalog-editor-frames .resource-field-printSize {
+      grid-column: 1 / -1;
+    }
     .admin-shell .catalog-toolbar {
       padding: 18px 16px 15px;
       border-radius: 17px;

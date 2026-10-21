@@ -144,6 +144,44 @@
   .frame-row .button {
     min-height: 44px;
   }
+  .original-download {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 28px;
+    padding: 18px 20px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface);
+  }
+  .original-download h3 {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 18px;
+  }
+  .original-download p {
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .original-download .button {
+    flex: 0 0 auto;
+    min-height: 44px;
+  }
+  @media (max-width: 600px) {
+    .original-download {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .original-download .button {
+      justify-content: center;
+      white-space: normal;
+      text-align: center;
+    }
+  }
 
   .print-confirmation {
     display: grid;

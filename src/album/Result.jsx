@@ -5,7 +5,7 @@ import {
   PiPrinterBold,
   PiPrinterDuotone,
 } from "react-icons/pi";
-import { money } from "../api";
+import { getApiUrl, money } from "../api";
 import { Button, useStudio, useToast } from "../studio";
 import {
   frameOutputSize,
@@ -44,6 +44,10 @@ export function Result({
   const [downloading, setDownloading] = useState(null);
   const downloadPending = useRef(false);
   const quota = booking.prints ?? 1;
+  const originalCount = booking.photos?.filter((photo) =>
+    photo.kind === "original" && !photo.deleted &&
+    new Date(photo.expiresAt).getTime() > Date.now()
+  ).length || 0;
   const used = booking.printSheets || 0;
   const remaining = Math.max(0, quota - used);
   const {
@@ -313,6 +317,21 @@ export function Result({
               </Button>
             </div>
           ))}
+        </section>
+      )}
+      {originalCount > 0 && (
+        <section className="original-download">
+          <div>
+            <h3>Tải tất cả ảnh đã chụp</h3>
+            <p>{originalCount} ảnh gốc, đầy đủ chất lượng · tải chung trong một file ZIP.</p>
+          </div>
+          <a
+            className="button outline"
+            href={getApiUrl(`/api/albums/${token}/download`)}
+            onClick={() => toast.info(`Đang chuẩn bị file ZIP ${originalCount} ảnh gốc, vui lòng đợi…`)}
+          >
+            <PiDownloadSimpleBold /> Tải tất cả ảnh gốc
+          </a>
         </section>
       )}
       {job && (
