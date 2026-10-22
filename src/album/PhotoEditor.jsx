@@ -19,6 +19,8 @@ import { Button, useStudio, useToast } from "../studio";
 import {
   ADJUST_LABELS,
   COLOR_FILTERS,
+  CUSTOM_FILTER,
+  customCss,
   DEFAULT_ADJUST,
   FILTER_CSS,
   isNeutral,
@@ -52,6 +54,15 @@ export function PhotoEditor({
   const enabledFilters = settings?.enabledFilters?.length
     ? new Set(["original", ...settings.enabledFilters])
     : null;
+  // Filter có sẵn đang bật, rồi các filter tiệm tự tạo đang hoạt động.
+  const filterChoices = [
+    ...Object.entries(COLOR_FILTERS)
+      .filter(([key]) => !enabledFilters || enabledFilters.has(key))
+      .map(([key, label]) => ({ key, label, css: FILTER_CSS[key] })),
+    ...(settings?.customFilters || [])
+      .filter((f) => f.active !== false)
+      .map((f) => ({ key: `${CUSTOM_FILTER}${f.id}`, label: f.name, css: customCss(f), custom: f })),
+  ];
   const [id, setId] = useState(startId);
   const [drafts, setDrafts] = useState({});
   const [tab, setTab] = useState("smooth");
@@ -384,21 +395,34 @@ export function PhotoEditor({
             </label>
             <h3>Màu ảnh</h3>
             <div className="filter-strip" aria-label="Bộ lọc màu">
-              {Object.entries(COLOR_FILTERS)
-                .filter(([key]) => !enabledFilters || enabledFilters.has(key))
-                .map(([key, label]) => (
+              {filterChoices.map(({ key, label, css, custom }) => (
                 <button
                   key={key}
                   className={
                     (adjust.filter || "original") === key ? "active" : ""
                   }
-                  onClick={() => set({ ...adjust, filter: key })}
+                  onClick={() => {
+                    const { custom: _, ...rest } = adjust;
+                    set(custom
+                      ? {
+                          ...rest,
+                          filter: key,
+                          custom: {
+                            brightness: custom.brightness,
+                            contrast: custom.contrast,
+                            saturate: custom.saturate,
+                            sepia: custom.sepia,
+                            hueRotate: custom.hueRotate,
+                          },
+                        }
+                      : { ...rest, filter: key });
+                  }}
                 >
                   {thumb ? (
                     <img
                       src={thumb}
                       alt=""
-                      style={{ filter: FILTER_CSS[key] }}
+                      style={{ filter: css }}
                     />
                   ) : (
                     <span />

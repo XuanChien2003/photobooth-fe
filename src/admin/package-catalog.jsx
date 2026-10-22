@@ -97,6 +97,9 @@ export function PackageCatalog({
               <Images size={17} aria-hidden="true" />
               {item.shots || 12} ảnh · {item.countdownSeconds || 10} giây/ảnh · {item.printSize === "strip" ? "2 dải nhỏ" : "ảnh lớn 10 × 15"}
             </p>
+            <p className="package-card-branches">
+              {item.branches?.length ? `Cấu hình riêng: ${item.branches.join(", ")}` : "Cấu hình chung · mọi chi nhánh"}
+            </p>
 
             <div className="package-card-actions">
               <button

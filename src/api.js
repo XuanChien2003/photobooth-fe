@@ -19,6 +19,12 @@ export const withAssetUrls = (catalog) => ({
   ...(catalog.stickers && {
     stickers: catalog.stickers.map((s) => ({ ...s, image: assetUrl(s.image) })),
   }),
+  ...(catalog.screens && {
+    screens: catalog.screens.map((s) => ({
+      ...s,
+      images: s.images.map((image) => ({ ...image, url: assetUrl(image.url) })),
+    })),
+  }),
   ...(catalog.settings && {
     settings: {
       ...catalog.settings,

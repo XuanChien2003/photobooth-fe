@@ -6,8 +6,14 @@ import {
   Image,
   Ticket,
   Printer,
-  Sparkles,
+  Settings2,
   Scale,
+  ChartColumn,
+  Monitor,
+  Layers,
+  Sticker,
+  SlidersHorizontal,
+  ClipboardList,
 } from "lucide-react";
 import {
   custom,
@@ -77,28 +83,73 @@ export const RESOURCE_RULES = {
   },
 };
 
-export const nav = [
-  ["overview", "Tổng quan", LayoutDashboard],
-  ["bookings", "Đơn hàng", Ticket],
-  ["print", "Hàng chờ in", Printer],
+// Mục lục quản trị theo thứ tự trang Snapbox CMS (bỏ Khuyến mãi, Cấu hình giao diện, Tiếp thị).
+// [mã, tên, icon, mục con?]. Mục có mục con chỉ là nhóm, bấm vào mở trang con đầu tiên.
+export const NAV_TREE = [
+  ["overview-group", "Tổng quan", LayoutDashboard, [
+    ["overview", "Tổng hợp", LayoutDashboard],
+    ["statistics", "Thống kê doanh thu", ChartColumn],
+  ]],
+  ["orders-group", "Đơn hàng", Ticket, [
+    ["bookings", "Danh sách đơn", ClipboardList],
+    ["print", "Hàng chờ in", Printer],
+  ]],
   ["rooms", "Quản lý máy", DoorOpen],
-  ["packages", "Bảng giá", Package],
-  ["frames", "Khung ảnh", Image],
-  ["kiosk", "Nội dung máy chụp", Sparkles],
-  ["users", "Nhân viên", Users],
+  ["setup-group", "Thiết lập", Settings2, [
+    ["screens", "Màn hình chờ", Monitor],
+    ["themes", "Chủ đề", Layers],
+    ["frames", "Khung ảnh", Image],
+    ["packages", "Bảng giá", Package],
+    ["stickers", "Nhãn dán", Sticker],
+    ["filters", "Quản lý filter", SlidersHorizontal],
+  ]],
+  ["users", "Tài khoản", Users],
   ["reconciliation", "Đối soát", Scale],
+];
+// Danh sách phẳng các trang (mục lá) để tìm tên / icon theo mã.
+export const nav = NAV_TREE.flatMap(([key, label, Icon, children]) =>
+  children ? children : [[key, label, Icon]],
+);
+
+// Quyền cấp cho nhân viên (Tài khoản → Phân quyền), nhóm theo mục lục. Máy chủ kiểm tra lại.
+export const PERMISSION_GROUPS = [
+  ["1. Tổng quan", [["revenue:view", "Xem doanh thu, thống kê doanh thu & đối soát tháng"]]],
+  ["2. Đơn hàng", [
+    ["orders:export", "Xuất danh sách đơn hàng ra file Excel/CSV"],
+    ["orders:cancel", "Hủy đơn đã thu tiền"],
+    ["print:operate", "In lại ảnh, bán thêm tờ in, đánh dấu đã in"],
+  ]],
+  ["3. Quản lý máy", [["rooms:setup", "Cài máy chụp cho phòng (liên kết / QR)"]]],
+  ["6. Đối soát", [["shift:operate", "Mở ca, đóng ca và đếm tiền"]]],
+];
+export const DEFAULT_STAFF_PERMISSIONS = ["orders:export", "print:operate", "shift:operate", "rooms:setup"];
+// Quản trị viên có mọi quyền; nhân viên theo quyền máy chủ trả về khi đăng nhập.
+export const can = (user, permission) =>
+  user?.role === "admin" || Boolean(user?.permissions?.includes(permission));
+// Trang nhân viên được mở (quản trị viên mở mọi trang).
+export const STAFF_PAGES = (user) => [
+  "overview",
+  ...(can(user, "revenue:view") ? ["statistics"] : []),
+  "bookings",
+  "print",
+  "rooms",
+  "reconciliation",
 ];
 
 export const NAV_DESCRIPTIONS = {
-  overview: "Theo dõi hoạt động hôm nay và tạo mã chụp nhanh cho khách.",
+  overview: "Doanh thu, số đơn so với kỳ trước, xếp hạng chủ đề, gói và máy; tạo mã chụp nhanh cho khách.",
+  statistics: "Biểu đồ doanh thu và số đơn theo ngày hoặc tháng, so sánh với kỳ trước.",
   bookings: "Tìm đơn, gửi link ảnh, tải xuống hoặc in lại chỉ trong một màn hình.",
   print: "Kiểm tra file đang chờ và trạng thái in tại từng chi nhánh.",
-  rooms: "Quản lý thông tin máy, chi nhánh và liên kết cài đặt kiosk.",
-  packages: "Thiết lập giá, thời gian chụp, số ảnh và số tờ in đi kèm.",
+  rooms: "Thông tin máy, chế độ lật ảnh, trạng thái kết nối và liên kết cài máy chụp.",
+  screens: "Ảnh và lời mời trên màn hình chờ: cấu hình chung cho mọi máy hoặc riêng từng máy.",
+  themes: "Nhóm khung theo chủ đề, bật / tắt chủ đề và sắp xếp thứ tự khách thấy.",
   frames: "Thêm khung, chia theo chủ đề và sắp xếp thứ tự khách sẽ thấy.",
-  kiosk: "Cấu hình màn hình chờ, bộ lọc ảnh và thư viện nhãn dán.",
-  users: "Quản lý tài khoản và phạm vi làm việc của nhân viên.",
-  reconciliation: "Mở, đóng và đối chiếu tiền theo từng ca làm việc.",
+  packages: "Giá, thời gian chụp, số tờ in của từng gói, chi nhánh áp dụng và giá in thêm.",
+  stickers: "Thư viện nhãn dán khách dùng để trang trí ảnh.",
+  filters: "Bật bộ lọc có sẵn và tự tạo filter màu riêng của tiệm.",
+  users: "Tài khoản nhân viên, chi nhánh phụ trách và phân quyền truy cập.",
+  reconciliation: "Mở, đóng ca và đối soát tiền theo ca, theo tháng và từng chi nhánh.",
 };
 
 export const definitions = {
@@ -109,6 +160,7 @@ export const definitions = {
     ["model", "Dòng máy"],
     ["importedAt", "Ngày nhập máy", "date"],
     ["expiresAt", "Ngày hết hạn", "date"],
+    ["flip", "Chế độ lật ảnh", "flip"],
     ["description", "Mô tả", "textarea"],
   ],
   packages: [
@@ -120,6 +172,7 @@ export const definitions = {
     ["countdownSeconds", "Đếm ngược trước mỗi ảnh (giây)", "number"],
     ["printSize", "Kiểu in", "printSize"],
     ["prints", "Số tờ in 10 × 15 kèm gói", "number"],
+    ["branches", "Chi nhánh áp dụng", "branches"],
   ],
   frames: [
     ["name", "Tên khung"],
@@ -134,5 +187,6 @@ export const definitions = {
     ["password", "Mật khẩu (để trống khi không đổi)", "password"],
     ["role", "Vai trò", "role"],
     ["branch", "Chi nhánh được phân công (bắt buộc với nhân viên)"],
+    ["permissions", "Phân quyền truy cập chức năng", "permissions"],
   ],
 };

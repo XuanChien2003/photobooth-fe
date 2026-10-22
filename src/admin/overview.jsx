@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, Plus, Printer, Wallet } from "lucide-react";
-import { money, labels, localDate } from "../api";
+import { CalendarDays, Plus, Printer } from "lucide-react";
+import { labels, localDate } from "../api";
 import { isConnectivityError } from "../network.js";
 import { useLiveData } from "../use-live-data";
 import { Button, ErrorBox, useToast } from "../studio";
 import { CounterTicket } from "../counter-ticket";
-import { RevenueByDay } from "../revenue";
+import { SummaryPanel } from "./summary";
 import { ShiftPanel } from "./shift-panel";
 
 const clockOf = (ms) => {
@@ -13,7 +13,7 @@ const clockOf = (ms) => {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
 
-export function Overview({ notify, canSeeMoney, assignedBranch }) {
+export function Overview({ notify, canSeeMoney, canOperateShift = true, assignedBranch }) {
   const toast = useToast();
   const [stats, setStats] = useState(null);
   const [today, setToday] = useState([]);
@@ -74,7 +74,7 @@ export function Overview({ notify, canSeeMoney, assignedBranch }) {
           }).format(new Date())}
         </time>
       </div>
-      <ShiftPanel assignedBranch={assignedBranch} notify={notify} refreshKey={sales} />
+      <ShiftPanel assignedBranch={assignedBranch} notify={notify} refreshKey={sales} canOperate={canOperateShift} />
       <section className="panel room-board">
         <div className="room-board-head">
           <div>
@@ -130,12 +130,6 @@ export function Overview({ notify, canSeeMoney, assignedBranch }) {
         <>
           <div className="stats-grid">
             {[
-              canSeeMoney && [
-                "Doanh thu (trong ngày)",
-                money(stats.todayRevenue),
-                Wallet,
-                `Tính đến ${new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date())} hôm nay`,
-              ],
               ["Mã chụp hôm nay", stats.today, CalendarDays],
               ["Lệnh in đang chờ", stats.printQueue ?? 0, Printer],
             ]
@@ -150,7 +144,12 @@ export function Overview({ notify, canSeeMoney, assignedBranch }) {
                 </div>
               ))}
           </div>
-          {canSeeMoney && <RevenueByDay onError={onError} />}
+          <SummaryPanel
+            refreshKey={sales}
+            canSeeMoney={canSeeMoney}
+            assignedBranch={assignedBranch}
+            onError={onError}
+          />
           <div className="dashboard-grid">
             <section className="panel">
               <h3>Mã vừa được cấp</h3>

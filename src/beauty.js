@@ -10,7 +10,7 @@ import modelUrl from "./assets/models/face_landmarker.task?url";
 import { detectFaceLandmarks } from "./face-detection.js";
 export {
   DEFAULT_ADJUST, COLOR_FILTERS, FILTER_CSS, ADJUST_LABELS,
-  isNeutral, applyBeauty,
+  CUSTOM_FILTER, customCss, filterCss, isNeutral, applyBeauty,
 } from "./beauty-render.js";
 
 let landmarker;

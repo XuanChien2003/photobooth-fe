@@ -19,7 +19,7 @@ const RULES = {
 };
 
 // Giá mỗi tờ in thêm: chỉ quản trị viên đặt/sửa, ngay tại đây (không còn trang Cài đặt studio).
-function PriceEditor({ price, onSaved }) {
+export function PriceEditor({ price, onSaved }) {
   const toast = useToast();
   const [editing, setEditing] = useState(!price);
   const [value, setValue] = useState(price ? String(price) : "");

@@ -59,6 +59,36 @@ const FILTER_STEPS = {
     ["brightness", 1.03],
   ],
 };
+// Filter tiệm tự tạo (Thiết lập → Quản lý filter): chỉ số tính bằng % như CSS filter
+// (100 = giữ nguyên), xoay màu tính bằng độ. Ảnh lưu kèm chỉ số trong adjust.custom nên ảnh xem
+// trước, ảnh tải về và ảnh in luôn giống nhau, kể cả khi tiệm sửa filter sau đó.
+export const CUSTOM_FILTER = "custom:";
+export const NEUTRAL_CUSTOM = { brightness: 100, contrast: 100, saturate: 100, sepia: 0, hueRotate: 0 };
+export function customSteps(f) {
+  const v = { ...NEUTRAL_CUSTOM, ...f };
+  return [
+    v.brightness !== 100 && ["brightness", v.brightness / 100],
+    v.contrast !== 100 && ["contrast", v.contrast / 100],
+    v.saturate !== 100 && ["saturate", v.saturate / 100],
+    v.sepia && ["sepia", v.sepia / 100],
+    v.hueRotate && ["hueRotate", v.hueRotate],
+  ].filter(Boolean);
+}
+export const customCss = (f) =>
+  customSteps(f)
+    .map(([op, value]) =>
+      op === "hueRotate" ? `hue-rotate(${value}deg)` : `${op}(${value})`)
+    .join(" ") || "none";
+// CSS cho ảnh xem trước của một adjust (filter có sẵn hoặc filter tự tạo).
+export const filterCss = (a) =>
+  a?.custom && String(a.filter).startsWith(CUSTOM_FILTER)
+    ? customCss(a.custom)
+    : FILTER_CSS[a?.filter];
+const filterSteps = (a) =>
+  a?.custom && String(a.filter).startsWith(CUSTOM_FILTER)
+    ? customSteps(a.custom)
+    : FILTER_STEPS[a?.filter];
+
 export const ADJUST_LABELS = {
   smooth: "Mịn da",
   whiten: "Trắng da",
@@ -91,6 +121,24 @@ function colorFilter(data, steps) {
           (0.213 - 0.213 * v) * r +
           (0.715 - 0.715 * v) * g +
           (0.072 + 0.928 * v) * b;
+        ((r = nr), (g = ng), (b = nb));
+      } else if (op === "hueRotate") {
+        // Ma trận hue-rotate của CSS Filter Effects.
+        const rad = (v * Math.PI) / 180,
+          c = Math.cos(rad),
+          s = Math.sin(rad);
+        const nr =
+          (0.213 + c * 0.787 - s * 0.213) * r +
+          (0.715 - c * 0.715 - s * 0.715) * g +
+          (0.072 - c * 0.072 + s * 0.928) * b;
+        const ng =
+          (0.213 - c * 0.213 + s * 0.143) * r +
+          (0.715 + c * 0.285 + s * 0.14) * g +
+          (0.072 - c * 0.072 - s * 0.283) * b;
+        const nb =
+          (0.213 - c * 0.213 - s * 0.787) * r +
+          (0.715 - c * 0.715 + s * 0.715) * g +
+          (0.072 + c * 0.928 + s * 0.072) * b;
         ((r = nr), (g = ng), (b = nb));
       } else if (op === "sepia") {
         const k = 1 - v;
@@ -361,12 +409,13 @@ export function applyBeauty(source, faces, adjust) {
       ctx.restore();
     }
   }
-  if (FILTER_STEPS[a.filter]) {
+  const steps = filterSteps(a);
+  if (steps?.length) {
     // Colour filters are per-pixel operations. Bounded row buffers preserve
     // their exact formula while avoiding another 104 MB RGBA readback.
     for (let y = 0; y < h; y += 256) {
       const pixels = ctx.getImageData(0, y, w, Math.min(256, h - y));
-      colorFilter(pixels.data, FILTER_STEPS[a.filter]);
+      colorFilter(pixels.data, steps);
       ctx.putImageData(pixels, 0, y);
     }
   }

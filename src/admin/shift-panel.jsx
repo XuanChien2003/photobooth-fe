@@ -12,7 +12,7 @@ const timeOf = (value) =>
 const digits = (value) => value.replace(/\D/g, "").slice(0, 10);
 
 // Ca trực của lễ tân: mở ca với tiền đầu ca, theo dõi tiền đã thu, đóng ca và đối chiếu tiền mặt.
-export function ShiftPanel({ assignedBranch, notify, refreshKey = 0 }) {
+export function ShiftPanel({ assignedBranch, notify, refreshKey = 0, canOperate = true }) {
   const { rooms = [] } = useStudio();
   const toast = useToast();
   const branches = [...new Set(rooms.map((r) => r.branch).filter(Boolean))];
@@ -93,7 +93,7 @@ export function ShiftPanel({ assignedBranch, notify, refreshKey = 0 }) {
             <div><span>Chuyển khoản</span><strong>{money(current.summary?.transfer)}</strong></div>
             <div><span>Tiền mặt trong két nên có</span><strong>{money(expectedCash)}</strong></div>
           </div>
-          <div className="shift-form">
+          {canOperate && <div className="shift-form">
             <label>
               Tiền mặt đếm được cuối ca
               <input inputMode="numeric" placeholder="VD: 1500000" value={closing}
@@ -113,8 +113,10 @@ export function ShiftPanel({ assignedBranch, notify, refreshKey = 0 }) {
             <Button disabled={busy} onClick={close}>
               <LogOut size={16} /> {busy ? "Đang đóng ca…" : "Đóng ca"}
             </Button>
-          </div>
+          </div>}
         </>
+      ) : !canOperate ? (
+        <p className="shift-status">Chưa mở ca{branch ? ` tại ${branch}` : ""}. Tài khoản chưa được cấp quyền mở / đóng ca.</p>
       ) : (
         <div className="shift-form">
           <p className="shift-status">Chưa mở ca{branch ? ` tại ${branch}` : ""}. Mở ca trước khi thu tiền khách.</p>

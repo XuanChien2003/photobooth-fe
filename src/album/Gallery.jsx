@@ -16,7 +16,7 @@ import {
 import { getApiUrl } from "../api";
 import { directMediaUrl, storageLink } from "../media-delivery.js";
 import { Button, useToast } from "../studio";
-import { FILTER_CSS } from "../beauty";
+import { filterCss } from "../beauty";
 import { BEAUTY_KEYS, pad, photoUrl } from "./utils";
 
 // ─── Bước 1: Thư viện ảnh ────────────────────────────────────────────────
@@ -151,7 +151,7 @@ export function Gallery({
                   loading={i < 4 ? "eager" : "lazy"}
                   fetchPriority={i < 2 ? "high" : "auto"}
                   decoding="async"
-                  style={{ filter: FILTER_CSS[adjust.filter] }}
+                  style={{ filter: filterCss(adjust) }}
                   onLoad={(e) => e.currentTarget.classList.add("is-loaded")}
                 />
               </button>

@@ -24,6 +24,7 @@ export function KioskSettings({
   setCameraId,
   mirror,
   setMirror,
+  mirrorLocked = false,
   toast,
 }) {
   return (
@@ -147,6 +148,7 @@ export function KioskSettings({
           <input
             type="checkbox"
             checked={mirror}
+            disabled={mirrorLocked}
             onChange={(e) => {
               setMirror(e.target.checked);
               localStorage.setItem(MIRROR_KEY, e.target.checked ? "1" : "0");
@@ -158,6 +160,7 @@ export function KioskSettings({
             }}
           />
           Lưu ảnh lật như gương (giống hình trên màn hình)
+          {mirrorLocked && " — quản trị đã đặt ở mục Quản lý máy"}
         </label>
         <Button
           type="button"

@@ -1,9 +1,78 @@
-import { Clock3, Image, Infinity as InfinityIcon, Package, Printer, X } from "lucide-react";
+import { useState } from "react";
+import { Clock3, Image, Infinity as InfinityIcon, Package, Printer, Search, X } from "lucide-react";
 import { money } from "../api";
-import { Button, ErrorBox } from "../studio";
+import { Button, ErrorBox, useStudio } from "../studio";
 import { FieldError } from "../validate";
 import { FrameImageField } from "../frame-admin";
-import { definitions } from "./config";
+import { definitions, DEFAULT_STAFF_PERMISSIONS, PERMISSION_GROUPS } from "./config";
+
+const ALL_PERMISSIONS = PERMISSION_GROUPS.flatMap(([, items]) => items.map(([key]) => key));
+const plain = (value) =>
+  String(value || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/đ/gi, "d").toLowerCase();
+
+// Phân quyền truy cập chức năng của nhân viên (như trang Tài khoản của Snapbox).
+function PermissionsField({ value, onChange }) {
+  const [query, setQuery] = useState("");
+  const selected = value ?? DEFAULT_STAFF_PERMISSIONS;
+  const toggle = (key) =>
+    onChange(selected.includes(key) ? selected.filter((k) => k !== key) : [...selected, key]);
+  const groups = PERMISSION_GROUPS.map(([group, items]) => [
+    group,
+    items.filter(([, label]) => plain(label).includes(plain(query.trim()))),
+  ]).filter(([, items]) => items.length);
+  return (
+    <div className="permissions-field">
+      <div className="permissions-tools">
+        <div className="catalog-search">
+          <Search size={16} aria-hidden="true" />
+          <input type="search" aria-label="Tìm kiếm quyền" placeholder="Tìm kiếm quyền…" value={query}
+            onChange={(e) => setQuery(e.target.value)} />
+        </div>
+        <span className="muted">Đã chọn {selected.length}/{ALL_PERMISSIONS.length}</span>
+        <button type="button" className="link-button" onClick={() => onChange(ALL_PERMISSIONS)}>Chọn tất cả</button>
+        <button type="button" className="link-button" onClick={() => onChange([])}>Bỏ chọn tất cả</button>
+      </div>
+      {groups.map(([group, items]) => (
+        <fieldset key={group} className="permission-group">
+          <legend>{group}</legend>
+          {items.map(([key, label]) => (
+            <label className="checkbox" key={key}>
+              <input type="checkbox" checked={selected.includes(key)} onChange={() => toggle(key)} />
+              {label}
+            </label>
+          ))}
+        </fieldset>
+      ))}
+      {!groups.length && <p className="muted">Không tìm thấy quyền phù hợp.</p>}
+      <small className="muted">Nhân viên luôn xem được Tổng hợp (không kèm tiền nếu chưa có quyền doanh thu), đơn hàng, hàng chờ in và máy ở chi nhánh được phân công.</small>
+    </div>
+  );
+}
+
+// Chi nhánh áp dụng bảng giá: để trống = cấu hình chung cho mọi chi nhánh.
+function BranchesField({ value = [], onChange }) {
+  const { rooms = [] } = useStudio();
+  const branches = [...new Set([...rooms.map((r) => r.branch), ...value].filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "vi"));
+  return (
+    <div className="check-list">
+      <label className="checkbox">
+        <input type="checkbox" checked={!value.length} onChange={() => onChange([])} />
+        Tất cả chi nhánh (cấu hình chung)
+      </label>
+      {branches.map((name) => (
+        <label className="checkbox" key={name}>
+          <input
+            type="checkbox"
+            checked={value.includes(name)}
+            onChange={() => onChange(value.includes(name) ? value.filter((b) => b !== name) : [...value, name])}
+          />
+          {name}
+        </label>
+      ))}
+    </div>
+  );
+}
 
 export function ResourceEditor({
   resource,
@@ -14,6 +83,7 @@ export function ResourceEditor({
   onChange,
   onClose,
   onSubmit,
+  themeOptions = [],
 }) {
   const catalog = resource === "packages" || resource === "frames";
   const frames = resource === "frames";
@@ -33,7 +103,8 @@ export function ResourceEditor({
     form.clear(key);
   };
   const field = ([key, label, type = "text"]) => {
-    const Field = type === "frameImage" ? "div" : "label";
+    if (type === "permissions" && edit.role !== "staff") return null;
+    const Field = ["frameImage", "branches", "permissions"].includes(type) ? "div" : "label";
     return (
       <Field
         key={key}
@@ -67,6 +138,19 @@ export function ResourceEditor({
             <option value="full">10 × 15 cm · Nguyên tờ</option>
             <option value="strip">5 × 15 cm · Hai dải / tờ</option>
           </select>
+        ) : type === "flip" ? (
+          <select
+            value={edit[key] || "device"}
+            onChange={(event) => update(key, event.target.value)}
+          >
+            <option value="device">Theo cài đặt trên máy chụp</option>
+            <option value="on">Có lật ảnh (như gương)</option>
+            <option value="off">Không lật ảnh</option>
+          </select>
+        ) : type === "branches" ? (
+          <BranchesField value={edit[key] || []} onChange={(value) => update(key, value)} />
+        ) : type === "permissions" ? (
+          <PermissionsField value={edit[key]} onChange={(value) => update(key, value)} />
         ) : type === "role" ? (
           <select
             value={edit[key]}
@@ -86,6 +170,7 @@ export function ResourceEditor({
           <input
             name={key}
             type={type}
+            list={key === "themeName" && themeOptions.length ? "theme-options" : undefined}
             inputMode={type === "number" ? "numeric" : undefined}
             autoComplete={type === "password" ? "new-password" : undefined}
             placeholder={
@@ -145,6 +230,11 @@ export function ResourceEditor({
           </button>
         </div>
         <ErrorBox error={error} />
+        {themeOptions.length > 0 && (
+          <datalist id="theme-options">
+            {themeOptions.map((name) => <option key={name} value={name} />)}
+          </datalist>
+        )}
         <form onSubmit={onSubmit} noValidate>
           <div className="resource-editor-content">
             <div className="resource-editor-fields">
@@ -168,6 +258,10 @@ export function ResourceEditor({
                 <strong>{money(Number(edit.price) || 0)}</strong>
                 {edit.description && <p>{edit.description}</p>}
                 <ul>
+                  <li>
+                    <Package size={17} aria-hidden="true" />
+                    {edit.branches?.length ? `Chỉ bán tại ${edit.branches.join(", ")}` : "Bán tại mọi chi nhánh"}
+                  </li>
                   <li>
                     <Clock3 size={17} aria-hidden="true" />
                     {Number(edit.duration) || 0} phút chụp

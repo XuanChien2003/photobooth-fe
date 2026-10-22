@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   PiArrowLeftBold as ArrowLeft,
   PiArrowRightBold as ArrowRight,
@@ -21,9 +21,25 @@ export function KioskEntry({
   busy,
   folder,
   folderAccess,
+  roomId,
   children,
 }) {
-  const { settings = {} } = useStudio();
+  const { settings = {}, screens = [] } = useStudio();
+  // Màn hình chờ: cấu hình riêng của máy này, không có thì cấu hình chung (Thiết lập → Màn hình chờ).
+  const screen =
+    screens.find((s) => s.rooms?.includes(roomId)) || screens.find((s) => s.isDefault);
+  const legacy = settings.kiosk || {};
+  const idle = screen
+    ? { title: screen.title, subtitle: screen.subtitle, images: screen.images.map((i) => i.url), interval: screen.interval }
+    : { title: legacy.idleTitle, subtitle: legacy.idleSubtitle, images: legacy.idleImage ? [legacy.idleImage] : [], interval: 6 };
+  const [slide, setSlide] = useState(0);
+  const slides = idle.images.length;
+  useEffect(() => {
+    setSlide(0);
+    if (step !== "start" || slides < 2) return;
+    const timer = setInterval(() => setSlide((i) => (i + 1) % slides), Math.max(2, idle.interval || 6) * 1000);
+    return () => clearInterval(timer);
+  }, [step, slides, idle.interval]);
 
   // If a guest walks away before entering a code, clear it and return to the attract screen.
   useEffect(() => {
@@ -47,24 +63,24 @@ export function KioskEntry({
   }, [step, setCode, setStep]);
 
   if (step === "start") {
-    const idle = settings.kiosk || {};
+    const image = idle.images[slide % Math.max(1, slides)];
     return (
       <section className="kiosk-entry kiosk-attract">
         <button
           type="button"
-          className={`kiosk-tap ${idle.idleImage ? "has-image" : ""}`}
+          className={`kiosk-tap ${image ? "has-image" : ""}`}
           onClick={() => setStep("code")}
           aria-label="Chạm để bắt đầu"
         >
-          {idle.idleImage && (
+          {image && (
             <span className="kiosk-polaroid" aria-hidden="true">
-              <img src={idle.idleImage} alt="" />
+              <img key={image} className="kiosk-slide" src={image} alt="" />
             </span>
           )}
           <span className="kiosk-tap-copy">
             <Brand />
-            <strong>{idle.idleTitle || <>Cười lên, <mark>mình chụp nhé!</mark></>}</strong>
-            <span className="kiosk-hand">{idle.idleSubtitle || "chụp xong in ngay · nhận ảnh trên điện thoại"}</span>
+            <strong>{idle.title || <>Cười lên, <mark>mình chụp nhé!</mark></>}</strong>
+            <span className="kiosk-hand">{idle.subtitle || "chụp xong in ngay · nhận ảnh trên điện thoại"}</span>
             <span className="kiosk-sticker">Chạm để bắt đầu</span>
           </span>
         </button>

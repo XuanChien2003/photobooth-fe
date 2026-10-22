@@ -42,14 +42,18 @@ export function AlbumStudio({
   reloadBooking,
   onMutationChange = () => {},
 }) {
-  const { frames: catalog } = useStudio();
+  const { frames: catalog, settings } = useStudio();
   const toast = useToast();
   const photos = booking.photos.filter((p) => p.kind === "original");
   // The gallery and the editor show the newest photo first (numbers still count up from #01).
   const newestFirst = [...photos].reverse();
   const engine = usePhotoEngine(token, photos);
   const favorites = photos.filter((p) => p.favorite);
-  const packs = useMemo(() => groupFramePacks(catalog || []), [catalog]);
+  const themeOrder = settings?.themes;
+  const packs = useMemo(
+    () => groupFramePacks(catalog || [], (themeOrder || []).map((t) => t.name)),
+    [catalog, themeOrder],
+  );
   const [state, setState] = usePersistedState(`photo-flow-v5-${token}`, {
     step: 0,
     adjusts: {},

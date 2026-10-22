@@ -5,7 +5,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { api, assetUrl, formatDateTime, getApiUrl, labels, localDate, money } from "../api";
 import { isConnectivityError } from "../network.js";
 import { useLiveData } from "../use-live-data";
-import { Button, ErrorBox, useToast } from "../studio";
+import { Button, ErrorBox, useStudio, useToast } from "../studio";
 import { CounterTicket } from "../counter-ticket";
 import { ExtraPrints } from "../extra-prints";
 
@@ -67,8 +67,9 @@ function PrintOrderDialog({ booking, onClose, onExtra, onPrinted }) {
   );
 }
 
-export function BookingsManager({ notify, canSeeMoney, assignedBranch }) {
+export function BookingsManager({ notify, canSeeMoney, canExport = true, canCancel = false, canPrint = true, assignedBranch }) {
   const toast = useToast();
+  const { rooms: catalogRooms = [] } = useStudio();
   const lastError = useRef("");
   const today = localDate();
   const [creating, setCreating] = useState(false);
@@ -98,7 +99,11 @@ export function BookingsManager({ notify, canSeeMoney, assignedBranch }) {
   }, 20000);
   const filtered = useMemo(() => items.filter((booking) =>
     `${booking.name} ${booking.phone} ${booking.code} ${booking._id}`.toLowerCase().includes(query.trim().toLowerCase())), [items, query]);
-  const rooms = useMemo(() => [...new Set(items.map((booking) => booking.roomName).filter(Boolean))].sort(), [items]);
+  // Máy trong danh mục (đúng chi nhánh) và cả máy cũ còn trong đơn đã lọc.
+  const rooms = useMemo(() => [...new Set([
+    ...catalogRooms.filter((r) => !assignedBranch || r.branch === assignedBranch).map((r) => r.name),
+    ...items.map((booking) => booking.roomName),
+  ].filter(Boolean))].sort((a, b) => a.localeCompare(b, "vi")), [items, catalogRooms, assignedBranch]);
   const totals = useMemo(() => ({
     revenue: filtered.reduce((sum, booking) => sum + (booking.total || 0), 0),
     received: filtered.reduce((sum, booking) => sum + (booking.paid ? booking.total || 0 : 0), 0),
@@ -130,9 +135,11 @@ export function BookingsManager({ notify, canSeeMoney, assignedBranch }) {
   function csv() {
     if (!filtered.length) return toast.info("Không có đơn nào để xuất.");
     const rows = [
-      ["Mã đơn", "Khách", "Điện thoại", "Thời gian", "Gói", "Phòng", "Đã gửi in", "Tổng tiền", "Thanh toán", "Trạng thái"],
+      ["Mã đơn", "Khách", "Điện thoại", "Thời gian", "Gói", "Chủ đề", "Máy", "Kích thước", "Đã gửi in", "Tổng tiền", "Thực nhận", "Thanh toán", "Trạng thái"],
       ...filtered.map((booking) => [booking.code, booking.name, booking.phone, formatDateTime(booking.createdAt), booking.packageName,
-        booking.roomName, booking.printSheets || 0, canSeeMoney ? booking.total : "", paymentLabel(booking.paymentMethod), labels[booking.status]]),
+        booking.latestPrint?.frameName || booking.frameName || "", booking.roomName, booking.printSize === "strip" ? "Nhỏ" : "Lớn",
+        booking.printSheets || 0, canSeeMoney ? booking.total : "", canSeeMoney ? (booking.paid ? booking.total : 0) : "",
+        paymentLabel(booking.paymentMethod), labels[booking.status]]),
     ];
     const url = URL.createObjectURL(new Blob(["\ufeff" + rows.map((row) => row.map((cell) => `"${String(cell ?? "").replace(/^[=+@-]/, "'").replaceAll('"', '""')}"`).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8;" }));
     const anchor = document.createElement("a"); anchor.href = url; anchor.download = "don-hang-photobooth.csv"; anchor.click();
@@ -147,8 +154,8 @@ export function BookingsManager({ notify, canSeeMoney, assignedBranch }) {
         <input aria-label="Từ ngày" type="date" value={from} onChange={(event) => setFrom(event.target.value)} /><span>→</span>
         <input aria-label="Đến ngày" type="date" value={to} min={from} onChange={(event) => setTo(event.target.value)} />
       </label>
-      <select aria-label="Lọc máy hoặc phòng" value={room} onChange={(event) => setRoom(event.target.value)}>
-        <option value="">Máy / phòng: Tất cả</option>{rooms.map((name) => <option key={name} value={name}>{name}</option>)}
+      <select aria-label="Lọc máy" value={room} onChange={(event) => setRoom(event.target.value)}>
+        <option value="">Máy: Tất cả</option>{rooms.map((name) => <option key={name} value={name}>{name}</option>)}
       </select>
       <select aria-label="Lọc trạng thái" value={status} onChange={(event) => setStatus(event.target.value)}>
         <option value="">Tất cả trạng thái</option>{Object.entries(labels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -159,7 +166,7 @@ export function BookingsManager({ notify, canSeeMoney, assignedBranch }) {
     </div>
     <div className="order-actions-bar">
       <div className="search-box"><Search size={17} /><input aria-label="Tìm đơn" placeholder="Mã đơn, tên, số điện thoại…" value={query} onChange={(event) => setQuery(event.target.value)} /></div>
-      <Button className="outline small" onClick={csv}><Download size={15} /> Tải CSV</Button>
+      {canExport && <Button className="outline small" onClick={csv}><Download size={15} /> Tải về (Excel)</Button>}
       <Button className="outline small" onClick={() => load()} aria-label="Làm mới"><RefreshCw size={15} /></Button>
       {hasFilters && <Button className="outline small" onClick={resetFilters}><X size={15} /> Xóa bộ lọc</Button>}
       <Button onClick={() => setCreating(true)}><Plus size={15} /> Tạo đơn</Button>
@@ -180,13 +187,14 @@ export function BookingsManager({ notify, canSeeMoney, assignedBranch }) {
             <div className="order-main"><time>{formatDateTime(booking.createdAt)}</time><strong>#{booking.code} · {booking.name || "Khách tại quầy"}</strong><small>{booking.roomName || "Chưa chọn máy"} · {booking.packageName || "Gói chụp"}</small>
               <div className="order-card-actions">{booking.accessToken && <>
                 <button onClick={() => copyAlbum(booking)}>Link ảnh <Copy size={14} /></button>
-                <button onClick={() => setPrinting(booking)}>In ảnh <Printer size={14} /></button>
-                <a href={getApiUrl(`/api/albums/${booking.accessToken}/download`)}>Tải ảnh <Download size={14} /></a>
+                {canPrint && <button onClick={() => setPrinting(booking)}>In ảnh <Printer size={14} /></button>}
+                <a href={getApiUrl(`/api/albums/${booking.accessToken}/download`)}>Tải ảnh (ZIP) <Download size={14} /></a>
+                {job?.image && <a href={assetUrl(job.image)} download={`don-${booking.code}.jpg`} target="_blank" rel="noreferrer">Tải ảnh in <Download size={14} /></a>}
               </>}</div>
             </div>
           </div>
           <dl className="order-details">
-            <div><dt>Chủ đề:</dt><dd>{booking.packageName || "Basic"}</dd></div><div><dt>Frame:</dt><dd>{job?.frameName || "—"}</dd></div>
+            <div><dt>Gói:</dt><dd>{booking.packageName || "—"}</dd></div><div><dt>Chủ đề:</dt><dd>{job?.frameName || booking.frameName || "—"}</dd></div>
             <div><dt>Kích thước:</dt><dd>{booking.printSize === "strip" ? "Nhỏ" : "Lớn"}</dd></div><div><dt>Số lượng:</dt><dd>{booking.printSheets || 0}/{booking.prints ?? 1} tờ</dd></div>
           </dl>
           {canSeeMoney && <dl className="order-pricing"><div><dt>Đơn giá:</dt><dd>{money((booking.total || 0) + (booking.discount || 0))}</dd></div>
@@ -198,7 +206,7 @@ export function BookingsManager({ notify, canSeeMoney, assignedBranch }) {
           <div className="order-more-actions">
             {booking.status === "completed" && !booking.mediaDeleted && <button onClick={() => setAlbumQr(booking)}>QR ảnh</button>}
             {booking.status === "pending" && booking.source === "counter" && <button onClick={() => setCollecting(booking)}>Xác nhận đã thu</button>}
-            {canSeeMoney && booking.status === "confirmed" && <button disabled={busyId === booking._id} onClick={() => update(booking, { status: "cancelled" })}>Hủy đơn</button>}
+            {canCancel && booking.status === "confirmed" && <button disabled={busyId === booking._id} onClick={() => update(booking, { status: "cancelled" })}>Hủy đơn</button>}
           </div>
         </article>;
       })}

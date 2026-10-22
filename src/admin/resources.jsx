@@ -19,10 +19,11 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { api, assetUrl, money, localDate } from "../api";
-import { Button, ErrorBox, useToast } from "../studio";
+import { Button, ErrorBox, useStudio, useToast } from "../studio";
 import { useValidation } from "../validate";
 import { FrameGrid } from "../frame-admin";
-import { RESOURCE_LABELS, RESOURCE_RULES, definitions } from "./config";
+import { RESOURCE_LABELS, RESOURCE_RULES, definitions, DEFAULT_STAFF_PERMISSIONS, PERMISSION_GROUPS, can } from "./config";
+import { PriceEditor } from "../extra-prints";
 import { TableHeading } from "./table-heading";
 import { Guide } from "../guide";
 import { download, macScript, windowsScript } from "./kiosk-autostart";
@@ -43,6 +44,12 @@ const shortDate = (value) => value
       .format(new Date(value))
   : "";
 
+// Lần cuối máy chụp báo còn mở trong 3 phút: coi như đang Online.
+const ONLINE_MS = 3 * 60 * 1000;
+const FLIP_LABELS = { on: "Có lật ảnh", off: "Không lật ảnh", device: "Theo cài đặt trên máy" };
+const PERMISSION_LABELS = Object.fromEntries(PERMISSION_GROUPS.flatMap(([, items]) => items));
+const isOnline = (room) => Boolean(room.lastSeenAt) && Date.now() - new Date(room.lastSeenAt) < ONLINE_MS;
+
 const RESOURCE_ICONS = {
   rooms: DoorOpen,
   packages: Package,
@@ -52,8 +59,10 @@ const RESOURCE_ICONS = {
 
 export function ResourceManager({ resource, notify, me }) {
   const toast = useToast();
+  const { settings = {}, reload: reloadCatalog } = useStudio();
   const form = useValidation();
   const kind = RESOURCE_LABELS[resource] || "mục";
+  const [themeOptions, setThemeOptions] = useState([]);
   const [items, setItems] = useState([]);
   const [edit, setEdit] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -117,6 +126,9 @@ export function ResourceManager({ resource, notify, me }) {
     setStatus("all");
     setTheme("all");
     load();
+    // Gợi ý tên chủ đề (kể cả chủ đề mới tạo ở mục Chủ đề, chưa có khung).
+    if (resource === "frames")
+      api("/admin/themes").then((list) => setThemeOptions(list.map((t) => t.name)), () => {});
   }, [resource]);
   const openEditor = async (item) => {
     if (!canManage) return;
@@ -154,7 +166,13 @@ export function ResourceManager({ resource, notify, me }) {
                 : "#ffffff"
               : type === "date"
                 ? ""
-                : type === "role"
+                : type === "flip"
+                  ? "device"
+                  : type === "branches"
+                    ? []
+                    : type === "permissions"
+                      ? DEFAULT_STAFF_PERMISSIONS
+                      : type === "role"
                   ? "staff"
                   : type === "printSize"
                     ? "full"
@@ -196,6 +214,7 @@ export function ResourceManager({ resource, notify, me }) {
     try {
       const body = { ...edit };
       if (!body.password) delete body.password;
+      if (resource === "users" && body.role !== "staff") delete body.permissions;
       await api(`/admin/${resource}${edit._id ? `/${edit._id}` : ""}`, {
         method: edit._id ? "PUT" : "POST",
         body,
@@ -347,6 +366,16 @@ export function ResourceManager({ resource, notify, me }) {
           filtered={filtered}
         />
       ) : resource === "packages" ? (
+        <>
+        {canManage && (
+          <section className="panel extra-price-panel">
+            <div>
+              <h3>Giá in thêm tờ ảnh</h3>
+              <p className="muted">Khách mua thêm tờ in 10 × 15 cm tại quầy (Đơn hàng → In ảnh → Thêm lượt in).</p>
+            </div>
+            <PriceEditor price={settings.extraPrintPrice || 0} onSaved={() => reloadCatalog?.()} />
+          </section>
+        )}
         <PackageCatalog
           items={visibleItems}
           onEdit={(item) => openEditor({ ...item })}
@@ -354,6 +383,7 @@ export function ResourceManager({ resource, notify, me }) {
           onCreate={newItem}
           filtered={filtered}
         />
+        </>
       ) : (
         <div
           className={`table-wrap ${resource === "rooms" ? "room-table" : resource === "users" ? "staff-table" : ""}`}
@@ -396,11 +426,19 @@ export function ResourceManager({ resource, notify, me }) {
                         {item.email}
                         <small>
                           {item.role === "admin"
-                            ? "Quản trị viên"
-                            : item.role === "staff"
-                              ? "Lễ tân"
-                              : item.role}
+                            ? "Tài khoản chủ cửa hàng · toàn quyền"
+                            : `Nhân viên${item.branch ? ` · ${item.branch}` : ""} · ${
+                                (item.permissions ?? DEFAULT_STAFF_PERMISSIONS).length
+                              } quyền`}
                         </small>
+                        {item.role === "staff" && (
+                          <small className="permission-summary">
+                            {(item.permissions ?? DEFAULT_STAFF_PERMISSIONS)
+                              .map((p) => PERMISSION_LABELS[p])
+                              .filter(Boolean)
+                              .join(" · ") || "Chỉ xem đơn và máy"}
+                          </small>
+                        )}
                       </>
                     ) : resource === "frames" ? (
                       `${item.slots?.length || 0} ô ảnh`
@@ -414,6 +452,7 @@ export function ResourceManager({ resource, notify, me }) {
                             .filter(Boolean)
                             .join(" · ") || "Chưa nhập thông tin máy"}
                         </small>
+                        <small className="room-flip">Chế độ lật ảnh: {FLIP_LABELS[item.flip || "device"]}</small>
                       </>
                     ) : (
                       item.caption || item.description
@@ -425,6 +464,16 @@ export function ResourceManager({ resource, notify, me }) {
                     >
                       {item.active ? "Đang hoạt động" : "Đã tắt"}
                     </span>
+                    {resource === "rooms" && item.active && (
+                      <small className={`machine-online ${isOnline(item) ? "is-online" : "is-offline"}`}>
+                        <i aria-hidden="true" />
+                        {isOnline(item)
+                          ? "Online"
+                          : item.lastSeenAt
+                            ? `Offline · lần cuối ${new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }).format(new Date(item.lastSeenAt))}`
+                            : "Offline · chưa kết nối"}
+                      </small>
+                    )}
                   </td>
                   <td data-label="Thao tác">
                     {resource === "users" &&
@@ -465,7 +514,7 @@ export function ResourceManager({ resource, notify, me }) {
                               <X size={16} />
                             </button>
                           )}
-                        {resource === "rooms" && item.active && (
+                        {resource === "rooms" && item.active && can(me, "rooms:setup") && (
                           <Button
                             className="outline small room-kiosk-button"
                             aria-label={`Cài máy chụp cho ${item.name}`}
@@ -502,6 +551,7 @@ export function ResourceManager({ resource, notify, me }) {
           onChange={setEdit}
           onClose={() => setEdit(null)}
           onSubmit={save}
+          themeOptions={themeOptions}
         />
       )}
       {device && (

@@ -64,6 +64,16 @@ import { KioskSettings } from "./KioskSettings.jsx";
 
 // Các chỗ báo lỗi mạng ở màn chụp: mỗi lần mất kết nối chỉ báo một lần, có mạng lại thì xoá.
 const NET_SLOTS = ["poll", "sync", "start", "finish"];
+const PING_MS = 60_000;
+// Phòng của máy chụp đọc ngay từ liên kết cài máy (phần giữa của mã), trước khi máy chủ trả lời.
+function deviceRoom(token) {
+  try {
+    const part = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(part)).room || "";
+  } catch {
+    return "";
+  }
+}
 
 export function Kiosk() {
   const [params] = useSearchParams(),
@@ -78,6 +88,9 @@ export function Kiosk() {
   const [mirror, setMirror] = useState(
       () => localStorage.getItem(MIRROR_KEY) !== "0",
     ),
+    // Chế độ lật ảnh quản trị đặt cho phòng (Quản lý máy): "device" = theo cài đặt trên máy này.
+    [remoteFlip, setRemoteFlip] = useState("device"),
+    [roomId, setRoomId] = useState(() => deviceRoom(device)),
     [folder, setFolder] = useState(null),
     [folderAccess, setFolderAccess] = useState("none"),
     [cameraId, setCameraId] = useState(
@@ -114,6 +127,33 @@ export function Kiosk() {
   const shown = useRef({});
   const mirrorRef = useRef(mirror);
   mirrorRef.current = mirror;
+  function applyFlip(flip) {
+    setRemoteFlip(flip || "device");
+    if (flip !== "on" && flip !== "off") return;
+    mirrorRef.current = flip === "on";
+    setMirror(flip === "on");
+    localStorage.setItem(MIRROR_KEY, flip === "on" ? "1" : "0");
+  }
+  // Báo máy còn mở mỗi phút (Quản lý máy hiện Online / Offline) và nhận chế độ lật ảnh từ xa.
+  useEffect(() => {
+    if (!device) return;
+    let stopped = false;
+    const ping = () =>
+      api("/kiosk/ping", { method: "POST", body: { device } }).then(
+        ({ room }) => {
+          if (stopped) return;
+          setRoomId(room._id);
+          applyFlip(room.flip);
+        },
+        () => {},
+      );
+    ping();
+    const timer = setInterval(ping, PING_MS);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [device]);
   // Gửi kèm khi báo trạng thái lên máy chủ: quản trị xem được vì sao ảnh máy ảnh không về.
   const scanRef = useRef(null),
     diagRef = useRef({});
@@ -489,6 +529,7 @@ export function Kiosk() {
         method: "POST",
         body: { code, device },
       });
+      applyFlip(claimed.flip);
       if (claimed.completed) {
         // Khách chụp xong nhưng quên quét QR: hiện lại mã QR nhận ảnh.
         transition(
@@ -889,6 +930,7 @@ export function Kiosk() {
         busy={busy}
         folder={folder}
         folderAccess={folderAccess}
+        roomId={roomId}
       >
         <KioskSettings
           folder={folder}
@@ -900,6 +942,7 @@ export function Kiosk() {
           setCameraId={setCameraId}
           mirror={mirror}
           setMirror={setMirror}
+          mirrorLocked={remoteFlip !== "device"}
           toast={toast}
         />
       </KioskEntry>

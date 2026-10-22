@@ -197,7 +197,8 @@ export function composeLayout(canvas, frameImage, slots, images, transforms, dec
 // ─── Bộ chủ đề (nhiều khung cùng themeName) & xuất tờ in DNP 10 × 15 cm ───
 export const SHEET = { w: 1200, h: 1800 }; // 4 × 6 inch @ 300 pixels/inch
 
-export function groupFramePacks(frames) {
+// themeOrder: tên chủ đề theo thứ tự quản trị sắp ở Thiết lập → Chủ đề (chủ đề khác xếp sau).
+export function groupFramePacks(frames, themeOrder = []) {
   const groups = new Map();
   for (const frame of frames) {
     const theme = frame.themeName?.trim();
@@ -206,11 +207,19 @@ export function groupFramePacks(frames) {
       groups.set(key, { id: key, name: theme || frame.name, frames: [] });
     groups.get(key).frames.push(frame);
   }
-  return [...groups.values()].map((g) => ({
-    ...g,
-    frames: g.frames.sort(compareFrameOrder),
-    required: g.frames.reduce((n, f) => n + f.slots.length, 0),
-  }));
+  const rank = (g) => {
+    const index = g.id.startsWith("theme:") ? themeOrder.indexOf(g.name) : -1;
+    return index < 0 ? themeOrder.length : index;
+  };
+  return [...groups.values()]
+    .map((g, index) => ({
+      ...g,
+      index,
+      frames: g.frames.sort(compareFrameOrder),
+      required: g.frames.reduce((n, f) => n + f.slots.length, 0),
+    }))
+    .sort((a, b) => rank(a) - rank(b) || a.index - b.index)
+    .map(({ index, ...g }) => g);
 }
 
 // Kích thước xuất của một khung: giữ đúng tỉ lệ thiết kế, vừa khổ in.
