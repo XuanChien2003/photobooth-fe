@@ -76,7 +76,7 @@ export const RESOURCE_RULES = {
 
 export const nav = [
   ["overview", "Tổng quan", LayoutDashboard],
-  ["bookings", "Mã chụp & khách tại quầy", Ticket],
+  ["bookings", "Đơn hàng", Ticket],
   ["print", "Hàng chờ in", Printer],
   ["rooms", "Phòng & chi nhánh", DoorOpen],
   ["packages", "Gói chụp", Package],

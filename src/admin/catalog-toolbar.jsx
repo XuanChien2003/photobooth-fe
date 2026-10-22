@@ -41,7 +41,7 @@ export function CatalogToolbar({
           ) : (
             <Plus size={17} aria-hidden="true" />
           )}
-          {frames ? "Nhập khung" : "Thêm gói chụp"}
+          {frames ? "Thêm khung ảnh" : "Thêm gói chụp"}
         </Button>
       </div>
       <div className="catalog-controls">

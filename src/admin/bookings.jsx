@@ -1,364 +1,202 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Guide } from "../guide";
-import {
-  CalendarDays,
-  Package,
-  Ticket,
-  Plus,
-  X,
-  Download,
-  Search,
-  Activity,
-  RefreshCw,
-  Wallet,
-  SlidersHorizontal,
-} from "lucide-react";
+import { CalendarDays, Copy, Download, ExternalLink, Image as ImageIcon, Plus, Printer, RefreshCw, Search, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { api, money, labels, formatDate, formatDateTime } from "../api";
+import { api, assetUrl, formatDateTime, getApiUrl, labels, localDate, money } from "../api";
 import { isConnectivityError } from "../network.js";
 import { useLiveData } from "../use-live-data";
 import { Button, ErrorBox, useToast } from "../studio";
 import { CounterTicket } from "../counter-ticket";
 import { ExtraPrints } from "../extra-prints";
-import { TableHeading } from "./table-heading";
+
+const paymentLabel = (method) => method === "cash" ? "Tiền mặt" : method === "transfer" ? "Chuyển khoản" : "—";
+const albumUrl = (booking) => booking.accessToken ? `${window.location.origin}/album/${booking.accessToken}` : "";
+
+function PrintOrderDialog({ booking, onClose, onExtra, onPrinted }) {
+  const toast = useToast();
+  const [copies, setCopies] = useState(1);
+  const [busy, setBusy] = useState(false);
+  const job = booking.latestPrint;
+  async function reprint() {
+    if (!job || busy) return;
+    setBusy(true);
+    try {
+      await api(`/admin/bookings/${booking._id}/reprint`, {
+        method: "POST", body: { jobId: job._id, copies },
+      });
+      toast.success(`Đã gửi ${copies} bản vào hàng chờ in.`);
+      onPrinted();
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <section className="modal order-print-dialog" role="dialog" aria-modal="true"
+        aria-label={`In ảnh đơn ${booking.code}`} onClick={(event) => event.stopPropagation()}>
+        <div className="modal-header">
+          <div><h2>In ảnh · #{booking.code}</h2><p>In lại file đã ghép gần nhất hoặc cộng thêm lượt in cho khách.</p></div>
+          <button className="icon-button" aria-label="Đóng" onClick={onClose}><X /></button>
+        </div>
+        {job ? (
+          <div className="order-print-body">
+            <img src={assetUrl(`${job.image}?size=thumbnail`)} alt={`Ảnh in của đơn ${booking.code}`} />
+            <dl>
+              <div><dt>Khung ảnh</dt><dd>{job.frameName || "Khung đã ghép"}</dd></div>
+              <div><dt>Kích thước</dt><dd>{booking.printSize === "strip" ? "5 × 15 cm" : "10 × 15 cm"}</dd></div>
+              <div><dt>Số tờ trong file</dt><dd>{job.sheetCount || 1}</dd></div>
+            </dl>
+            <label>Số bản in lại
+              <select value={copies} onChange={(event) => setCopies(Number(event.target.value))}>
+                {Array.from({ length: 20 }, (_, index) => index + 1).map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+          </div>
+        ) : (
+          <div className="order-print-empty"><ImageIcon /><h3>Khách chưa gửi file in</h3><p>Mở album để chọn ảnh, ghép khung và gửi file in lần đầu.</p></div>
+        )}
+        <div className="order-print-actions">
+          {booking.accessToken && <Link className="button outline" to={`/album/${booking.accessToken}`} target="_blank">Mở album <ExternalLink size={15} /></Link>}
+          <Button className="outline" onClick={onExtra}>+ Thêm lượt in</Button>
+          {job && <Button disabled={busy} onClick={reprint}><Printer size={16} /> {busy ? "Đang gửi…" : "In lại ảnh"}</Button>}
+        </div>
+      </section>
+    </div>
+  );
+}
 
 export function BookingsManager({ notify, canSeeMoney, assignedBranch }) {
   const toast = useToast();
   const lastError = useRef("");
+  const today = localDate();
   const [creating, setCreating] = useState(false);
   const [collecting, setCollecting] = useState(null);
   const [items, setItems] = useState([]);
   const [query, setQuery] = useState("");
-  const [date, setDate] = useState("");
+  const [from, setFrom] = useState(today);
+  const [to, setTo] = useState(today);
   const [status, setStatus] = useState("");
+  const [room, setRoom] = useState("");
+  const [payment, setPayment] = useState("");
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
   const [selling, setSelling] = useState(null);
+  const [printing, setPrinting] = useState(null);
   const [albumQr, setAlbumQr] = useState(null);
-  const path = `/admin/bookings?${new URLSearchParams({ ...(date ? { date } : {}), ...(status ? { status } : {}) })}`;
-  const load = useLiveData(
-    path,
-    (data) => {
-      setItems(data);
-      setError("");
-      lastError.current = "";
-    },
-    (e) => {
-      setError(e.message);
-      // Tự làm mới mỗi 20 giây: chỉ báo khi lỗi mới xuất hiện, không lặp lại.
-      // Mất kết nối: thông báo chung của trang đã báo, không lặp ở từng bảng.
-      if (lastError.current !== e.message && !isConnectivityError(e)) toast.error(e.message);
-      lastError.current = e.message;
-    },
-    20000,
-  );
-  const filtered = items.filter((b) =>
-    `${b.name} ${b.phone} ${b.code}`
-      .toLowerCase()
-      .includes(query.toLowerCase()),
-  );
-  async function update(b, body) {
-    if (
-      body.status === "cancelled" &&
-      !confirm(
-        "Hủy vé này? Nếu đã nhận tiền, hãy hoàn tiền riêng cho khách trước khi xác nhận.",
-      )
-    )
-      return;
-    setBusyId(b._id);
-    setError("");
+  const params = new URLSearchParams({
+    ...(from ? { from } : {}), ...(to ? { to } : {}), ...(status ? { status } : {}),
+    ...(room ? { room } : {}), ...(payment ? { paymentMethod: payment } : {}),
+  });
+  const load = useLiveData(`/admin/bookings?${params}`, (data) => {
+    setItems(data); setError(""); lastError.current = "";
+  }, (loadError) => {
+    setError(loadError.message);
+    if (lastError.current !== loadError.message && !isConnectivityError(loadError)) toast.error(loadError.message);
+    lastError.current = loadError.message;
+  }, 20000);
+  const filtered = useMemo(() => items.filter((booking) =>
+    `${booking.name} ${booking.phone} ${booking.code} ${booking._id}`.toLowerCase().includes(query.trim().toLowerCase())), [items, query]);
+  const rooms = useMemo(() => [...new Set(items.map((booking) => booking.roomName).filter(Boolean))].sort(), [items]);
+  const totals = useMemo(() => ({
+    revenue: filtered.reduce((sum, booking) => sum + (booking.total || 0), 0),
+    received: filtered.reduce((sum, booking) => sum + (booking.paid ? booking.total || 0 : 0), 0),
+  }), [filtered]);
+
+  async function update(booking, body) {
+    if (body.status === "cancelled" && !confirm("Hủy đơn này? Nếu đã nhận tiền, hãy hoàn tiền riêng cho khách trước khi xác nhận.")) return;
+    setBusyId(booking._id);
     try {
-      await api(`/admin/bookings/${b._id}`, { method: "PATCH", body });
+      await api(`/admin/bookings/${booking._id}`, { method: "PATCH", body });
       await load();
-      notify(
-        body.status === "cancelled"
-          ? `Đã hủy vé #${b.code}.`
-          : `Đã cập nhật vé #${b.code}.`,
-      );
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      setBusyId("");
-    }
+      notify(body.status === "cancelled" ? `Đã hủy đơn #${booking.code}.` : `Đã cập nhật đơn #${booking.code}.`);
+    } catch (updateError) { toast.error(updateError.message); }
+    finally { setBusyId(""); }
+  }
+  async function copyAlbum(booking) {
+    try { await navigator.clipboard.writeText(albumUrl(booking)); toast.success("Đã sao chép link ảnh."); }
+    catch { toast.error("Không sao chép được. Hãy mở album và sao chép địa chỉ trên trình duyệt."); }
   }
   function csv() {
-    if (!filtered.length) return toast.info("Không có vé nào để xuất.");
+    if (!filtered.length) return toast.info("Không có đơn nào để xuất.");
     const rows = [
-      [
-        "Mã vé",
-        "Tên",
-        "Điện thoại",
-        "Ngày",
-        "Giờ",
-        "Phòng",
-        "Tờ in (đã gửi/được in)",
-        ...(canSeeMoney ? ["Tổng tiền"] : []),
-        "Trạng thái",
-      ],
-      ...filtered.map((b) => [
-        b.code,
-        b.name,
-        b.phone,
-        formatDate(b.date),
-        b.time,
-        b.roomName,
-        `${b.printSheets || 0}/${b.prints ?? 1}`,
-        ...(canSeeMoney ? [b.total] : []),
-        labels[b.status],
-      ]),
+      ["Mã đơn", "Khách", "Điện thoại", "Thời gian", "Gói", "Phòng", "Đã gửi in", "Tổng tiền", "Thanh toán", "Trạng thái"],
+      ...filtered.map((booking) => [booking.code, booking.name, booking.phone, formatDateTime(booking.createdAt), booking.packageName,
+        booking.roomName, booking.printSheets || 0, canSeeMoney ? booking.total : "", paymentLabel(booking.paymentMethod), labels[booking.status]]),
     ];
-    const url = URL.createObjectURL(
-      new Blob(
-        [
-          "\ufeff" +
-            rows
-              .map((r) =>
-                r
-                  .map(
-                    (c) =>
-                      `"${String(c)
-                        .replace(/^[=+@-]/, "'")
-                        .replaceAll('"', '""')}"`,
-                  )
-                  .join(","),
-              )
-              .join("\r\n"),
-        ],
-        { type: "text/csv;charset=utf-8;" },
-      ),
-    );
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "nxc-bookings.csv";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    notify(`Đã xuất ${filtered.length} vé ra file CSV.`);
+    const url = URL.createObjectURL(new Blob(["\ufeff" + rows.map((row) => row.map((cell) => `"${String(cell ?? "").replace(/^[=+@-]/, "'").replaceAll('"', '""')}"`).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8;" }));
+    const anchor = document.createElement("a"); anchor.href = url; anchor.download = "don-hang-photobooth.csv"; anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000); notify(`Đã xuất ${filtered.length} đơn hàng.`);
   }
-  return (
-    <>
-      <ErrorBox error={error} />
-      <Guide
-        id="bookings-flow"
-        title="một lượt khách"
-        steps={[
-          "Chọn gói → tạo phiếu chụp → xác nhận đã thu tiền → đọc mã 6 số cho khách. Mã hết hạn sau 2 giờ.",
-          "Khách vào phòng, nhập mã trên máy chụp và chụp bằng nút / remote của máy ảnh.",
-          "Chụp xong máy chụp hiện mã QR: khách quét để lấy ảnh, ghép khung, gửi in.",
-          "Khách quên quét QR: bấm “QR nhận ảnh” ở dòng vé để hiện lại. Muốn in thêm: “Bán thêm tờ in”.",
-        ]}
-      />
-      <div className="admin-toolbar">
-        <div className="search-box">
-          <Search size={17} />
-          <input
-            aria-label="Tìm vé"
-            placeholder="Tên, số điện thoại, mã vé…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-        <div className="toolbar-filter toolbar-date">
-          <input
-            aria-label="Lọc ngày"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-          <CalendarDays size={17} aria-hidden="true" />
-        </div>
-        <div className="toolbar-filter toolbar-status">
-          <SlidersHorizontal size={17} aria-hidden="true" />
-          <select
-            aria-label="Trạng thái"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="">Tất cả trạng thái</option>
-            {Object.entries(labels).map(([v, l]) => (
-              <option key={v} value={v}>
-                {l}
-              </option>
-            ))}
-          </select>
-        </div>
-        <Button className="outline small" onClick={csv}>
-          <Download size={15} /> CSV
-        </Button>
-        <Button
-          className="outline small"
-          onClick={async () => {
-            if (await load()) toast.info("Đã làm mới danh sách vé.");
-          }}
-          aria-label="Làm mới danh sách"
-          title="Làm mới danh sách"
-        >
-          <RefreshCw size={15} />
-        </Button>
-        <Button onClick={() => setCreating(true)}>
-          <Plus size={15} /> Tạo mã chụp
-        </Button>
-      </div>
-      <div className="table-wrap booking-table">
-        <table>
-          <thead>
-            <tr>
-              {[
-                ["Mã vé / Khách", Ticket],
-                ["Ngày cấp mã", CalendarDays],
-                ["Gói & phòng", Package],
-                ["Thanh toán", Wallet],
-                ["Trạng thái", Activity],
-                ["Thao tác", SlidersHorizontal],
-              ].map(([label, Icon]) => (
-                <TableHeading key={label} icon={Icon}>
-                  {label}
-                </TableHeading>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((b) => (
-              <tr key={b._id}>
-                <td data-label="Mã vé / Khách">
-                  <strong>
-                    {b.code ? `#${b.code}` : "Chưa cấp mã"} · {b.name}
-                  </strong>
-                  <small>{b.phone}</small>
-                </td>
-                <td data-label="Ngày cấp mã">
-                  {formatDate(b.date)}
-                  <small>
-                    {b.source === "counter" ? "Khách tại quầy" : b.time}
-                  </small>
-                </td>
-                <td data-label="Gói & phòng">
-                  {b.packageName}
-                  <small>
-                    {b.roomName ||
-                      (b.status === "confirmed" ? "Chưa vào phòng" : "—")}{" "}
-                    · In {b.printSheets || 0}/{b.prints ?? 1} tờ
-                  </small>
-                  {b.requestedExtraPrints > 0 && (
-                    <span className="badge pending">
-                      Khách chọn thêm {b.requestedExtraPrints} bản in — chờ thu
-                    </span>
-                  )}
-                </td>
-                <td data-label="Thanh toán">
-                  {canSeeMoney && <strong>{money(b.total)}</strong>}
-                  <small>
-                    {b.paymentMethod === "cash" ? "Tiền mặt" : "Chuyển khoản"} ·{" "}
-                    {b.paid ? "Đã nhận" : "Chưa nhận"}
-                  </small>
-                </td>
-                <td data-label="Trạng thái">
-                  <span className={`badge ${b.status}`}>
-                    {labels[b.status]}
-                  </span>
-                </td>
-                <td data-label="Thao tác">
-                  <div className="table-actions">
-                    {b.status === "completed" && !b.mediaDeleted && (
-                      <button onClick={() => setAlbumQr(b)}>QR nhận ảnh</button>
-                    )}
-                    {b.accessToken && <Link to={`/album/${b.accessToken}`} target="_blank">Mở album ↗</Link>}
-                    {b.status === "pending" && b.source === "counter" && (
-                      <button onClick={() => setCollecting(b)}>Xác nhận đã thu</button>
-                    )}
-                    {b.paid &&
-                      ["confirmed", "checked_in", "completed"].includes(
-                        b.status,
-                      ) &&
-                      !b.mediaDeleted && (
-                        <button onClick={() => setSelling(b)}>
-                          {b.requestedExtraPrints > 0
-                            ? `Thu tiền ${b.requestedExtraPrints} bản in thêm`
-                            : "+ Bán thêm tờ in"}
-                        </button>
-                      )}
-                    {canSeeMoney && b.status === "confirmed" && (
-                      <button
-                        disabled={busyId === b._id}
-                        onClick={() => update(b, { status: "cancelled" })}
-                      >
-                        Hủy vé
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!filtered.length && (
-          <div className="empty-state">
-            <CalendarDays />
-            <h3>Chưa có vé phù hợp.</h3>
-            <p>Mã vừa cấp sẽ tự xuất hiện tại đây.</p>
+
+  return <>
+    <ErrorBox error={error} />
+    <div className="order-toolbar">
+      <Button className="outline small" onClick={() => { setFrom(today); setTo(today); }}>Hôm nay</Button>
+      <label className="order-date-range"><CalendarDays size={16} />
+        <input aria-label="Từ ngày" type="date" value={from} onChange={(event) => setFrom(event.target.value)} /><span>→</span>
+        <input aria-label="Đến ngày" type="date" value={to} min={from} onChange={(event) => setTo(event.target.value)} />
+      </label>
+      <select aria-label="Lọc máy hoặc phòng" value={room} onChange={(event) => setRoom(event.target.value)}>
+        <option value="">Máy / phòng: Tất cả</option>{rooms.map((name) => <option key={name} value={name}>{name}</option>)}
+      </select>
+      <select aria-label="Lọc trạng thái" value={status} onChange={(event) => setStatus(event.target.value)}>
+        <option value="">Tất cả trạng thái</option>{Object.entries(labels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+      </select>
+      <select aria-label="Lọc thanh toán" value={payment} onChange={(event) => setPayment(event.target.value)}>
+        <option value="">Thanh toán: Tất cả</option><option value="cash">Tiền mặt</option><option value="transfer">Chuyển khoản</option>
+      </select>
+    </div>
+    <div className="order-actions-bar">
+      <div className="search-box"><Search size={17} /><input aria-label="Tìm đơn" placeholder="Mã đơn, tên, số điện thoại…" value={query} onChange={(event) => setQuery(event.target.value)} /></div>
+      <Button className="outline small" onClick={csv}><Download size={15} /> Tải CSV</Button>
+      <Button className="outline small" onClick={() => load()} aria-label="Làm mới"><RefreshCw size={15} /></Button>
+      <Button onClick={() => setCreating(true)}><Plus size={15} /> Tạo đơn</Button>
+    </div>
+    <p className="order-summary">Tổng đơn hàng: <strong>{filtered.length}</strong>
+      {canSeeMoney && <>&nbsp;| Tổng doanh thu: <strong>{money(totals.revenue)}</strong>&nbsp; | Doanh thu thực nhận: <strong>{money(totals.received)}</strong></>}
+    </p>
+    <div className="order-list">
+      {filtered.map((booking) => {
+        const job = booking.latestPrint;
+        return <article className="order-card" key={booking._id}>
+          <div className="order-identity">
+            <div className="order-thumb">{job?.image ? <img src={assetUrl(`${job.image}?size=thumbnail`)} alt="" /> : <ImageIcon />}</div>
+            <div className="order-main"><time>{formatDateTime(booking.createdAt)}</time><strong>{booking._id}</strong><small>#{booking.code} · {booking.name || "Khách tại quầy"}</small>
+              <div className="order-card-actions">{booking.accessToken && <>
+                <button onClick={() => copyAlbum(booking)}>Link ảnh <Copy size={14} /></button>
+                <button onClick={() => setPrinting(booking)}>In ảnh <Printer size={14} /></button>
+                <a href={getApiUrl(`/api/albums/${booking.accessToken}/download`)}>Tải ảnh <Download size={14} /></a>
+              </>}</div>
+            </div>
           </div>
-        )}
-      </div>
-      <p className="muted">
-        Hiển thị tối đa 500 vé gần nhất theo bộ lọc. Dữ liệu tự cập nhật mỗi 20
-        giây.
-      </p>
-      {(creating || collecting) && (
-        <CounterTicket
-          assignedBranch={assignedBranch}
-          initialDraft={collecting}
-          onClose={() => { setCreating(false); setCollecting(null); load(); }}
-          onCreated={(t) => {
-            load();
-            notify(`Đã cấp mã #${t.code} cho ${t.name}.`);
-          }}
-        />
-      )}
-      {albumQr && (
-        <div className="modal-backdrop" onClick={() => setAlbumQr(null)}>
-          <section
-            className="modal center"
-            role="dialog"
-            aria-modal="true"
-            aria-label="QR nhận ảnh"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              aria-label="Đóng"
-              className="modal-close icon-button"
-              onClick={() => setAlbumQr(null)}
-            >
-              <X />
-            </button>
-            <h2>QR nhận ảnh · vé #{albumQr.code}</h2>
-            <p>
-              Cho khách quét mã này bằng camera điện thoại để mở lại album
-              {albumQr.mediaExpiresAt &&
-                ` (mỗi ảnh lưu 24 giờ kể từ lúc chụp — ảnh đầu tiên tự xóa lúc ${formatDateTime(albumQr.mediaExpiresAt)})`}
-              .
-            </p>
-            <QRCodeSVG
-              value={`${window.location.origin}/album/${albumQr.accessToken}`}
-              size={240}
-              marginSize={2}
-            />
-          </section>
-        </div>
-      )}
-      {selling && (
-        <ExtraPrints
-          booking={selling}
-          canEditPrice={canSeeMoney}
-          onClose={() => setSelling(null)}
-          onSold={(updated, sheets) => {
-            setSelling(null);
-            load();
-            notify(
-              `Đã cộng ${sheets} tờ in cho vé #${updated.code}. Khách bấm “Gửi in” lại trên điện thoại.`,
-            );
-          }}
-        />
-      )}
-    </>
-  );
+          <dl className="order-details">
+            <div><dt>Chủ đề:</dt><dd>{booking.packageName || "Basic"}</dd></div><div><dt>Frame:</dt><dd>{job?.frameName || "—"}</dd></div>
+            <div><dt>Kích thước:</dt><dd>{booking.printSize === "strip" ? "Nhỏ" : "Lớn"}</dd></div><div><dt>Số lượng:</dt><dd>{booking.printSheets || 0}/{booking.prints ?? 1} tờ</dd></div>
+          </dl>
+          {canSeeMoney && <dl className="order-pricing"><div><dt>Đơn giá:</dt><dd>{money((booking.total || 0) + (booking.discount || 0))}</dd></div>
+            <div><dt>Giảm giá:</dt><dd>{money(booking.discount || 0)}</dd></div><div><dt>Tổng đơn:</dt><dd>{money(booking.total)}</dd></div></dl>}
+          <dl className="order-payment"><div><dt>Thanh toán:</dt><dd>{paymentLabel(booking.paymentMethod)}</dd></div>
+            {canSeeMoney && <><div><dt>Tổng đơn:</dt><dd>{money(booking.total)}</dd></div><div className={booking.paid ? "received" : "unpaid"}><dt>Thực nhận:</dt><dd>{money(booking.paid ? booking.total : 0)}</dd></div></>}
+            <div><dt>Trạng thái:</dt><dd><span className={`badge ${booking.status}`}>{labels[booking.status]}</span></dd></div>
+          </dl>
+          <div className="order-more-actions">
+            {booking.status === "completed" && !booking.mediaDeleted && <button onClick={() => setAlbumQr(booking)}>QR ảnh</button>}
+            {booking.status === "pending" && booking.source === "counter" && <button onClick={() => setCollecting(booking)}>Xác nhận đã thu</button>}
+            {canSeeMoney && booking.status === "confirmed" && <button disabled={busyId === booking._id} onClick={() => update(booking, { status: "cancelled" })}>Hủy đơn</button>}
+          </div>
+        </article>;
+      })}
+      {!filtered.length && <div className="empty-state"><CalendarDays /><h3>Chưa có đơn hàng phù hợp.</h3><p>Thử đổi khoảng ngày hoặc bộ lọc.</p></div>}
+    </div>
+    {(creating || collecting) && <CounterTicket assignedBranch={assignedBranch} initialDraft={collecting}
+      onClose={() => { setCreating(false); setCollecting(null); load(); }} onCreated={(ticket) => { load(); notify(`Đã cấp mã #${ticket.code} cho ${ticket.name}.`); }} />}
+    {albumQr && <div className="modal-backdrop" onClick={() => setAlbumQr(null)}><section className="modal center" role="dialog" aria-modal="true" aria-label="QR nhận ảnh" onClick={(event) => event.stopPropagation()}>
+      <button aria-label="Đóng" className="modal-close icon-button" onClick={() => setAlbumQr(null)}><X /></button><h2>QR nhận ảnh · đơn #{albumQr.code}</h2>
+      <p>Cho khách quét mã này để mở lại album ảnh.</p><QRCodeSVG value={albumUrl(albumQr)} size={240} marginSize={2} />
+    </section></div>}
+    {printing && <PrintOrderDialog booking={printing} onClose={() => setPrinting(null)} onExtra={() => { setSelling(printing); setPrinting(null); }} onPrinted={() => { setPrinting(null); load(); }} />}
+    {selling && <ExtraPrints booking={selling} canEditPrice={canSeeMoney} onClose={() => setSelling(null)} onSold={(updated, sheets) => { setSelling(null); load(); notify(`Đã cộng ${sheets} tờ in cho đơn #${updated.code}.`); }} />}
+  </>;
 }
