@@ -12,15 +12,8 @@ const SLIDERS = [
   ["sepia", "Hiệu ứng sepia", 0, 100, "%"],
   ["hueRotate", "Xoay màu", -180, 180, "°"],
 ];
-// Ảnh mẫu mặc định: trời, nắng, da, áo hồng, cỏ — đủ dải màu để thấy filter đổi màu thế nào.
-const SAMPLE = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
-<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fb8e6"/><stop offset="1" stop-color="#f6d7b8"/></linearGradient></defs>
-<rect width="400" height="300" fill="url(#s)"/><circle cx="320" cy="70" r="34" fill="#ffd36b"/>
-<rect y="225" width="400" height="75" fill="#6fae63"/><rect x="40" y="200" width="70" height="60" rx="8" fill="#e9573f"/>
-<path d="M135 300c0-58 30-92 65-92s65 34 65 92z" fill="#f29bb0"/><circle cx="200" cy="150" r="48" fill="#f1c6a4"/>
-<path d="M150 140c2-40 30-58 52-58s46 16 48 58c-10-22-30-30-50-30s-38 8-50 30z" fill="#4a2c22"/>
-<circle cx="184" cy="152" r="5" fill="#3a2a22"/><circle cx="216" cy="152" r="5" fill="#3a2a22"/>
-<path d="M186 172q14 12 28 0" stroke="#c0505f" stroke-width="4" fill="none" stroke-linecap="round"/></svg>`)}`;
+// Ảnh mẫu mặc định: ảnh chụp thật tại tiệm (da, tóc, áo, nền hồng) để thấy filter đổi màu thế nào.
+const SAMPLE = "/filter-sample.jpg";
 const newId = () => Math.random().toString(36).slice(2, 10).padEnd(8, "0");
 
 // Ảnh mẫu chia đôi: bên trái ảnh gốc, bên phải đã áp filter; kéo thanh để so sánh.
