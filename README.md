@@ -296,7 +296,7 @@ Ba file entry/admin/album ở trên là **index import**; CSS thực tế đư�
 - `src/styles/admin/{workspace,operations,controls,catalogs,forms,printing-and-storage,responsive}.css`.
 - `src/styles/album/{workspace,gallery,themes,composer,photo-editor,results,responsive}.css`.
 
-Logo dùng ảnh gốc ở `public/studio-logo.jpg`, hiển thị qua `Brand` trong `src/studio.jsx`;
+Logo dùng ảnh gốc ở `public/logo-m.jpg`, hiển thị qua `Brand` trong `src/studio.jsx`;
 kích thước theo màn hình ở `src/styles/polish/brand-logo.css`. Hướng dẫn bắt đầu thu gọn
 và vẫn nhớ trạng thái mở/đóng mà nhân viên đã chọn trên từng máy.
 

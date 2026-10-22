@@ -141,7 +141,7 @@ Hệ được ghi từ giao diện React/CSS đã dựng: đối chiếu `src/st
 
 - Ảnh lớn, chữ Việt dễ đọc, trạng thái chọn rõ.
 - Cùng ngôn ngữ điều khiển cho quản trị, album và kiosk.
-  Raster giao diện duy nhất là `public/studio-logo.jpg`: logo chữ “M.” nâu trên nền kem do người dùng gửi (22/10/2026), chỉ cắt vuông quanh chữ và thu về 1024×1024 để rõ ở cỡ nhỏ, không vẽ lại. Không có raster do AI sinh.
+  Raster giao diện duy nhất là `public/logo-m.jpg`: logo chữ “M.” nâu trên nền kem do người dùng gửi (22/10/2026), chỉ cắt vuông quanh chữ và thu về 1024×1024 để rõ ở cỡ nhỏ, không vẽ lại. Không có raster do AI sinh.
 
 ## Colors
 

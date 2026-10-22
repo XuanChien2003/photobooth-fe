@@ -109,11 +109,11 @@ before(async () => {
     asset.fileName.endsWith(".css"),
   );
   const logo = await readFile(
-    new URL("../public/studio-logo.jpg", import.meta.url),
+    new URL("../public/logo-m.jpg", import.meta.url),
   );
   server = createServer(async (request, response) => {
     const path = new URL(request.url, "http://fixture").pathname;
-    if (path === "/studio-logo.jpg") {
+    if (path === "/logo-m.jpg") {
       response.setHeader("Content-Type", "image/jpeg");
       response.end(logo);
       return;

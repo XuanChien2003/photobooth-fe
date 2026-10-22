@@ -9,5 +9,5 @@
 /fonts/*
   Cache-Control: public, max-age=2592000
 
-/studio-logo.jpg
+/logo-m.jpg
   Cache-Control: public, max-age=86400

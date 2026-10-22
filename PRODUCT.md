@@ -29,7 +29,7 @@ Vietnamese interface. Desktop reception and camera kiosks; customers scan an alb
 
 ## Brand Commitments
 
-Keep the supplied logo at `public/studio-logo.jpg`: a brown script “M.” on cream (replaced the pink-on-chocolate monogram on 2026-10-22), cropped square around the letter so it reads at small sizes. Primary color must be brown; the user delegates the particular brown and requests a complete professional, readable redesign using Impeccable.
+Keep the supplied logo at `public/logo-m.jpg`: a brown script “M.” on cream (replaced the pink-on-chocolate monogram on 2026-10-22), cropped square around the letter so it reads at small sizes. Primary color must be brown; the user delegates the particular brown and requests a complete professional, readable redesign using Impeccable.
 
 ## Evidence on Hand
 

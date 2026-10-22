@@ -170,7 +170,7 @@ before(async () => {
   );
   const publicRoot = fileURLToPath(new URL("../public/", import.meta.url));
   for (const name of [
-    "studio-logo.jpg",
+    "logo-m.jpg",
     "fonts/be-vietnam-pro.css",
     ...[400, 500, 600, 700].map((weight) => `fonts/be-vietnam-pro-${weight}.woff2`),
   ])
