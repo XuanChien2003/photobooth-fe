@@ -94,11 +94,11 @@ export const NAV_DESCRIPTIONS = {
   bookings: "Tìm đơn, gửi link ảnh, tải xuống hoặc in lại chỉ trong một màn hình.",
   print: "Kiểm tra file đang chờ và trạng thái in tại từng chi nhánh.",
   rooms: "Quản lý thông tin máy, chi nhánh và liên kết cài đặt kiosk.",
-  reconciliation: "Mở, đóng và đối chiếu tiền theo từng ca làm việc.",
   packages: "Thiết lập giá, thời gian chụp, số ảnh và số tờ in đi kèm.",
   frames: "Thêm khung, chia theo chủ đề và sắp xếp thứ tự khách sẽ thấy.",
   kiosk: "Cấu hình màn hình chờ, bộ lọc ảnh và thư viện nhãn dán.",
   users: "Quản lý tài khoản và phạm vi làm việc của nhân viên.",
+  reconciliation: "Mở, đóng và đối chiếu tiền theo từng ca làm việc.",
 };
 
 export const definitions = {
