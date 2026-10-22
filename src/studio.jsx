@@ -179,7 +179,8 @@ export function Brand() {
     <div className="brand">
       <img
         className="brand-logo"
-        src="/studio-logo.jpg"
+        // Đổi logo thì đổi ?v= để trình duyệt không giữ logo cũ (ảnh logo lưu đệm 1 ngày).
+        src="/studio-logo.jpg?v=m"
         alt={`Logo ${settings?.name || "Photobooth"}`}
         width={256}
         height={256}
