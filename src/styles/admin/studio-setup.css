@@ -878,3 +878,23 @@
     padding: 5px 0;
   }
 }
+
+/* Nhãn dán: nút xóa tròn nhỏ ở góc ô, không che hình (trên điện thoại luôn hiện). */
+@layer components {
+  .admin-shell .sticker-library .icon-button {
+    top: 5px;
+    right: 5px;
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+    min-height: 30px;
+    padding: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 1px 4px rgba(74, 50, 38, 0.2);
+  }
+  .admin-shell .sticker-library .icon-button svg {
+    width: 15px;
+    height: 15px;
+  }
+}
