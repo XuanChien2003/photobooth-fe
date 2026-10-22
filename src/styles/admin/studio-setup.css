@@ -3,7 +3,7 @@
   Phân quyền, Đối soát tháng) — dùng chung hệ màu Mellow của trang quản trị.
 */
 @layer components {
-  /* ── Mục lục dạng cây: mục chính 01…, trang con 1.1… ───────── */
+  /* ── Mục lục dạng cây: nhóm luôn mở sẵn, icon thay cho số mục ── */
   .admin-shell .admin-nav-tree {
     display: grid;
     gap: 2px;
@@ -11,37 +11,46 @@
   .admin-shell .admin-nav-branch {
     display: grid;
     gap: 2px;
+    margin-top: 4px;
   }
-  .admin-shell .admin-nav-group .admin-nav-parent {
-    font-weight: 600;
+  .admin-shell .admin-nav-group button,
+  .admin-shell .admin-nav-parent {
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+  .admin-shell .admin-nav-group button > svg,
+  .admin-shell .admin-nav-parent > svg {
+    display: block;
+    opacity: 0.75;
+  }
+  .admin-shell .admin-nav-group button.active > svg {
+    opacity: 1;
+  }
+  .admin-shell .admin-nav-parent {
+    display: grid;
+    align-items: center;
+    min-height: 40px;
+    padding: 8px 12px 4px;
+    color: var(--mellow-muted);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
   .admin-shell .admin-nav-branch.holds-current > .admin-nav-parent {
     color: var(--mellow-cocoa);
-    font-weight: 700;
-  }
-  .admin-shell .admin-nav-group .admin-nav-parent > svg.admin-nav-chevron {
-    display: block;
-    opacity: 0.6;
-    transition: rotate 0.18s ease;
-  }
-  .admin-shell .admin-nav-parent[aria-expanded="true"] > svg.admin-nav-chevron {
-    rotate: 180deg;
   }
   .admin-shell .admin-nav-children {
     display: grid;
     gap: 2px;
-    margin: 0 0 6px 18px;
+    margin: 0 0 6px 21px;
     padding-left: 8px;
     border-left: 1px solid rgba(63, 44, 37, 0.25);
   }
   .admin-shell .admin-nav-group button.admin-nav-child {
-    grid-template-columns: 34px minmax(0, 1fr) auto;
     min-height: 38px;
     padding: 6px 10px;
     font-size: 13.5px;
-  }
-  .admin-shell .admin-nav-child .admin-nav-number {
-    font-size: 13px;
   }
 
   /* ── Bộ lọc khoảng ngày dùng chung ─────────────────────────── */
@@ -770,7 +779,12 @@
   }
 
   @media (max-width: 760px) {
+    /* Điện thoại: mục lục một cột, trang con của mỗi nhóm xếp 2 cột cho gọn. */
+    .admin-shell .admin-nav-group.admin-nav-tree {
+      grid-template-columns: minmax(0, 1fr);
+    }
     .admin-shell .admin-nav-children {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       margin-left: 8px;
     }
     .admin-shell .screen-card {

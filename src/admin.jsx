@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LogOut, KeyRound, ChevronDown } from "lucide-react";
+import { LogOut, KeyRound } from "lucide-react";
 import { PrintAlerts, PrintQueue } from "./print-queue";
 import { Brand, ErrorBox } from "./studio";
 import { transition } from "./transitions";
@@ -18,15 +18,11 @@ import { LoginPage, PasswordDialog } from "./admin/auth";
 import { StorageMonitorProvider } from "./admin/storage-monitor";
 import { StorageWarning } from "./admin/storage-warning";
 
-const pad = (n) => String(n).padStart(2, "0");
-
 export function Admin() {
   const [tab, setTab] = useState("overview");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [pendingPrints, setPendingPrints] = useState(0);
   const [printView, setPrintView] = useState("prints");
-  // Nhóm đang mở trên mục lục (nhóm chứa trang hiện tại luôn mở).
-  const [expanded, setExpanded] = useState({});
   const session = useAdminSession(setTab);
   const { user, checking, error, setError, setPassword, globalToast, logout } =
     session;
@@ -47,16 +43,11 @@ export function Admin() {
   const canSeeMoney = can(user, "revenue:view");
   const activeNav = nav.find(([key]) => key === currentTab);
   const HeaderIcon = activeNav?.[2];
-  // Số mục như mục lục: 01, 02… cho mục chính; 1.1, 1.2… cho trang con.
-  const numbers = {};
+  // Nhóm chứa từng trang con (ghi trên đầu trang).
   const parents = {};
-  tree.forEach(([key, label, , children], index) => {
-    numbers[key] = pad(index + 1);
-    children?.forEach(([child], childIndex) => {
-      numbers[child] = `${index + 1}.${childIndex + 1}`;
-      parents[child] = [key, label];
-    });
-  });
+  tree.forEach(([key, label, , children]) =>
+    children?.forEach(([child]) => (parents[child] = [key, label])),
+  );
   const open = (key) =>
     transition(() => {
       setTab(key);
@@ -70,10 +61,7 @@ export function Admin() {
       aria-current={currentTab === key ? "page" : undefined}
       onClick={() => open(key)}
     >
-      <span className="admin-nav-number" aria-hidden="true">
-        {numbers[key]}
-      </span>
-      <Icon size={18} />
+      <Icon size={18} aria-hidden="true" />
       <span className="admin-nav-text">{label}</span>
       {key === "print" && pendingPrints > 0 && (
         <span className="nav-count">{pendingPrints}</span>
@@ -98,40 +86,21 @@ export function Admin() {
             <div className="admin-nav-group admin-nav-tree">
               {tree.map(([key, label, Icon, children]) => {
                 if (!children) return navButton([key, label, Icon]);
-                const holdsCurrent = children.some(([child]) => child === currentTab);
-                const isOpen = holdsCurrent || expanded[key];
-                const pendingInside =
-                  !isOpen && children.some(([child]) => child === "print") && pendingPrints > 0;
+                // Nhóm luôn mở sẵn mọi trang con, không phải bấm mở / đóng.
                 return (
-                  <div className={`admin-nav-branch ${holdsCurrent ? "holds-current" : ""}`} key={key}>
-                    <button
-                      className="admin-nav-parent"
-                      aria-expanded={Boolean(isOpen)}
-                      aria-controls={`admin-nav-${key}`}
-                      onClick={() =>
-                        holdsCurrent
-                          ? setExpanded((v) => ({ ...v, [key]: !isOpen }))
-                          : isOpen
-                            ? setExpanded((v) => ({ ...v, [key]: false }))
-                            : (setExpanded((v) => ({ ...v, [key]: true })), open(children[0][0]))
-                      }
-                    >
-                      <span className="admin-nav-number" aria-hidden="true">
-                        {numbers[key]}
-                      </span>
-                      <Icon size={18} />
+                  <div
+                    className={`admin-nav-branch ${children.some(([child]) => child === currentTab) ? "holds-current" : ""}`}
+                    key={key}
+                    role="group"
+                    aria-labelledby={`admin-nav-${key}`}
+                  >
+                    <div className="admin-nav-parent" id={`admin-nav-${key}`}>
+                      <Icon size={18} aria-hidden="true" />
                       <span className="admin-nav-text">{label}</span>
-                      {pendingInside ? (
-                        <span className="nav-count">{pendingPrints}</span>
-                      ) : (
-                        <ChevronDown size={16} className="admin-nav-chevron" aria-hidden="true" />
-                      )}
-                    </button>
-                    {isOpen && (
-                      <div className="admin-nav-children" id={`admin-nav-${key}`}>
-                        {children.map((entry) => navButton(entry, true))}
-                      </div>
-                    )}
+                    </div>
+                    <div className="admin-nav-children">
+                      {children.map((entry) => navButton(entry, true))}
+                    </div>
                   </div>
                 );
               })}
@@ -154,10 +123,7 @@ export function Admin() {
         <div className="admin-main">
           <header className="admin-header">
             <div>
-              <span className="admin-eyebrow">
-                Mục {numbers[currentTab]}
-                {parent ? ` · ${parent[1]}` : ""}
-              </span>
+              {parent && <span className="admin-eyebrow">{parent[1]}</span>}
               <h2>
                 {HeaderIcon && <HeaderIcon size={26} aria-hidden="true" />}
                 {activeNav?.[1]}
