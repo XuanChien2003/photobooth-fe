@@ -75,6 +75,13 @@ export function ResourceEditor({
             <option value="staff">Lễ tân</option>
             <option value="admin">Quản trị viên</option>
           </select>
+        ) : type === "checkbox" ? (
+          <input
+            name={key}
+            type="checkbox"
+            checked={Boolean(edit[key])}
+            onChange={(event) => update(key, event.target.checked)}
+          />
         ) : (
           <input
             name={key}
@@ -87,7 +94,7 @@ export function ResourceEditor({
                 : undefined
             }
             aria-invalid={Boolean(form.errors[key])}
-            value={edit[key] ?? ""}
+            value={type === "date" ? String(edit[key] || "").slice(0, 10) : edit[key] ?? ""}
             onChange={(event) =>
               update(
                 key,

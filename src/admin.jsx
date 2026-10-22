@@ -3,7 +3,7 @@ import { LogOut, KeyRound } from "lucide-react";
 import { PrintAlerts, PrintQueue } from "./print-queue";
 import { Brand, ErrorBox } from "./studio";
 import { transition } from "./transitions";
-import { nav, definitions } from "./admin/config";
+import { nav, definitions, NAV_DESCRIPTIONS } from "./admin/config";
 import { ResourceManager } from "./admin/resources";
 import { BookingsManager } from "./admin/bookings";
 import { Overview } from "./admin/overview";
@@ -12,10 +12,11 @@ import { useAdminSession } from "./admin/use-admin-session";
 import { LoginPage, PasswordDialog } from "./admin/auth";
 import { StorageMonitorProvider } from "./admin/storage-monitor";
 import { StorageWarning } from "./admin/storage-warning";
+import { ShiftPanel } from "./admin/shift-panel";
 
 // Nhóm menu quản trị (thứ tự này cũng là số mục 01, 02… trên menu và đầu trang).
 const NAV_GROUPS = [
-  ["Vận hành", ["overview", "bookings", "print", "rooms"]],
+  ["Vận hành", ["overview", "bookings", "print", "rooms", "reconciliation"]],
   ["Thiết lập", ["packages", "frames", "kiosk", "users"]],
 ];
 
@@ -114,13 +115,16 @@ export function Admin() {
             <div>
               {position >= 0 && (
                 <span className="admin-eyebrow">
-                  Mục {sectionNumber(position)} · {order[position][1]}
+                  {order[position][1]}
                 </span>
               )}
               <h2>
                 {HeaderIcon && <HeaderIcon size={26} aria-hidden="true" />}
                 {activeNav?.[1]}
               </h2>
+              <p className="admin-page-description">
+                {NAV_DESCRIPTIONS[currentTab]}
+              </p>
             </div>
             <div className="admin-user">
               <span>
@@ -158,6 +162,8 @@ export function Admin() {
               <KioskContent notify={notify} />
             ) : currentTab === "bookings" ? (
               <BookingsManager notify={notify} canSeeMoney={canSeeMoney} assignedBranch={user.branch} />
+            ) : currentTab === "reconciliation" ? (
+              <ShiftPanel assignedBranch={user.branch} notify={notify} />
             ) : definitions[currentTab] ? (
               <ResourceManager
                 key={currentTab}

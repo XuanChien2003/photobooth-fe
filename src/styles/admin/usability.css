@@ -1,0 +1,173 @@
+@layer components {
+  /* Giữ tên trang và ngữ cảnh trong tầm mắt khi danh sách dài. */
+  .admin-shell .admin-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    align-items: center;
+    padding-block: 18px;
+    box-shadow: 0 1px 0 rgb(54 40 31 / 5%);
+  }
+
+  .admin-shell .admin-eyebrow {
+    display: block;
+    margin: 0 0 2px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .admin-shell .admin-page-description {
+    max-width: 720px;
+    margin: 4px 0 0 36px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  /* Tóm tắt đơn hàng thành các khối dễ quét thay cho một dòng chữ dài. */
+  .admin-shell .order-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0;
+  }
+
+  .admin-shell .order-summary > span {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-height: 42px;
+    padding: 9px 13px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+  }
+
+  .admin-shell .order-summary small {
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .admin-shell .order-summary strong {
+    color: var(--ink);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .admin-shell .order-main > strong {
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .admin-shell .order-card-actions button,
+  .admin-shell .order-card-actions a {
+    min-height: 36px;
+    padding-inline: 10px;
+    font-weight: 600;
+  }
+
+  .admin-shell .order-card-actions :is(button, a):focus-visible,
+  .admin-shell .order-more-actions button:focus-visible {
+    outline: 2px solid var(--wine);
+    outline-offset: 2px;
+  }
+
+  /* Ba nhóm nội dung kiosk tách thành tab, tránh một trang cuộn quá dài. */
+  .admin-shell .kiosk-content-tabs {
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    gap: 4px;
+    padding: 4px;
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--stone);
+  }
+
+  .admin-shell .kiosk-content-tabs button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .admin-shell .kiosk-content-tabs button:hover {
+    color: var(--wine);
+    background: rgb(255 255 255 / 65%);
+  }
+
+  .admin-shell .kiosk-content-tabs button.active {
+    background: #fff;
+    color: var(--wine);
+    box-shadow: 0 1px 4px rgb(54 40 31 / 10%);
+  }
+
+  .admin-shell .kiosk-content-tabs button:focus-visible {
+    outline: 2px solid var(--wine);
+    outline-offset: 2px;
+  }
+
+  .admin-shell .kiosk-content-section {
+    padding: 24px;
+  }
+
+  @media (max-width: 760px) {
+    .admin-shell .admin-header {
+      align-items: flex-start;
+    }
+
+    .admin-shell .admin-page-description {
+      margin-left: 30px;
+      max-width: 52vw;
+      font-size: 11px;
+    }
+
+    .admin-shell .order-summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-shell .order-summary > span {
+      display: grid;
+      align-content: center;
+      gap: 2px;
+    }
+
+    .admin-shell .order-summary > span:first-child:last-child,
+    .admin-shell .order-summary > span:last-child:nth-child(3) {
+      grid-column: 1 / -1;
+    }
+
+    .admin-shell .kiosk-content-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(max-content, 1fr));
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .admin-shell .admin-page-description {
+      display: none;
+    }
+
+    .admin-shell .kiosk-content-tabs {
+      grid-template-columns: 1fr;
+    }
+  }
+}

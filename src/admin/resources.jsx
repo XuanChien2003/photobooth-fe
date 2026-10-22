@@ -38,6 +38,11 @@ const searchable = (value) =>
     .replace(/đ/gi, "d")
     .toLowerCase();
 
+const shortDate = (value) => value
+  ? new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })
+      .format(new Date(value))
+  : "";
+
 const RESOURCE_ICONS = {
   rooms: DoorOpen,
   packages: Package,
@@ -148,7 +153,7 @@ export function ResourceManager({ resource, notify, me }) {
                 ? "#522e22"
                 : "#ffffff"
               : type === "date"
-                ? localDate()
+                ? ""
                 : type === "role"
                   ? "staff"
                   : type === "printSize"
@@ -306,7 +311,7 @@ export function ResourceManager({ resource, notify, me }) {
         <div className="admin-toolbar">
           <p>
             {resource === "rooms"
-              ? `${items.length} phòng${canManage ? "" : " đang hoạt động"}`
+              ? `${items.length} máy${canManage ? "" : " đang hoạt động"}`
               : `${items.length} mục trong danh sách`}
           </p>
           {canManage && (
@@ -399,8 +404,19 @@ export function ResourceManager({ resource, notify, me }) {
                       </>
                     ) : resource === "frames" ? (
                       `${item.slots?.length || 0} ô ảnh`
+                    ) : resource === "rooms" ? (
+                      <>
+                        {item.branch || "Chưa đặt chi nhánh"}
+                        <small>
+                          {[item.machineCode && `Mã ${item.machineCode}`, item.model,
+                            item.importedAt && `Nhập ${shortDate(item.importedAt)}`,
+                            item.expiresAt && `Hạn ${shortDate(item.expiresAt)}`]
+                            .filter(Boolean)
+                            .join(" · ") || "Chưa nhập thông tin máy"}
+                        </small>
+                      </>
                     ) : (
-                      item.branch || item.caption || item.description
+                      item.caption || item.description
                     )}
                   </td>
                   <td data-label="Trạng thái">

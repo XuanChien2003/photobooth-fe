@@ -1,7 +1,17 @@
 import { useEffect, useState } from "react";
-import { ImagePlus, Trash2 } from "lucide-react";
+import { ImagePlus, Monitor, SlidersHorizontal, Sticker, Trash2 } from "lucide-react";
 import { api, assetUrl } from "../api";
 import { Button, ErrorBox, useStudio, useToast } from "../studio";
+
+const FILTERS = {
+  original: "Ảnh gốc",
+  soft: "Dịu",
+  warm: "Ấm",
+  film: "Phim",
+  mono: "Trắng đen",
+  vintage: "Cổ điển",
+  retro: "Hoài cổ",
+};
 
 // Thu nhỏ ảnh trước khi lưu vào DB (ảnh nền ≤ 1920 px JPEG, sticker ≤ 512 px PNG giữ nền trong suốt).
 async function imageData(file, maxEdge, type, quality) {
@@ -21,6 +31,8 @@ export function KioskContent({ notify }) {
   const toast = useToast();
   const [idle, setIdle] = useState(null);
   const [stickers, setStickers] = useState([]);
+  const [section, setSection] = useState("screen");
+  const [enabledFilters, setEnabledFilters] = useState(Object.keys(FILTERS));
   const [name, setName] = useState("");
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -28,7 +40,10 @@ export function KioskContent({ notify }) {
   const loadStickers = () => api("/admin/stickers").then(setStickers);
   useEffect(() => {
     api("/admin/settings").then(
-      (value) => setIdle({ idleTitle: "", idleSubtitle: "", idleImage: "", ...value.kiosk }),
+      (value) => {
+        setIdle({ idleTitle: "", idleSubtitle: "", idleImage: "", ...value.kiosk });
+        setEnabledFilters(value.enabledFilters?.length ? value.enabledFilters : Object.keys(FILTERS));
+      },
       (e) => setError(e.message),
     );
     loadStickers().catch((e) => setError(e.message));
@@ -51,6 +66,12 @@ export function KioskContent({ notify }) {
   const saveIdle = () => run(async () => {
     setIdle(await api("/admin/settings/kiosk", { method: "PUT", body: idle }).then((v) => v.kiosk));
   }, "Đã lưu màn hình chờ của máy chụp.");
+  const saveFilters = () => run(async () => {
+    await api("/admin/settings/filters", {
+      method: "PUT",
+      body: { enabledFilters },
+    });
+  }, "Đã cập nhật bộ lọc ảnh dành cho khách.");
   async function pickIdle(e) {
     const chosen = e.target.files?.[0];
     e.target.value = "";
@@ -89,7 +110,25 @@ export function KioskContent({ notify }) {
   return (
     <div className="kiosk-content">
       <ErrorBox error={error} />
-      <section className="panel">
+      <nav className="kiosk-content-tabs" aria-label="Nội dung máy chụp">
+        {[
+          ["screen", "Màn hình chờ", Monitor],
+          ["filters", "Bộ lọc ảnh", SlidersHorizontal],
+          ["stickers", "Nhãn dán", Sticker],
+        ].map(([key, label, Icon]) => (
+          <button
+            type="button"
+            key={key}
+            className={section === key ? "active" : ""}
+            aria-current={section === key ? "page" : undefined}
+            onClick={() => setSection(key)}
+          >
+            <Icon size={17} aria-hidden="true" />
+            {label}
+          </button>
+        ))}
+      </nav>
+      {section === "screen" && <section className="panel kiosk-content-section">
         <h3>Màn hình chờ của máy chụp</h3>
         <p className="muted">Hiện khi máy chụp chưa có khách (màn hình “Chạm để bắt đầu”).</p>
         {!idle ? (
@@ -128,8 +167,33 @@ export function KioskContent({ notify }) {
             </div>
           </div>
         )}
-      </section>
-      <section className="panel">
+      </section>}
+      {section === "filters" && <section className="panel kiosk-content-section">
+        <h3>Quản lý bộ lọc ảnh</h3>
+        <p className="muted">
+          Chọn các bộ lọc khách được phép dùng. Ảnh xem trước, ảnh tải về và ảnh in dùng cùng một công thức màu.
+        </p>
+        <div className="filter-admin-grid">
+          {Object.entries(FILTERS).map(([key, label]) => (
+            <label className="checkbox" key={key}>
+              <input
+                type="checkbox"
+                checked={enabledFilters.includes(key)}
+                disabled={key === "original" || busy}
+                onChange={(event) => setEnabledFilters((current) =>
+                  event.target.checked
+                    ? [...new Set([...current, key])]
+                    : current.filter((value) => value !== key))}
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+        <Button disabled={busy} onClick={saveFilters}>
+          {busy ? "Đang lưu…" : "Lưu danh sách bộ lọc"}
+        </Button>
+      </section>}
+      {section === "stickers" && <section className="panel kiosk-content-section">
         <h3>Nhãn dán của tiệm</h3>
         <p className="muted">
           Khách thấy các nhãn dán này đầu tiên ở bước trang trí khung. Nên dùng ảnh PNG nền trong suốt.
@@ -162,7 +226,7 @@ export function KioskContent({ notify }) {
         ) : (
           <p className="muted">Chưa có nhãn dán riêng — khách dùng bộ nhãn dán biểu tượng có sẵn.</p>
         )}
-      </section>
+      </section>}
     </div>
   );
 }

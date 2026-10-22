@@ -103,6 +103,15 @@ export function BookingsManager({ notify, canSeeMoney, assignedBranch }) {
     revenue: filtered.reduce((sum, booking) => sum + (booking.total || 0), 0),
     received: filtered.reduce((sum, booking) => sum + (booking.paid ? booking.total || 0 : 0), 0),
   }), [filtered]);
+  const hasFilters = query.trim() || from !== today || to !== today || status || room || payment;
+  const resetFilters = () => {
+    setQuery("");
+    setFrom(today);
+    setTo(today);
+    setStatus("");
+    setRoom("");
+    setPayment("");
+  };
 
   async function update(booking, body) {
     if (body.status === "cancelled" && !confirm("Hủy đơn này? Nếu đã nhận tiền, hãy hoàn tiền riêng cho khách trước khi xác nhận.")) return;
@@ -152,18 +161,23 @@ export function BookingsManager({ notify, canSeeMoney, assignedBranch }) {
       <div className="search-box"><Search size={17} /><input aria-label="Tìm đơn" placeholder="Mã đơn, tên, số điện thoại…" value={query} onChange={(event) => setQuery(event.target.value)} /></div>
       <Button className="outline small" onClick={csv}><Download size={15} /> Tải CSV</Button>
       <Button className="outline small" onClick={() => load()} aria-label="Làm mới"><RefreshCw size={15} /></Button>
+      {hasFilters && <Button className="outline small" onClick={resetFilters}><X size={15} /> Xóa bộ lọc</Button>}
       <Button onClick={() => setCreating(true)}><Plus size={15} /> Tạo đơn</Button>
     </div>
-    <p className="order-summary">Tổng đơn hàng: <strong>{filtered.length}</strong>
-      {canSeeMoney && <>&nbsp;| Tổng doanh thu: <strong>{money(totals.revenue)}</strong>&nbsp; | Doanh thu thực nhận: <strong>{money(totals.received)}</strong></>}
-    </p>
+    <div className="order-summary" aria-live="polite">
+      <span><small>Đơn phù hợp</small><strong>{filtered.length}</strong></span>
+      {canSeeMoney && <>
+        <span><small>Tổng doanh thu</small><strong>{money(totals.revenue)}</strong></span>
+        <span><small>Đã thực nhận</small><strong>{money(totals.received)}</strong></span>
+      </>}
+    </div>
     <div className="order-list">
       {filtered.map((booking) => {
         const job = booking.latestPrint;
-        return <article className="order-card" key={booking._id}>
+        return <article className="order-card" key={booking._id} title={`Mã hệ thống: ${booking._id}`}>
           <div className="order-identity">
             <div className="order-thumb">{job?.image ? <img src={assetUrl(`${job.image}?size=thumbnail`)} alt="" /> : <ImageIcon />}</div>
-            <div className="order-main"><time>{formatDateTime(booking.createdAt)}</time><strong>{booking._id}</strong><small>#{booking.code} · {booking.name || "Khách tại quầy"}</small>
+            <div className="order-main"><time>{formatDateTime(booking.createdAt)}</time><strong>#{booking.code} · {booking.name || "Khách tại quầy"}</strong><small>{booking.roomName || "Chưa chọn máy"} · {booking.packageName || "Gói chụp"}</small>
               <div className="order-card-actions">{booking.accessToken && <>
                 <button onClick={() => copyAlbum(booking)}>Link ảnh <Copy size={14} /></button>
                 <button onClick={() => setPrinting(booking)}>In ảnh <Printer size={14} /></button>

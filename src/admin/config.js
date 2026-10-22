@@ -7,6 +7,7 @@ import {
   Ticket,
   Printer,
   Sparkles,
+  Scale,
 } from "lucide-react";
 import {
   custom,
@@ -36,6 +37,8 @@ export const RESOURCE_RULES = {
     name: ["Tên phòng", required, maxLength(100)],
     branch: ["Chi nhánh / địa chỉ", required, maxLength(200)],
     description: ["Mô tả", maxLength(1000)],
+    machineCode: ["Mã máy", maxLength(100)],
+    model: ["Dòng máy", maxLength(100)],
   },
   packages: {
     name: ["Tên gói", required, maxLength(200)],
@@ -78,17 +81,34 @@ export const nav = [
   ["overview", "Tổng quan", LayoutDashboard],
   ["bookings", "Đơn hàng", Ticket],
   ["print", "Hàng chờ in", Printer],
-  ["rooms", "Phòng & chi nhánh", DoorOpen],
-  ["packages", "Gói chụp", Package],
+  ["rooms", "Quản lý máy", DoorOpen],
+  ["packages", "Bảng giá", Package],
   ["frames", "Khung ảnh", Image],
-  ["kiosk", "Máy chụp & nhãn dán", Sparkles],
+  ["kiosk", "Nội dung máy chụp", Sparkles],
   ["users", "Nhân viên", Users],
+  ["reconciliation", "Đối soát", Scale],
 ];
+
+export const NAV_DESCRIPTIONS = {
+  overview: "Theo dõi hoạt động hôm nay và tạo mã chụp nhanh cho khách.",
+  bookings: "Tìm đơn, gửi link ảnh, tải xuống hoặc in lại chỉ trong một màn hình.",
+  print: "Kiểm tra file đang chờ và trạng thái in tại từng chi nhánh.",
+  rooms: "Quản lý thông tin máy, chi nhánh và liên kết cài đặt kiosk.",
+  reconciliation: "Mở, đóng và đối chiếu tiền theo từng ca làm việc.",
+  packages: "Thiết lập giá, thời gian chụp, số ảnh và số tờ in đi kèm.",
+  frames: "Thêm khung, chia theo chủ đề và sắp xếp thứ tự khách sẽ thấy.",
+  kiosk: "Cấu hình màn hình chờ, bộ lọc ảnh và thư viện nhãn dán.",
+  users: "Quản lý tài khoản và phạm vi làm việc của nhân viên.",
+};
 
 export const definitions = {
   rooms: [
-    ["name", "Tên phòng"],
+    ["name", "Tên máy / phòng"],
     ["branch", "Chi nhánh / địa chỉ"],
+    ["machineCode", "Mã máy"],
+    ["model", "Dòng máy"],
+    ["importedAt", "Ngày nhập máy", "date"],
+    ["expiresAt", "Ngày hết hạn", "date"],
     ["description", "Mô tả", "textarea"],
   ],
   packages: [

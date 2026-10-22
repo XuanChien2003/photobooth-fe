@@ -15,7 +15,7 @@ import {
   PiTrashBold,
   PiXBold,
 } from "react-icons/pi";
-import { Button, useToast } from "../studio";
+import { Button, useStudio, useToast } from "../studio";
 import {
   ADJUST_LABELS,
   COLOR_FILTERS,
@@ -48,6 +48,10 @@ export function PhotoEditor({
   onApplyAll,
 }) {
   const toast = useToast();
+  const { settings } = useStudio();
+  const enabledFilters = settings?.enabledFilters?.length
+    ? new Set(["original", ...settings.enabledFilters])
+    : null;
   const [id, setId] = useState(startId);
   const [drafts, setDrafts] = useState({});
   const [tab, setTab] = useState("smooth");
@@ -380,7 +384,9 @@ export function PhotoEditor({
             </label>
             <h3>Màu ảnh</h3>
             <div className="filter-strip" aria-label="Bộ lọc màu">
-              {Object.entries(COLOR_FILTERS).map(([key, label]) => (
+              {Object.entries(COLOR_FILTERS)
+                .filter(([key]) => !enabledFilters || enabledFilters.has(key))
+                .map(([key, label]) => (
                 <button
                   key={key}
                   className={
@@ -399,7 +405,7 @@ export function PhotoEditor({
                   )}
                   {label}
                 </button>
-              ))}
+                ))}
             </div>
           </div>
         </div>

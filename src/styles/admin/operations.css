@@ -241,3 +241,17 @@
     background: var(--stone);
   }
 }
+.filter-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.filter-admin-grid .checkbox {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line, #e7e1dc);
+  border-radius: 10px;
+  background: var(--paper, #fff);
+}
