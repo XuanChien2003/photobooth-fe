@@ -84,31 +84,36 @@ export function StickersManager({ notify }) {
               Khách thấy các nhãn dán này đầu tiên ở bước trang trí khung. Nên dùng ảnh PNG nền trong suốt; chọn được nhiều ảnh một lần.
             </p>
           </div>
-          <label className={`button ${busy ? "is-busy" : ""}`} aria-disabled={Boolean(busy)}>
-            <ImagePlus size={16} /> {busy || "Thêm mới"}
-            <input type="file" accept="image/png,image/webp,image/jpeg" multiple hidden disabled={Boolean(busy)} onChange={upload} />
-          </label>
         </div>
         {!stickers ? (
           <p className="muted">Đang tải…</p>
-        ) : stickers.length ? (
-          <ul className="sticker-library">
-            {stickers.map((s) => (
-              <li key={s._id}>
-                <img src={assetUrl(s.image)} alt="" crossOrigin="anonymous" loading="lazy" />
-                <span>{s.name}</span>
-                <button className="icon-button" aria-label={`Xóa nhãn dán ${s.name}`} disabled={Boolean(busy)} onClick={() => remove(s)}>
-                  <Trash2 size={16} />
-                </button>
-              </li>
-            ))}
-          </ul>
         ) : (
-          <div className="empty-state">
-            <Sticker />
-            <h3>Chưa có nhãn dán riêng</h3>
-            <p>Khách đang dùng bộ nhãn dán biểu tượng có sẵn.</p>
-          </div>
+          <>
+            <ul className="sticker-library">
+              <li className="sticker-library-add">
+                <label className={busy ? "is-busy" : ""} aria-disabled={Boolean(busy)}>
+                  <ImagePlus size={24} />
+                  <span>{busy || "Thêm mới"}</span>
+                  <input type="file" accept="image/png,image/webp,image/jpeg" multiple hidden disabled={Boolean(busy)} onChange={upload} />
+                </label>
+              </li>
+              {stickers.map((s) => (
+                <li key={s._id} title={s.name}>
+                  <img src={assetUrl(s.image)} alt={s.name} crossOrigin="anonymous" loading="lazy" />
+                  <button className="icon-button" aria-label={`Xóa nhãn dán ${s.name}`} disabled={Boolean(busy)} onClick={() => remove(s)}>
+                    <Trash2 size={16} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {!stickers.length && (
+              <div className="empty-state">
+                <Sticker />
+                <h3>Chưa có nhãn dán riêng</h3>
+                <p>Khách đang dùng bộ nhãn dán biểu tượng có sẵn.</p>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>
