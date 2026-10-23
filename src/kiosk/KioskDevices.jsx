@@ -2,9 +2,14 @@ import { useEffect, useState } from "react";
 import { Button } from "../studio";
 import { CROP_KEY } from "./live-preview-layout.js";
 import {
+  arduinoConnected,
+  chooseShutterPort,
   connectRelay,
   DEFAULT_RELAY,
+  forgetShutterPort,
+  hasOwnShutterPort,
   hexBytes,
+  pressArduino,
   pressRelay,
   readRelay,
   readShutter,
@@ -23,11 +28,20 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
   const [shutter, setShutter] = useState(readShutter);
   const [relay, setRelay] = useState(readRelay);
   const [relayOn, setRelayOn] = useState(relayConnected);
+  const [ownPort, setOwnPort] = useState(hasOwnShutterPort);
+  const [arduinoOn, setArduinoOn] = useState(arduinoConnected);
+  const pickShutter = (mode) => {
+    setShutter(mode);
+    localStorage.setItem(SHUTTER_KEY, mode);
+  };
   const [bill, setBill] = useState(readBillConfig);
   const [billStatus, setBillStatus] = useState(billAcceptor.status);
   const [testing, setTesting] = useState(false);
   const [received, setReceived] = useState([]);
-  useEffect(() => billAcceptor.onStatus(setBillStatus), []);
+  useEffect(() => billAcceptor.onStatus((text) => {
+    setBillStatus(text);
+    setArduinoOn(arduinoConnected());
+  }), []);
   // Thử máy đọc tiền: mở nhận tiền tạm thời, hiện các tờ vừa nhận (không tính tiền).
   useEffect(() => {
     if (!testing) return;
@@ -81,14 +95,51 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
       <fieldset className="kiosk-device-box">
         <legend>Tự chụp khi chọn “Đếm giờ”</legend>
         <label className="checkbox">
-          <input type="radio" name="shutter" checked={shutter === "hdmi"}
-            onChange={() => { setShutter("hdmi"); localStorage.setItem(SHUTTER_KEY, "hdmi"); }} />
-          Lấy khung hình từ hình trực tiếp HDMI (không cần thêm thiết bị, ảnh 1080p)
+          <input type="radio" name="shutter" checked={shutter === "arduino"} disabled={!relaySupported}
+            onChange={() => pickShutter("arduino")} />
+          Bấm máy qua Arduino như dây bấm — máy ảnh chụp thật, có flash, ảnh gốc nét nhất (khuyên dùng)
         </label>
+        {shutter === "arduino" && (
+          <>
+            <p className="kiosk-device-note">
+              Dùng chung mạch Pro Micro của máy nhận tiền (nạp mã mới: hardware/bill-acceptor-pulse). D5 → opto lấy
+              nét, D6 → opto chụp, đầu ra opto nối song song với dây bấm (jack chia 1 ra 2). Trên máy ảnh: SHUTTER
+              TYPE = MECHANICAL (màn trập điện tử không nháy flash), RELEASE/FOCUS PRIORITY = RELEASE, MIC/REMOTE
+              RELEASE = REMOTE nếu có. Còn 1 giây máy nhấn nửa để lấy nét, hết giờ chụp ngay. Mạch chưa sẵn sàng
+              thì tạm lấy hình HDMI.
+            </p>
+            <div className="kiosk-device-row">
+              <Button type="button" className="outline small"
+                onClick={() => run(async () => { await pressArduino(); setArduinoOn(arduinoConnected()); },
+                  "Đã bấm thử — máy ảnh phải chụp 1 tấm (flash nổ).")}>
+                Bấm thử
+              </Button>
+              {ownPort ? (
+                <Button type="button" className="outline small"
+                  onClick={() => { forgetShutterPort(); setOwnPort(false); setArduinoOn(arduinoConnected()); }}>
+                  Dùng chung mạch máy nhận tiền
+                </Button>
+              ) : (
+                <Button type="button" className="outline small"
+                  onClick={() => run(async () => {
+                    await chooseShutterPort();
+                    setOwnPort(true);
+                    setArduinoOn(arduinoConnected());
+                  }, "Đã chọn cổng riêng cho mạch bấm máy.")}>
+                  Mạch riêng? Chọn cổng
+                </Button>
+              )}
+            </div>
+            <p className="kiosk-device-note" role="status">
+              {ownPort ? "Mạch bấm máy riêng" : "Dùng chung mạch máy nhận tiền"} ·{" "}
+              {arduinoOn ? "đã kết nối" : "chưa kết nối (bấm thử để mở cổng)"}
+            </p>
+          </>
+        )}
         <label className="checkbox">
           <input type="radio" name="shutter" checked={shutter === "relay"} disabled={!relaySupported}
-            onChange={() => { setShutter("relay"); localStorage.setItem(SHUTTER_KEY, "relay"); }} />
-          Bấm máy ảnh bằng relay USB nối song song dây bấm (ảnh gốc máy ảnh, nét nhất)
+            onChange={() => pickShutter("relay")} />
+          Bấm máy ảnh bằng relay USB nối song song dây bấm (ảnh gốc máy ảnh, có flash)
         </label>
         {shutter === "relay" && (
           <div className="kiosk-device-row">
@@ -117,6 +168,10 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
             </label>
           </div>
         )}
+        <label className="checkbox">
+          <input type="radio" name="shutter" checked={shutter === "hdmi"} onChange={() => pickShutter("hdmi")} />
+          Lấy khung hình từ hình trực tiếp HDMI (không cần thêm thiết bị, ảnh 1080p, không có flash)
+        </label>
       </fieldset>
 
       <fieldset className="kiosk-device-box">

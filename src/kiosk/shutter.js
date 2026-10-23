@@ -1,20 +1,28 @@
 import { visibleRegion } from "./live-preview-layout.js";
 import { choosePort, savedPort } from "./serial-ports.js";
+import { billAcceptor, readBillConfig } from "./bill-acceptor.js";
 
 // Chế độ "Đếm giờ": hết đếm ngược thì máy chụp tự chụp. Trình duyệt không điều khiển được máy
-// ảnh Fujifilm qua X Acquire, nên có hai cách:
-// - "relay": mạch relay USB (Web Serial) nối song song với nút của dây bấm → máy ảnh chụp thật,
-//   ảnh gốc về thư mục X Acquire như khi khách bấm dây.
-// - "hdmi": lấy khung hình đang phát từ thẻ ghi hình HDMI (không cần thêm thiết bị, ảnh 1080p).
+// ảnh Fujifilm qua X Acquire, nên bấm máy giống hệt dây bấm (máy ảnh chụp thật, flash nổ, ảnh gốc
+// về thư mục X Acquire như khi khách tự bấm):
+// - "arduino" (mặc định): mạch Arduino Pro Micro (dùng chung với máy nhận tiền) nhận lệnh "SHOOT"
+//   qua cổng COM, nhấn nửa (lấy nét) rồi nhấn hết qua 2 opto nối song song với dây bấm.
+//   Mã mạch: hardware/bill-acceptor-pulse/bill-acceptor-pulse.ino.
+// - "relay": mạch relay USB (Web Serial) nối song song với nút chụp của dây bấm.
+// - "hdmi": lấy khung hình đang phát từ thẻ ghi hình HDMI (không cần thêm thiết bị, ảnh 1080p,
+//   KHÔNG có flash) — cũng là đường lui khi mạch chưa sẵn sàng.
 export const SHUTTER_KEY = "kiosk-shutter";
 export const RELAY_KEY = "kiosk-relay";
+export const SHUTTER_MODES = ["arduino", "relay", "hdmi"];
 // Lệnh mặc định của module relay USB 1 kênh phổ biến (LCUS-1, chip CH340): bật / tắt kênh 1.
 export const DEFAULT_RELAY = { on: "A0 01 01 A2", off: "A0 01 00 A1", ms: 300, baud: 9600 };
 
 export const relaySupported =
   typeof navigator !== "undefined" && "serial" in navigator;
-export const readShutter = () =>
-  globalThis.localStorage?.getItem(SHUTTER_KEY) === "relay" ? "relay" : "hdmi";
+export const readShutter = () => {
+  const saved = globalThis.localStorage?.getItem(SHUTTER_KEY);
+  return SHUTTER_MODES.includes(saved) ? saved : "arduino";
+};
 export function readRelay() {
   try {
     return { ...DEFAULT_RELAY, ...JSON.parse(localStorage.getItem(RELAY_KEY)) };
@@ -29,29 +37,27 @@ export const hexBytes = (text) => {
   return new Uint8Array(parts.map((p) => parseInt(p.replace(/^0x/i, ""), 16)));
 };
 
-let port = null;
-let opening = null;
-// Mở cổng relay đã cho phép trước đó; ask = true thì hỏi nhân viên chọn cổng (cần bấm nút).
-export async function connectRelay(ask = false) {
+// Cổng USB-serial riêng của từng thiết bị bấm máy ("relay" hoặc mạch Arduino riêng "shutter").
+const ports = new Map();
+const opening = new Map();
+// Mở cổng đã cho phép trước đó; ask = true thì hỏi nhân viên chọn cổng (cần bấm nút).
+async function openPort(role, baud, ask) {
   if (!relaySupported) throw new Error("Trình duyệt không hỗ trợ cổng USB (Web Serial). Dùng Chrome hoặc Edge.");
-  if (port?.writable) return port;
-  opening ??= (async () => {
-    const chosen = ask ? await choosePort("relay") : await savedPort("relay");
-    if (!chosen) return null;
-    if (!chosen.writable) await chosen.open({ baudRate: readRelay().baud || 9600 });
-    port = chosen;
-    navigator.serial.addEventListener?.("disconnect", (event) => {
-      if (event.target === port) port = null;
-    });
-    return port;
-  })().finally(() => {
-    opening = null;
-  });
-  return opening;
+  if (!ask && ports.get(role)?.writable) return ports.get(role);
+  if (!opening.has(role))
+    opening.set(role, (async () => {
+      const chosen = ask ? await choosePort(role) : await savedPort(role);
+      if (!chosen) return null;
+      if (!chosen.writable) await chosen.open({ baudRate: baud });
+      ports.set(role, chosen);
+      navigator.serial.addEventListener?.("disconnect", (event) => {
+        if (event.target === ports.get(role)) ports.delete(role);
+      });
+      return chosen;
+    })().finally(() => opening.delete(role)));
+  return opening.get(role);
 }
-export const relayConnected = () => Boolean(port?.writable);
-
-async function send(bytes) {
+async function send(port, bytes) {
   const writer = port.writable.getWriter();
   try {
     await writer.write(bytes);
@@ -59,13 +65,53 @@ async function send(bytes) {
     writer.releaseLock();
   }
 }
+
+export const connectRelay = (ask = false) => openPort("relay", readRelay().baud || 9600, ask);
+export const relayConnected = () => Boolean(ports.get("relay")?.writable);
 // Đóng relay trong `ms` mili giây (như bấm nút dây bấm) rồi nhả ra.
 export async function pressRelay(config = readRelay()) {
-  if (!(await connectRelay(false))) throw new Error("Chưa kết nối relay chụp ảnh.");
-  await send(hexBytes(config.on));
+  const port = await connectRelay(false);
+  if (!port) throw new Error("Chưa kết nối relay chụp ảnh.");
+  await send(port, hexBytes(config.on));
   await new Promise((resolve) => setTimeout(resolve, Math.max(50, Number(config.ms) || 300)));
-  await send(hexBytes(config.off));
+  await send(port, hexBytes(config.off));
 }
+
+// ─── Mạch Arduino bấm máy (dây bấm điện tử) ───────────────────────────────
+// Có cổng riêng đã chọn cho mạch bấm máy thì dùng cổng đó; không thì dùng chung mạch Pro Micro của
+// máy nhận tiền (kiểu "Xung qua Arduino — cổng COM"), vì một cổng COM chỉ mở được một lần.
+export const hasOwnShutterPort = () => Boolean(globalThis.localStorage?.getItem("serial-port-shutter"));
+export const chooseShutterPort = () => openPort("shutter", 9600, true);
+export function forgetShutterPort() {
+  localStorage.removeItem("serial-port-shutter");
+  ports.get("shutter")?.close().catch(() => {});
+  ports.delete("shutter");
+}
+async function arduinoLine(line) {
+  if (hasOwnShutterPort()) {
+    const port = await openPort("shutter", 9600, false);
+    if (!port) throw new Error("Chưa kết nối mạch bấm máy (cổng COM đã chọn không có).");
+    return send(port, new TextEncoder().encode(`${line}\n`));
+  }
+  if (readBillConfig().protocol !== "pulse")
+    throw new Error("Chưa chọn cổng cho mạch bấm máy (máy nhận tiền không dùng mạch Arduino).");
+  if (!billAcceptor.port?.writable && !(await billAcceptor.connect(false)))
+    throw new Error("Chưa kết nối mạch Arduino (chọn cổng ở mục Máy đọc tiền).");
+  return billAcceptor.writeText(line);
+}
+export const arduinoConnected = () =>
+  hasOwnShutterPort()
+    ? Boolean(ports.get("shutter")?.writable)
+    : readBillConfig().protocol === "pulse" && Boolean(billAcceptor.port?.writable);
+// Nhấn nửa (lấy nét) trước lúc chụp ~1 giây để máy chụp đúng lúc hết đếm ngược. Mạch tự nhả sau
+// vài giây nếu không có lệnh chụp.
+export const focusArduino = () => arduinoLine("FOCUS");
+// Nhấn hết: máy ảnh chụp (flash nổ), mạch trả lời "SHOT".
+export const pressArduino = () => arduinoLine("SHOOT");
+
+// Bấm máy theo chế độ đã chọn ("arduino" / "relay"); "hdmi" không bấm máy.
+export const pressShutter = (mode = readShutter()) =>
+  mode === "relay" ? pressRelay() : pressArduino();
 
 // Khung hình HDMI đang phát → JPEG chưa lật (giống ảnh gốc máy ảnh), cắt đúng vùng khách thấy
 // trên màn hình (bỏ mép có thông số máy ảnh).

@@ -227,3 +227,62 @@ export function runKioskPrints() {
   })();
   return running;
 }
+
+// ─── Ảnh ghép khung gửi vào album ─────────────────────────────────────────
+// Khách xem / tải ảnh đã ghép khung trong album kể cả khi gói không kèm tờ in. Lưu trên máy
+// (IndexedDB) rồi mới gửi: mất mạng / tải lại trang vẫn gửi tiếp; gửi lại thì máy chủ thay ảnh cũ.
+const COMPOSITE_KEY = "kiosk-composite-queue";
+let sendingComposites = null;
+export async function queueKioskComposite({ token, captureToken, image, frameName }) {
+  const queue = (await readSetting(COMPOSITE_KEY).catch(() => null)) || [];
+  await saveSetting(COMPOSITE_KEY, [
+    ...queue.filter((job) => job.token !== token),
+    { id: crypto.randomUUID(), token, captureToken, image, frameName, queuedAt: Date.now() },
+  ]);
+  runKioskComposites();
+}
+export function runKioskComposites() {
+  sendingComposites ??= (async () => {
+    try {
+      for (let round = 0; ; round++) {
+        const queue = (await readSetting(COMPOSITE_KEY).catch(() => null)) || [];
+        if (!queue.length) return;
+        const finished = new Set();
+        for (const job of queue) {
+          try {
+            await api("/kiosk/composite", {
+              method: "POST",
+              body: job.image,
+              timeout: 120000,
+              headers: {
+                "X-Capture-Token": job.captureToken,
+                "X-Frame-Name": encodeURIComponent(job.frameName || ""),
+              },
+            });
+            finished.add(job.id);
+          } catch (error) {
+            // Phiên chụp không còn hợp lệ / ảnh bị từ chối / chờ quá lâu: không thử lại nữa.
+            if ([400, 401, 403, 404, 409, 413].includes(error.status) || Date.now() - job.queuedAt > 6 * 3600_000)
+              finished.add(job.id);
+          }
+        }
+        const latest = (await readSetting(COMPOSITE_KEY).catch(() => null)) || [];
+        const left = latest.filter((job) => !finished.has(job.id));
+        await saveSetting(COMPOSITE_KEY, left);
+        if (!left.length) return;
+        await new Promise((resolve) => setTimeout(resolve, Math.min(30000, 4000 * 2 ** Math.min(round, 3))));
+      }
+    } finally {
+      sendingComposites = null;
+    }
+  })();
+  return sendingComposites;
+}
+// Bản ghép chất lượng in → JPEG gửi vào album.
+export const compositeJpeg = (canvas) =>
+  new Promise((resolve, reject) =>
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Không tạo được ảnh ghép."))),
+      "image/jpeg",
+      0.92,
+    ));

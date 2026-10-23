@@ -44,14 +44,17 @@ import {
   sameKioskSession,
 } from "./network-tasks.js";
 import { readCrop } from "./live-preview-layout.js";
-import { grabHdmiFrame, pressRelay, readShutter } from "./shutter.js";
+import { focusArduino, grabHdmiFrame, pressShutter, readShutter } from "./shutter.js";
 import { buildTimelapse, createClipRecorder } from "./clip-recorder.js";
 import {
+  compositeJpeg,
   composePreview,
   frameCandidates,
   printSheets,
+  queueKioskComposite,
   queueKioskPrint,
   renderPrintFrame,
+  runKioskComposites,
   runKioskPrints,
   watchKioskPrint,
   kioskPrintState,
@@ -72,7 +75,8 @@ const MODE_SECONDS = 30;
 const READY_SECONDS = 3;
 const SELECT_SECONDS = 60;
 const FRAME_SECONDS = 60;
-// Hết đếm ngược mà ảnh từ máy ảnh chưa về (relay không bấm được máy ảnh…): chụp từ hình HDMI.
+// Đã bấm máy mà ảnh từ máy ảnh chưa về (mạch / dây bấm lỏng, máy không lấy được nét…): chụp từ
+// hình HDMI để không mất tấm của khách.
 const SHOT_WAIT_MS = 8000;
 const SALE_KEY = "kiosk-sale";
 // Phòng của máy chụp đọc ngay từ liên kết cài máy (phần giữa của mã), trước khi máy chủ trả lời.
@@ -201,6 +205,7 @@ export function Kiosk() {
   useEffect(() => {
     billAcceptor.connect(false).catch(() => {}).finally(() => billAcceptor.setEnabled(false).catch(() => {}));
     runKioskPrints();
+    runKioskComposites();
     return watchKioskPrint((token, state) => {
       if (token === current.current?.accessToken) setPrint(state);
     });
@@ -862,29 +867,50 @@ export function Kiosk() {
     setComposing(true);
     try {
       let composite = "";
+      const albumLink = `${window.location.origin}/album/${s.accessToken}`;
+      const images = chosenShots.map((x) => bitmaps.get(x.key)).filter(Boolean);
       if (frame) {
-        const albumLink = `${window.location.origin}/album/${s.accessToken}`;
-        const canvas = await composePreview(frame, chosenShots.map((x) => bitmaps.get(x.key)).filter(Boolean), 700, albumLink);
+        const canvas = await composePreview(frame, images, 700, albumLink);
         composite = canvas.toDataURL("image/jpeg", 0.9);
         canvas.width = canvas.height = 0;
+      } else {
+        // Tiệm chưa bật khung nào: màn cuối hiện tấm đầu tiên khách chọn (chưa ghép).
+        notifyOnce("no-frame", "warning", "Chưa có khung ảnh nào đang bật — thêm khung ở Quản lý → Khung ảnh để ghép và in.", 15000);
+        if (images[0]) {
+          const canvas = document.createElement("canvas");
+          canvas.width = 700;
+          canvas.height = Math.round((700 * images[0].height) / images[0].width);
+          canvas.getContext("2d").drawImage(images[0], 0, 0, canvas.width, canvas.height);
+          composite = canvas.toDataURL("image/jpeg", 0.9);
+          canvas.width = canvas.height = 0;
+        }
       }
       const printsCount = Number(s.booking.prints) || 0;
-      transition(() => showDone(s.booking, s.accessToken, { composite, prints: printsCount }), "zoom");
-      if (frame && printsCount) {
-        setPrint({ status: "sending" });
+      transition(() => showDone(s.booking, s.accessToken, { composite, framed: Boolean(frame), prints: printsCount }), "zoom");
+      if (frame) {
+        if (printsCount) setPrint({ status: "sending" });
+        const frameName = frame.themeName?.trim() || frame.name || "Khung ảnh";
+        // Bản ghép chất lượng in: gửi vào album (khách xem / tải) và, nếu gói có in, ra máy in.
         (async () => {
+          let printFrame = null;
           try {
-            const printFrame = await renderPrintFrame(frame, chosenShots, s.accessToken,
-              `${window.location.origin}/album/${s.accessToken}`);
-            const images = await printSheets(printFrame, frame, printsCount);
-            printFrame.width = printFrame.height = 0;
-            await queueKioskPrint({
+            printFrame = await renderPrintFrame(frame, chosenShots, s.accessToken, albumLink);
+            await queueKioskComposite({
               token: s.accessToken,
-              images,
-              frameName: frame.themeName?.trim() || frame.name || "Khung ảnh",
-            });
+              captureToken: s.captureToken,
+              image: await compositeJpeg(printFrame),
+              frameName,
+            }).catch(() => {});
+            if (printsCount)
+              await queueKioskPrint({
+                token: s.accessToken,
+                images: await printSheets(printFrame, frame, printsCount),
+                frameName,
+              });
           } catch (e) {
-            setPrint({ status: "failed", message: e.message });
+            if (printsCount) setPrint({ status: "failed", message: e.message });
+          } finally {
+            if (printFrame) printFrame.width = printFrame.height = 0;
           }
         })();
       }
@@ -892,7 +918,7 @@ export function Kiosk() {
       setComposing(false);
     }
   }
-  function showDone(booking, accessToken, { expired = false, composite = "", prints } = {}) {
+  function showDone(booking, accessToken, { expired = false, composite = "", framed = true, prints } = {}) {
     setLeft(QR_SECONDS);
     setPrint(kioskPrintState(accessToken) || null);
     setDone({
@@ -901,6 +927,7 @@ export function Kiosk() {
       code: booking.code,
       photos: booking.photos.filter((p) => p.kind === "original").length,
       composite,
+      framed,
       prints: prints ?? 0,
       expired,
     });
@@ -1040,7 +1067,8 @@ export function Kiosk() {
         if (!live.captureOrder?.includes(id))
           update({ ...live, captureOrder: [...(live.captureOrder || []), id] });
         trackPending((list) => (list.some((p) => p.id === id) ? list : [...list, row]));
-        setFlash((n) => n + 1);
+        // Máy chụp vừa bấm máy thì màn hình đã nháy lúc bấm (cùng lúc flash nổ).
+        if (Date.now() - pressedAt.current > SHOT_WAIT_MS) setFlash((n) => n + 1);
         recorder.current.cut();
         sync();
       }
@@ -1055,7 +1083,8 @@ export function Kiosk() {
   }
   const takenRef = useRef(0);
   takenRef.current = taken;
-  // Chụp từ hình HDMI (chế độ đếm giờ không dùng relay, hoặc relay không bấm được máy ảnh).
+  const pressedAt = useRef(0);
+  // Chụp từ hình HDMI (chế độ "Lấy hình HDMI", hoặc mạch bấm máy chưa sẵn sàng / máy ảnh không chụp).
   async function grabShot() {
     try {
       const blob = await grabHdmiFrame(video$.current, zoomRef.current);
@@ -1066,18 +1095,26 @@ export function Kiosk() {
       setShotRetry((n) => n + 1);
     }
   }
+  // Hết đếm ngược: bấm máy ảnh như dây bấm (máy chụp thật, flash nổ, ảnh gốc về thư mục X Acquire).
   async function triggerShot() {
     const before = takenRef.current;
-    if (readShutter() !== "relay") return grabShot();
+    const shutter = readShutter();
+    if (shutter === "hdmi") return grabShot();
     try {
-      await pressRelay();
+      await pressShutter(shutter);
     } catch (e) {
-      notifyOnce("relay", "warning", `Relay chụp ảnh chưa sẵn sàng (${e.message}) — chụp bằng hình HDMI.`, 10000);
+      notifyOnce("relay", "warning",
+        `${shutter === "relay" ? "Relay" : "Mạch bấm máy"} chưa sẵn sàng (${e.message}) — đang chụp bằng hình HDMI (không có flash).`, 10000);
       return grabShot();
     }
+    pressedAt.current = Date.now();
+    setFlash((n) => n + 1);
     setTimeout(() => {
-      if (alive.current && phaseOf(current.current) === "shoot" && takenRef.current === before && !readingRef.current)
+      if (alive.current && phaseOf(current.current) === "shoot" && takenRef.current === before && !readingRef.current) {
+        notifyOnce("no-shot", "warning",
+          "Đã bấm máy nhưng máy ảnh không gửi ảnh về — kiểm tra dây bấm, lấy nét và X Acquire. Tấm này lấy từ hình HDMI.", 12000);
         grabShot();
+      }
     }, SHOT_WAIT_MS);
   }
   // Theo dõi thư mục ảnh của máy ảnh trong suốt lúc chụp (không khởi động lại mỗi lần có ảnh).
@@ -1122,10 +1159,15 @@ export function Kiosk() {
     const seconds = Number(session.booking.countdownSeconds) || 10;
     const end = Date.now() + seconds * 1000;
     setShotLeft(seconds);
-    let fired = false;
+    let fired = false, focused = false;
     const timer = setInterval(() => {
       const secondsLeft = Math.max(0, Math.ceil((end - Date.now()) / 1000));
       setShotLeft(secondsLeft);
+      // Còn 1 giây: nhấn nửa để máy lấy nét trước, hết giờ là chụp ngay.
+      if (secondsLeft === 1 && !focused && readShutter() === "arduino") {
+        focused = true;
+        focusArduino().catch(() => {});
+      }
       if (!secondsLeft && !fired) {
         fired = true;
         clearInterval(timer);

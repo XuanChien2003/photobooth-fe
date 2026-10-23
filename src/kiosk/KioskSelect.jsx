@@ -7,21 +7,38 @@ import { useObjectUrl } from "./KioskShoot.jsx";
 // Ảnh xem nhanh của các tấm đã chụp, giải mã một lần cho cả bước chọn ảnh và chọn khung.
 export function useShotBitmaps(shots, token) {
   const [bitmaps, setBitmaps] = useState(() => new Map());
-  const loading = useRef(new Set());
+  // Ảnh đã đọc của lượt hiện tại. Kết quả đọc xong giữ lại kể cả khi danh sách tấm vừa đổi (ảnh gốc
+  // tải lên xong làm cập nhật lượt chụp) — bỏ đi thì tấm đó không bao giờ được đọc lại và khung
+  // ghép xem trước bị trống ô.
+  const store = useRef({ token, loading: new Set(), map: bitmaps });
   useEffect(() => {
-    let alive = true;
+    let s = store.current;
+    // Lượt khách mới, hoặc đã rời bước chọn ảnh / khung: giải phóng ảnh đã giải mã (~10 MB mỗi tấm;
+    // máy chụp mở cả ngày).
+    if (s.token !== token || !shots.length) {
+      if (s.map.size || s.loading.size) {
+        for (const bitmap of s.map.values()) bitmap.close?.();
+        s = store.current = { token, loading: new Set(), map: new Map() };
+        setBitmaps(s.map);
+      } else s.token = token;
+    }
     for (const shot of shots) {
-      if (loading.current.has(shot.key)) continue;
-      loading.current.add(shot.key);
+      if (s.loading.has(shot.key)) continue;
+      s.loading.add(shot.key);
       previewBitmap(shot, token).then(
-        (bitmap) => alive && setBitmaps((old) => new Map(old).set(shot.key, bitmap)),
-        () => loading.current.delete(shot.key),
+        (bitmap) => {
+          if (store.current !== s) return bitmap.close?.();
+          s.map = new Map(s.map).set(shot.key, bitmap);
+          setBitmaps(s.map);
+        },
+        () => s.loading.delete(shot.key),
       );
     }
-    return () => {
-      alive = false;
-    };
   }, [shots, token]);
+  useEffect(() => () => {
+    for (const bitmap of store.current.map.values()) bitmap.close?.();
+    store.current = { token: null, loading: new Set(), map: new Map() };
+  }, []);
   return bitmaps;
 }
 
@@ -120,24 +137,28 @@ export function KioskFrame({ frames, index, setIndex, images, imageKey, secondsL
       <header className="flow-head">
         <h1>Chọn khung ảnh</h1>
         <p>
-          {frame?.themeName?.trim() || frame?.name} · khung {index + 1}/{frames.length} · còn <u>{secondsLeft}s</u>
+          {frame ? `${frame.themeName?.trim() || frame.name} · khung ${index + 1}/${frames.length} · ` : ""}còn <u>{secondsLeft}s</u>
         </p>
       </header>
-      <div className="frame-stage">
-        <button type="button" className="frame-arrow" aria-label="Khung trước" onClick={() => move(-1)} disabled={frames.length < 2}>
-          <PiArrowLeftBold />
-        </button>
-        <FramePreview key={frame?._id} frame={frame} images={images} imageKey={imageKey} width={900} className="frame-main" qrUrl={qrUrl} />
-        <button type="button" className="frame-arrow" aria-label="Khung sau" onClick={() => move(1)} disabled={frames.length < 2}>
-          <PiArrowRightBold />
-        </button>
-      </div>
+      {!frames.length ? (
+        <p className="frame-none" role="status">Tiệm chưa có khung ảnh — bấm “Nhận ảnh &amp; mã QR” để tải ảnh của bạn.</p>
+      ) : (
+        <div className="frame-stage">
+          <button type="button" className="frame-arrow" aria-label="Khung trước" onClick={() => move(-1)} disabled={frames.length < 2}>
+            <PiArrowLeftBold />
+          </button>
+          <FramePreview key={frame?._id} frame={frame} images={images} imageKey={imageKey} width={900} className="frame-main" qrUrl={qrUrl} />
+          <button type="button" className="frame-arrow" aria-label="Khung sau" onClick={() => move(1)} disabled={frames.length < 2}>
+            <PiArrowRightBold />
+          </button>
+        </div>
+      )}
       <div className="frame-dots" aria-hidden="true">
         {frames.slice(0, 24).map((f, i) => <i key={f._id} className={i === index ? "on" : ""} />)}
       </div>
       <footer className="flow-foot">
-        <Button className="kiosk-next" disabled={busy || !frame} onClick={onConfirm}>
-          {busy ? "Đang ghép ảnh…" : "Chọn khung này"} <PiCheckBold aria-hidden="true" />
+        <Button className="kiosk-next" disabled={busy || (!frame && frames.length > 0)} onClick={onConfirm}>
+          {busy ? "Đang ghép ảnh…" : frames.length ? "Chọn khung này" : "Nhận ảnh & mã QR"} <PiCheckBold aria-hidden="true" />
         </Button>
       </footer>
     </section>

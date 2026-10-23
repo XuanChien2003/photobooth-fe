@@ -13,23 +13,27 @@ import { ExtraPrints } from "../extra-prints";
 const paymentLabel = (method) => method === "cash" ? "Tiền mặt" : method === "transfer" ? "Chuyển khoản" : "—";
 const albumUrl = (booking) => booking.accessToken ? `${window.location.origin}/album/${booking.accessToken}` : "";
 
-// Ảnh đại diện của đơn: ảnh đã ghép khung (lệnh in gần nhất), chưa có thì tấm đầu tiên khách chụp.
+// Ảnh đại diện của đơn: ảnh đã ghép khung (máy chụp ghép, rồi tới lệnh in gần nhất), chưa có thì
+// tấm đầu tiên khách chụp.
 function OrderThumb({ booking }) {
   const job = booking.latestPrint;
-  const src = job?.image
-    ? assetUrl(`${job.image}?size=thumbnail`)
-    : booking.coverPhoto ? assetUrl(directMediaUrl(booking.coverPhoto)) : "";
+  const framed = Boolean(booking.composite || job?.image);
+  const src = booking.composite
+    ? assetUrl(booking.coverPhoto)
+    : job?.image
+      ? assetUrl(`${job.image}?size=thumbnail`)
+      : booking.coverPhoto ? assetUrl(directMediaUrl(booking.coverPhoto)) : "";
   const [failed, setFailed] = useState("");
   return (
     <div className="order-thumb">
       {src && failed !== src
-        ? <img src={src} alt={job?.image ? "Ảnh đã ghép khung" : "Ảnh đầu tiên"} loading="lazy" onError={() => setFailed(src)} />
+        ? <img src={src} alt={framed ? "Ảnh đã ghép khung" : "Ảnh đầu tiên"} loading="lazy" onError={() => setFailed(src)} />
         : <ImageIcon />}
     </div>
   );
 }
 
-// Tải ảnh: tất cả ảnh gốc (ZIP) hoặc ảnh final đã ghép khung.
+// Tải ảnh: tất cả ảnh gốc (ZIP), ảnh đã ghép khung ở máy chụp hoặc file in (final).
 function DownloadMenu({ booking }) {
   const [open, setOpen] = useState(false);
   const menu = useRef(null);
@@ -47,7 +51,8 @@ function DownloadMenu({ booking }) {
       document.removeEventListener("keydown", close);
     };
   }, [open]);
-  if (!zip && !job?.image) return null;
+  const composite = booking.composite?.url;
+  if (!zip && !job?.image && !composite) return null;
   return (
     <div className="order-download" ref={menu}>
       <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
@@ -58,6 +63,11 @@ function DownloadMenu({ booking }) {
           {zip && (
             <a role="menuitem" href={getApiUrl(`/api/albums/${booking.accessToken}/download`)} onClick={() => setOpen(false)}>
               <FileArchive size={16} aria-hidden="true" /> Tải tất cả ảnh (ZIP)
+            </a>
+          )}
+          {composite && (
+            <a role="menuitem" href={`${assetUrl(composite)}?download=1`} onClick={() => setOpen(false)}>
+              <ImageIcon size={16} aria-hidden="true" /> Tải ảnh ghép khung (JPG)
             </a>
           )}
           {job?.image && (

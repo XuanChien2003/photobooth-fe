@@ -26,7 +26,7 @@ import { BEAUTY_KEYS, pad, photoUrl } from "./utils";
 // Storage loads use CORS mode: the editor fetches the very same R2 URL for its canvas, and R2
 // answers a plain <img> without CORS headers or "Vary: Origin", so the cached copy would make that
 // fetch fail and push the editor onto the slow path through the server (seen in Chromium).
-function PhotoThumb({ photo, token, ...props }) {
+export function PhotoThumb({ photo, token, ...props }) {
   const [sources] = useState(() => {
     const api = photoUrl(token, photo.id, true);
     const link = storageLink(photo, "thumbnail");
