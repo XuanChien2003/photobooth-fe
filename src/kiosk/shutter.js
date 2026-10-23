@@ -1,10 +1,13 @@
 import { visibleRegion } from "./live-preview-layout.js";
 import { choosePort, savedPort } from "./serial-ports.js";
 import { billAcceptor, readBillConfig } from "./bill-acceptor.js";
+import { focusBluetooth, pressBluetooth } from "./camera-bluetooth.js";
 
 // Chế độ "Đếm giờ": hết đếm ngược thì máy chụp tự chụp. Trình duyệt không điều khiển được máy
 // ảnh Fujifilm qua X Acquire, nên bấm máy giống hệt dây bấm (máy ảnh chụp thật, flash nổ, ảnh gốc
 // về thư mục X Acquire như khi khách tự bấm):
+// - "bluetooth": Bluetooth của chính máy ảnh, như nút chụp trong app Fujifilm — không cần mạch
+//   (camera-bluetooth.js).
 // - "arduino" (mặc định): mạch Arduino Pro Micro (dùng chung với máy nhận tiền) nhận lệnh "SHOOT"
 //   qua cổng COM, nhấn nửa (lấy nét) rồi nhấn hết qua 2 opto nối song song với dây bấm.
 //   Mã mạch: hardware/bill-acceptor-pulse/bill-acceptor-pulse.ino.
@@ -14,7 +17,7 @@ import { billAcceptor, readBillConfig } from "./bill-acceptor.js";
 //   HDMI thay (tiệm dùng flash rời).
 export const SHUTTER_KEY = "kiosk-shutter";
 export const RELAY_KEY = "kiosk-relay";
-export const SHUTTER_MODES = ["arduino", "relay", "hdmi"];
+export const SHUTTER_MODES = ["bluetooth", "arduino", "relay", "hdmi"];
 // Lệnh mặc định của module relay USB 1 kênh phổ biến (LCUS-1, chip CH340): bật / tắt kênh 1.
 export const DEFAULT_RELAY = { on: "A0 01 01 A2", off: "A0 01 00 A1", ms: 300, baud: 9600 };
 
@@ -110,9 +113,12 @@ export const focusArduino = () => arduinoLine("FOCUS");
 // Nhấn hết: máy ảnh chụp (flash nổ), mạch trả lời "SHOT".
 export const pressArduino = () => arduinoLine("SHOOT");
 
-// Bấm máy theo chế độ đã chọn ("arduino" / "relay"); "hdmi" không bấm máy.
+// Bấm máy theo chế độ đã chọn ("bluetooth" / "arduino" / "relay"); "hdmi" không bấm máy.
 export const pressShutter = (mode = readShutter()) =>
-  mode === "relay" ? pressRelay() : pressArduino();
+  mode === "bluetooth" ? pressBluetooth() : mode === "relay" ? pressRelay() : pressArduino();
+// Nhấn nửa lấy nét trước lúc chụp (relay một kênh không nhấn nửa được).
+export const focusShutter = (mode = readShutter()) =>
+  mode === "bluetooth" ? focusBluetooth() : mode === "arduino" ? focusArduino() : Promise.resolve();
 
 // Khung hình HDMI đang phát → JPEG chưa lật (giống ảnh gốc máy ảnh), cắt đúng vùng khách thấy
 // trên màn hình (bỏ mép có thông số máy ảnh).

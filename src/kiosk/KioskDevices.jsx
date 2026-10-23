@@ -19,6 +19,13 @@ import {
   SHUTTER_KEY,
 } from "./shutter.js";
 import { billAcceptor, billSupported, readBillConfig, saveBillConfig } from "./bill-acceptor.js";
+import {
+  bluetoothSupported,
+  forgetBluetoothCamera,
+  pairBluetoothCamera,
+  pressBluetooth,
+  watchBluetoothCamera,
+} from "./camera-bluetooth.js";
 
 const money = (n) => `${Number(n).toLocaleString("vi-VN")} đ`;
 
@@ -30,6 +37,8 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
   const [relayOn, setRelayOn] = useState(relayConnected);
   const [ownPort, setOwnPort] = useState(hasOwnShutterPort);
   const [arduinoOn, setArduinoOn] = useState(arduinoConnected);
+  const [camera, setCamera] = useState({ name: "", saved: false, connected: false });
+  useEffect(() => watchBluetoothCamera(setCamera), []);
   const pickShutter = (mode) => {
     setShutter(mode);
     localStorage.setItem(SHUTTER_KEY, mode);
@@ -95,6 +104,48 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
 
       <fieldset className="kiosk-device-box">
         <legend>Tự chụp khi chọn “Đếm giờ”</legend>
+        <label className="checkbox">
+          <input type="radio" name="shutter" checked={shutter === "bluetooth"} disabled={!bluetoothSupported}
+            onChange={() => pickShutter("bluetooth")} />
+          Bấm máy qua Bluetooth của máy ảnh — không cần mạch, máy ảnh chụp thật, có flash (thử nghiệm)
+        </label>
+        {shutter === "bluetooth" && (
+          <>
+            <ol className="kiosk-device-steps">
+              <li>Máy tính cần có Bluetooth (laptop thường có sẵn; máy bàn cắm USB Bluetooth).</li>
+              <li>
+                Trên máy ảnh: MENU → SET UP → CONNECTION SETTING → Bluetooth SETTINGS → Bluetooth ON/OFF = ON, rồi
+                chọn PAIRING REGISTRATION (máy ảnh chờ ghép đôi). Nên đặt AUTO POWER OFF = OFF để không mất kết nối.
+              </li>
+              <li>Bấm “Kết nối máy ảnh”, chọn tên máy ảnh (vd. X-S10…) trong bảng Chrome hiện ra; Windows hỏi ghép đôi thì đồng ý.</li>
+              <li>Bấm “Bấm thử”: máy ảnh phải chụp 1 tấm, flash nổ, ảnh về thư mục X Acquire.</li>
+            </ol>
+            <div className="kiosk-device-row">
+              <Button type="button" className="outline small" disabled={!bluetoothSupported}
+                onClick={() => run(async () => { await pairBluetoothCamera(); pickShutter("bluetooth"); },
+                  "Đã kết nối máy ảnh qua Bluetooth.")}>
+                {camera.saved ? "Kết nối lại máy ảnh" : "Kết nối máy ảnh"}
+              </Button>
+              <Button type="button" className="outline small" disabled={!camera.saved}
+                onClick={() => run(() => pressBluetooth(), "Đã bấm thử — máy ảnh phải chụp 1 tấm (flash nổ).")}>
+                Bấm thử
+              </Button>
+              {camera.saved && (
+                <Button type="button" className="outline small" onClick={() => forgetBluetoothCamera()}>
+                  Bỏ máy ảnh này
+                </Button>
+              )}
+            </div>
+            <p className="kiosk-device-note" role="status">
+              {!bluetoothSupported
+                ? "Trình duyệt / máy tính này không dùng được Bluetooth cho trang web (dùng Chrome hoặc Edge, bật Bluetooth)."
+                : camera.saved
+                  ? `${camera.name || "Máy ảnh"} · ${camera.connected ? "đã kết nối." : "chưa kết nối (tự kết nối lúc chụp)."}`
+                  : "Chưa ghép đôi máy ảnh."}
+              {" "}Nếu Bluetooth không bấm được, màn hình sẽ mời khách bấm dây.
+            </p>
+          </>
+        )}
         <label className="checkbox">
           <input type="radio" name="shutter" checked={shutter === "arduino"} disabled={!relaySupported}
             onChange={() => pickShutter("arduino")} />

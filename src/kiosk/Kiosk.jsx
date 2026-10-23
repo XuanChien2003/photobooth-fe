@@ -44,7 +44,8 @@ import {
   sameKioskSession,
 } from "./network-tasks.js";
 import { readCrop } from "./live-preview-layout.js";
-import { focusArduino, grabHdmiFrame, pressShutter, readShutter } from "./shutter.js";
+import { focusShutter, grabHdmiFrame, pressShutter, readShutter } from "./shutter.js";
+import { connect as connectBluetoothCamera } from "./camera-bluetooth.js";
 import { buildTimelapse, createClipRecorder } from "./clip-recorder.js";
 import {
   compositeJpeg,
@@ -209,6 +210,8 @@ export function Kiosk() {
     billAcceptor.connect(false).catch(() => {}).finally(() => billAcceptor.setEnabled(false).catch(() => {}));
     runKioskPrints();
     runKioskComposites();
+    // Bấm máy qua Bluetooth: kết nối sẵn máy ảnh đã ghép đôi (lỗi thì thử lại lúc chụp).
+    if (readShutter() === "bluetooth") connectBluetoothCamera().catch(() => {});
     return watchKioskPrint((token, state) => {
       if (token === current.current?.accessToken) setPrint(state);
     });
@@ -1108,8 +1111,9 @@ export function Kiosk() {
     try {
       await pressShutter(shutter);
     } catch (e) {
+      const device = shutter === "bluetooth" ? "Bluetooth máy ảnh" : shutter === "relay" ? "Relay" : "Mạch bấm máy";
       notifyOnce("relay", "warning",
-        `${shutter === "relay" ? "Relay" : "Mạch bấm máy"} chưa sẵn sàng (${e.message}) — mời khách bấm dây để máy ảnh chụp.`, 10000);
+        `${device} chưa sẵn sàng (${e.message}) — mời khách bấm dây để máy ảnh chụp.`, 10000);
       if (stillWaiting()) setPressPrompt(true);
       return;
     }
@@ -1174,9 +1178,9 @@ export function Kiosk() {
       const secondsLeft = Math.max(0, Math.ceil((end - Date.now()) / 1000));
       setShotLeft(secondsLeft);
       // Còn 1 giây: nhấn nửa để máy lấy nét trước, hết giờ là chụp ngay.
-      if (secondsLeft === 1 && !focused && readShutter() === "arduino") {
+      if (secondsLeft === 1 && !focused) {
         focused = true;
-        focusArduino().catch(() => {});
+        focusShutter().catch(() => {});
       }
       if (!secondsLeft && !fired) {
         fired = true;
