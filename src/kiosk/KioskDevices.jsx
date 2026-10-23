@@ -86,9 +86,10 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
           }}
         />
         <small>
-          Tăng tới khi hết thấy thước số / khung lưới ở mép. Tốt nhất tắt trên máy ảnh: SET UP →
-          CONNECTION SETTING → HDMI OUTPUT INFO DISPLAY = OFF; SCREEN SET-UP → IMAGE DISP. = OFF (hình
-          không nhảy sang ảnh vừa chụp).
+          Thanh này chỉ cắt được mép. Khung lấy nét, thông số, lưới… phải tắt trên máy ảnh: MENU →
+          MOVIE SETTING → HDMI OUTPUT INFO DISPLAY = OFF (hình HDMI sạch hoàn toàn; menu chưa có mục này
+          thì vặn bánh xe sang quay phim để chỉnh rồi vặn lại) và SET UP → SCREEN SETTING → IMAGE DISP. =
+          OFF (hình không nhảy sang ảnh vừa chụp). Tắt rồi thì để thanh này 0%.
         </small>
       </label>
 
@@ -105,8 +106,8 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
               Dùng chung mạch Pro Micro của máy nhận tiền (nạp mã mới: hardware/bill-acceptor-pulse). D5 → opto lấy
               nét, D6 → opto chụp, đầu ra opto nối song song với dây bấm (jack chia 1 ra 2). Trên máy ảnh: SHUTTER
               TYPE = MECHANICAL (màn trập điện tử không nháy flash), RELEASE/FOCUS PRIORITY = RELEASE, MIC/REMOTE
-              RELEASE = REMOTE nếu có. Còn 1 giây máy nhấn nửa để lấy nét, hết giờ chụp ngay. Mạch chưa sẵn sàng
-              thì tạm lấy hình HDMI.
+              RELEASE = REMOTE nếu có. Còn 1 giây máy nhấn nửa để lấy nét, hết giờ chụp ngay (flash rời nổ như
+              khi bấm dây). Mạch chưa kết nối hoặc máy ảnh không chụp thì màn hình mời khách bấm dây.
             </p>
             <div className="kiosk-device-row">
               <Button type="button" className="outline small"
@@ -142,6 +143,13 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
           Bấm máy ảnh bằng relay USB nối song song dây bấm (ảnh gốc máy ảnh, có flash)
         </label>
         {shutter === "relay" && (
+          <p className="kiosk-device-note">
+            Relay 1 kênh: nối chung đầu (TIP) và vòng (RING) của jack dây bấm vào một chân relay, thân (SLEEVE)
+            vào chân còn lại — relay đóng là nhấn hết như dây bấm. Máy ảnh nên để lấy nét tay (MF) hoặc
+            RELEASE/FOCUS PRIORITY = RELEASE để chụp ngay.
+          </p>
+        )}
+        {shutter === "relay" && (
           <div className="kiosk-device-row">
             <Button type="button" className="outline small"
               onClick={() => run(async () => { await connectRelay(true); setRelayOn(relayConnected()); }, "Đã kết nối relay.")}>
@@ -170,7 +178,8 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
         )}
         <label className="checkbox">
           <input type="radio" name="shutter" checked={shutter === "hdmi"} onChange={() => pickShutter("hdmi")} />
-          Lấy khung hình từ hình trực tiếp HDMI (không cần thêm thiết bị, ảnh 1080p, không có flash)
+          Lấy khung hình từ hình trực tiếp HDMI (không cần thêm thiết bị, ảnh 1080p, KHÔNG có flash — không
+          dùng khi tiệm dùng flash)
         </label>
       </fieldset>
 

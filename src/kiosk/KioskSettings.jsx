@@ -98,7 +98,8 @@ export function KioskSettings({
               (firmware 2.00 trở lên) để CONNECTION SETTING → CONNECTION MODE =
               USB TETHER SHOOTING AUTO, chất lượng ảnh FINE hoặc FINE+RAW (cần
               có JPEG). Hình trực tiếp lấy qua cáp HDMI + thẻ ghi hình, không
-              dùng FUJIFILM X Webcam. Khách chọn “Bấm dây” (tự bấm dây bấm của máy
+              dùng FUJIFILM X Webcam; để hình sạch (không khung lấy nét, thông số):
+              MENU → MOVIE SETTING → HDMI OUTPUT INFO DISPLAY = OFF. Khách chọn “Bấm dây” (tự bấm dây bấm của máy
               ảnh) hoặc “Đếm giờ” (máy chụp tự chụp — xem mục “Tự chụp” bên dưới).
             </small>
           </details>

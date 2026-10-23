@@ -75,8 +75,9 @@ const MODE_SECONDS = 30;
 const READY_SECONDS = 3;
 const SELECT_SECONDS = 60;
 const FRAME_SECONDS = 60;
-// Đã bấm máy mà ảnh từ máy ảnh chưa về (mạch / dây bấm lỏng, máy không lấy được nét…): chụp từ
-// hình HDMI để không mất tấm của khách.
+// Đã bấm máy mà ảnh từ máy ảnh chưa về sau khoảng này (mạch / dây bấm lỏng, máy không lấy được
+// nét…): bấm lại một lần, vẫn không có thì mời khách bấm dây. Không lấy hình HDMI thay: hình đó
+// không có flash (tiệm dùng flash rời).
 const SHOT_WAIT_MS = 8000;
 const SALE_KEY = "kiosk-sale";
 // Phòng của máy chụp đọc ngay từ liên kết cài máy (phần giữa của mã), trước khi máy chủ trả lời.
@@ -143,7 +144,9 @@ export function Kiosk() {
     [sale, setSaleState] = useState(readSale),
     [video, setVideo] = useState(null),
     [print, setPrint] = useState(null),
-    [shotRetry, setShotRetry] = useState(0);
+    [shotRetry, setShotRetry] = useState(0),
+    // Chế độ đếm giờ mà máy chụp không bấm được máy ảnh: mời khách bấm dây (máy ảnh chụp, flash nổ).
+    [pressPrompt, setPressPrompt] = useState(false);
   const video$ = useRef(null),
     stream = useRef(null),
     alive = useRef(true),
@@ -1096,27 +1099,34 @@ export function Kiosk() {
     }
   }
   // Hết đếm ngược: bấm máy ảnh như dây bấm (máy chụp thật, flash nổ, ảnh gốc về thư mục X Acquire).
-  async function triggerShot() {
+  async function triggerShot(retry = false) {
     const before = takenRef.current;
     const shutter = readShutter();
     if (shutter === "hdmi") return grabShot();
+    const stillWaiting = () =>
+      alive.current && phaseOf(current.current) === "shoot" && takenRef.current === before && !readingRef.current;
     try {
       await pressShutter(shutter);
     } catch (e) {
       notifyOnce("relay", "warning",
-        `${shutter === "relay" ? "Relay" : "Mạch bấm máy"} chưa sẵn sàng (${e.message}) — đang chụp bằng hình HDMI (không có flash).`, 10000);
-      return grabShot();
+        `${shutter === "relay" ? "Relay" : "Mạch bấm máy"} chưa sẵn sàng (${e.message}) — mời khách bấm dây để máy ảnh chụp.`, 10000);
+      if (stillWaiting()) setPressPrompt(true);
+      return;
     }
     pressedAt.current = Date.now();
     setFlash((n) => n + 1);
     setTimeout(() => {
-      if (alive.current && phaseOf(current.current) === "shoot" && takenRef.current === before && !readingRef.current) {
-        notifyOnce("no-shot", "warning",
-          "Đã bấm máy nhưng máy ảnh không gửi ảnh về — kiểm tra dây bấm, lấy nét và X Acquire. Tấm này lấy từ hình HDMI.", 12000);
-        grabShot();
-      }
+      if (!stillWaiting()) return;
+      if (!retry) return triggerShot(true);
+      notifyOnce("no-shot", "warning",
+        "Đã bấm máy 2 lần nhưng máy ảnh không gửi ảnh về — kiểm tra dây bấm, lấy nét, flash và X Acquire.", 12000);
+      setPressPrompt(true);
     }, SHOT_WAIT_MS);
   }
+  // Có ảnh mới / hết lượt chụp: tắt lời mời bấm dây.
+  useEffect(() => {
+    setPressPrompt(false);
+  }, [taken, phase, done]);
   // Theo dõi thư mục ảnh của máy ảnh trong suốt lúc chụp (không khởi động lại mỗi lần có ảnh).
   useEffect(() => {
     const s = session;
@@ -1237,6 +1247,7 @@ export function Kiosk() {
           quota={shotQuota}
           shots={shots}
           flash={flash}
+          pressPrompt={pressPrompt && session.mode === "timer"}
           modeLeft={modeLeft}
           ending={ending}
           onPickMode={pickMode}

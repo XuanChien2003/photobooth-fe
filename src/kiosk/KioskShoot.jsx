@@ -47,6 +47,7 @@ export function KioskShoot({
   quota,
   shots,
   flash,
+  pressPrompt,
   modeLeft,
   ending,
   onPickMode,
@@ -78,6 +79,12 @@ export function KioskShoot({
             {centerCount}
           </strong>
         ) : null}
+        {pressPrompt && !ending && (
+          <div className="shoot-press" role="alert">
+            <PiHandTapBold aria-hidden="true" />
+            <strong>Bấm nút trên dây bấm để chụp</strong>
+          </div>
+        )}
         {flash > 0 && <div className="camera-flash" key={flash} aria-hidden="true" />}
         {ending && (
           <div className="shoot-ending" role="status">

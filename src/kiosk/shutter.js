@@ -10,7 +10,8 @@ import { billAcceptor, readBillConfig } from "./bill-acceptor.js";
 //   Mã mạch: hardware/bill-acceptor-pulse/bill-acceptor-pulse.ino.
 // - "relay": mạch relay USB (Web Serial) nối song song với nút chụp của dây bấm.
 // - "hdmi": lấy khung hình đang phát từ thẻ ghi hình HDMI (không cần thêm thiết bị, ảnh 1080p,
-//   KHÔNG có flash) — cũng là đường lui khi mạch chưa sẵn sàng.
+//   KHÔNG có flash). Mạch / relay chưa sẵn sàng thì máy chụp mời khách bấm dây, không lấy hình
+//   HDMI thay (tiệm dùng flash rời).
 export const SHUTTER_KEY = "kiosk-shutter";
 export const RELAY_KEY = "kiosk-relay";
 export const SHUTTER_MODES = ["arduino", "relay", "hdmi"];
