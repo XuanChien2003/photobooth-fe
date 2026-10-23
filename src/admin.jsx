@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { LogOut, KeyRound } from "lucide-react";
-import { PrintAlerts, PrintQueue } from "./print-queue";
+import { PrintAlerts } from "./print-queue";
 import { Brand, ErrorBox } from "./studio";
 import { transition } from "./transitions";
-import { NAV_TREE, nav, definitions, NAV_DESCRIPTIONS, STAFF_PAGES, can } from "./admin/config";
+import { NAV_TREE, nav, definitions, HIDDEN_PAGES, NAV_DESCRIPTIONS, STAFF_PAGES, can } from "./admin/config";
 import { ResourceManager } from "./admin/resources";
 import { BookingsManager } from "./admin/bookings";
 import { Overview } from "./admin/overview";
@@ -18,6 +18,7 @@ import { useAdminSession } from "./admin/use-admin-session";
 import { LoginPage, PasswordDialog } from "./admin/auth";
 import { StorageMonitorProvider } from "./admin/storage-monitor";
 import { StorageWarning } from "./admin/storage-warning";
+import { StorageAssistant } from "./admin/storage-assistant";
 
 // Trang album chỉ tải bản CSS không có phần quản trị (xem guestStylesheet trong vite.config.js); vào
 // quản trị từ đó mà không tải lại trang thì nạp thêm bản đầy đủ.
@@ -33,8 +34,6 @@ if (fullStylesheet && !document.querySelector(`link[href="${fullStylesheet}"]`))
 export function Admin() {
   const [tab, setTab] = useState("overview");
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [pendingPrints, setPendingPrints] = useState(0);
-  const [printView, setPrintView] = useState("prints");
   const session = useAdminSession(setTab);
   const { user, checking, error, setError, setPassword, globalToast, logout } =
     session;
@@ -42,7 +41,7 @@ export function Admin() {
     return <div className="page center">Đang kiểm tra phiên đăng nhập…</div>;
   if (!user) return <LoginPage session={session} />;
   const isAdmin = user.role === "admin";
-  const allowed = isAdmin ? nav.map(([key]) => key) : STAFF_PAGES(user);
+  const allowed = isAdmin ? [...nav, ...HIDDEN_PAGES].map(([key]) => key) : STAFF_PAGES(user);
   // Mục lục chỉ gồm trang tài khoản được mở; nhóm không còn trang con thì ẩn.
   const tree = NAV_TREE.map(([key, label, Icon, children]) =>
     children
@@ -53,7 +52,7 @@ export function Admin() {
   const notify = (msg) => globalToast.success(msg);
   // Tiền (doanh thu, tổng tiền từng vé) chỉ người có quyền xem doanh thu; máy chủ cũng kiểm tra.
   const canSeeMoney = can(user, "revenue:view");
-  const activeNav = nav.find(([key]) => key === currentTab);
+  const activeNav = [...nav, ...HIDDEN_PAGES].find(([key]) => key === currentTab);
   const HeaderIcon = activeNav?.[2];
   // Nhóm chứa từng trang con (ghi trên đầu trang).
   const parents = {};
@@ -75,9 +74,6 @@ export function Admin() {
     >
       <Icon size={18} aria-hidden="true" />
       <span className="admin-nav-text">{label}</span>
-      {key === "print" && pendingPrints > 0 && (
-        <span className="nav-count">{pendingPrints}</span>
-      )}
     </button>
   );
   const parent = parents[currentTab];
@@ -153,18 +149,9 @@ export function Admin() {
             </div>
           </header>
           <div className="admin-content">
-            <StorageWarning
-              onOpenStorage={() =>
-                transition(() => {
-                  setTab("print");
-                  setPrintView("storage");
-                  setMobileMenu(false);
-                  setError("");
-                })
-              }
-            />
+            <StorageWarning onOpenStorage={() => open("storage")} />
             <ErrorBox error={error} />
-            <PrintAlerts onCount={setPendingPrints} />
+            <PrintAlerts />
             {currentTab === "overview" ? (
               <Overview
                 notify={notify}
@@ -174,13 +161,8 @@ export function Admin() {
               />
             ) : currentTab === "statistics" ? (
               <Statistics assignedBranch={user.branch} />
-            ) : currentTab === "print" ? (
-              <PrintQueue
-                pendingCount={pendingPrints}
-                canManageStorage={isAdmin}
-                view={printView}
-                onViewChange={setPrintView}
-              />
+            ) : currentTab === "storage" ? (
+              <StorageAssistant canManageStorage={isAdmin} />
             ) : currentTab === "bookings" ? (
               <BookingsManager
                 notify={notify}

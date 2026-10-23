@@ -4,8 +4,7 @@ import {
   DoorOpen,
   Package,
   Image,
-  Ticket,
-  Printer,
+  HardDrive,
   Settings2,
   Scale,
   ChartColumn,
@@ -78,10 +77,7 @@ export const NAV_TREE = [
     ["overview", "Tổng hợp", LayoutDashboard],
     ["statistics", "Thống kê doanh thu", ChartColumn],
   ]],
-  ["orders-group", "Đơn hàng", Ticket, [
-    ["bookings", "Danh sách đơn", ClipboardList],
-    ["print", "Hàng chờ in", Printer],
-  ]],
+  ["bookings", "Đơn hàng", ClipboardList],
   ["rooms", "Quản lý máy", DoorOpen],
   ["setup-group", "Thiết lập", Settings2, [
     ["screens", "Màn hình chờ", Monitor],
@@ -98,6 +94,8 @@ export const NAV_TREE = [
 export const nav = NAV_TREE.flatMap(([key, label, Icon, children]) =>
   children ? children : [[key, label, Icon]],
 );
+// Trang không có trên mục lục, mở từ nút trong trang khác (vd. cảnh báo dung lượng → trợ lí dọn ảnh).
+export const HIDDEN_PAGES = [["storage", "Dung lượng lưu trữ", HardDrive]];
 
 // Quyền cấp cho nhân viên (Tài khoản → Phân quyền), nhóm theo mục lục. Máy chủ kiểm tra lại.
 export const PERMISSION_GROUPS = [
@@ -119,7 +117,7 @@ export const STAFF_PAGES = (user) => [
   "overview",
   ...(can(user, "revenue:view") ? ["statistics"] : []),
   "bookings",
-  "print",
+  "storage",
   "rooms",
   "reconciliation",
 ];
@@ -128,7 +126,7 @@ export const NAV_DESCRIPTIONS = {
   overview: "Doanh thu, số đơn so với kỳ trước, xếp hạng chủ đề, gói và máy; tạo mã chụp nhanh cho khách.",
   statistics: "Biểu đồ doanh thu và số đơn theo ngày hoặc tháng, so sánh với kỳ trước.",
   bookings: "Tìm đơn, gửi link ảnh, tải xuống hoặc in lại chỉ trong một màn hình.",
-  print: "Kiểm tra file đang chờ và trạng thái in tại từng chi nhánh.",
+  storage: "Dung lượng kho ảnh và trợ lí dọn ảnh đã hết hạn để còn chỗ lưu ảnh mới.",
   rooms: "Thông tin máy, chế độ lật ảnh, trạng thái kết nối và liên kết cài máy chụp.",
   screens: "Ảnh và lời mời trên màn hình chờ: cấu hình chung cho mọi máy hoặc riêng từng máy.",
   themes: "Nhóm khung theo chủ đề, bật / tắt chủ đề và sắp xếp thứ tự khách thấy.",

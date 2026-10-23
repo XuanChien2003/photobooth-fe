@@ -17,6 +17,7 @@
     background: #fff;
   }
   .admin-shell .order-toolbar > select {
+    width: auto;
     min-width: 170px;
     padding: 0 34px 0 12px;
     color: var(--ink);
@@ -94,6 +95,65 @@
     height: 100%;
     object-fit: contain;
   }
+  /* Di chuột / chạm vào ảnh nhỏ: ảnh lớn hiện bên cạnh (như Snapbox) để xem rõ ảnh đã ghép. */
+  .admin-shell .order-thumb-wrap {
+    position: relative;
+    flex: 0 0 68px;
+    align-self: flex-start;
+    border-radius: 5px;
+    outline: none;
+  }
+  .admin-shell .order-thumb-wrap[tabindex] {
+    cursor: zoom-in;
+  }
+  .admin-shell .order-thumb-wrap:focus-visible .order-thumb {
+    box-shadow: 0 0 0 2px var(--mellow-cocoa, var(--wine));
+  }
+  .admin-shell .order-thumb-zoom {
+    position: absolute;
+    z-index: 40;
+    top: -10px;
+    left: calc(100% + 12px);
+    display: block;
+    width: min(260px, 64vw);
+    padding: 7px;
+    border-radius: 12px;
+    background: var(--mellow-cocoa, #4b332a);
+    box-shadow: 0 22px 48px rgb(30 20 15 / 35%);
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.9);
+    transform-origin: left top;
+    transition: opacity 0.16s ease, transform 0.16s ease, visibility 0s linear 0.16s;
+    pointer-events: none;
+  }
+  .admin-shell .order-thumb-wrap.zoom-up .order-thumb-zoom {
+    top: auto;
+    bottom: -10px;
+    transform-origin: left bottom;
+  }
+  .admin-shell .order-thumb-wrap:hover .order-thumb-zoom,
+  .admin-shell .order-thumb-wrap:focus-within .order-thumb-zoom {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition-delay: 0.08s, 0.08s, 0s;
+  }
+  .admin-shell .order-thumb-zoom img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: min(72vh, 440px);
+    border-radius: 7px;
+    background: #fff;
+    object-fit: contain;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .admin-shell .order-thumb-zoom {
+      transform: none;
+      transition: none;
+    }
+  }
   .admin-shell .order-main {
     min-width: 0;
   }
@@ -112,6 +172,21 @@
   }
   .admin-shell .order-main > strong {
     font-size: 12px;
+  }
+  /* Đơn chưa hoàn tất (đã hủy, chờ thu tiền, đang chụp…): nhãn nhỏ cạnh giờ tạo đơn. */
+  .admin-shell .order-when {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    margin-bottom: 5px;
+  }
+  .admin-shell .order-when time {
+    margin-bottom: 0;
+  }
+  .admin-shell .order-when .badge {
+    padding: 2px 8px;
+    font-size: 10.5px;
   }
   .admin-shell .order-main > small {
     margin-top: 5px;

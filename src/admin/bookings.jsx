@@ -6,7 +6,7 @@ import { api, assetUrl, formatDateTime, getApiUrl, labels, localDate, money } fr
 import { isConnectivityError } from "../network.js";
 import { directMediaUrl } from "../media-delivery.js";
 import { useLiveData } from "../use-live-data";
-import { Button, ErrorBox, useStudio, useToast } from "../studio";
+import { Button, ErrorBox, useToast } from "../studio";
 import { CounterTicket } from "../counter-ticket";
 import { ExtraPrints } from "../extra-prints";
 
@@ -24,11 +24,27 @@ function OrderThumb({ booking }) {
       ? assetUrl(`${job.image}?size=thumbnail`)
       : booking.coverPhoto ? assetUrl(directMediaUrl(booking.coverPhoto)) : "";
   const [failed, setFailed] = useState("");
+  const [up, setUp] = useState(false);
+  const shown = src && failed !== src;
+  // Di chuột (hoặc chạm) vào ảnh: hiện ảnh lớn bên cạnh để xem rõ; ảnh ở nửa dưới màn hình thì
+  // bật lên trên cho khỏi tràn mép.
   return (
-    <div className="order-thumb">
-      {src && failed !== src
-        ? <img src={src} alt={framed ? "Ảnh đã ghép khung" : "Ảnh đầu tiên"} loading="lazy" onError={() => setFailed(src)} />
-        : <ImageIcon />}
+    <div
+      className={`order-thumb-wrap ${up ? "zoom-up" : ""}`}
+      tabIndex={shown ? 0 : undefined}
+      onMouseEnter={(event) => setUp(event.currentTarget.getBoundingClientRect().top > window.innerHeight * 0.55)}
+      onFocus={(event) => setUp(event.currentTarget.getBoundingClientRect().top > window.innerHeight * 0.55)}
+    >
+      <div className="order-thumb">
+        {shown
+          ? <img src={src} alt={framed ? "Ảnh đã ghép khung" : "Ảnh đầu tiên"} loading="lazy" onError={() => setFailed(src)} />
+          : <ImageIcon />}
+      </div>
+      {shown && (
+        <span className="order-thumb-zoom" aria-hidden="true">
+          <img src={src} alt="" />
+        </span>
+      )}
     </div>
   );
 }
@@ -138,7 +154,6 @@ function PrintOrderDialog({ booking, onClose, onExtra, onPrinted }) {
 
 export function BookingsManager({ notify, canSeeMoney, canExport = true, canCancel = false, canPrint = true, assignedBranch }) {
   const toast = useToast();
-  const { rooms: catalogRooms = [] } = useStudio();
   const lastError = useRef("");
   const today = localDate();
   const [creating, setCreating] = useState(false);
@@ -147,8 +162,6 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
   const [query, setQuery] = useState("");
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
-  const [status, setStatus] = useState("");
-  const [room, setRoom] = useState("");
   const [payment, setPayment] = useState("");
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
@@ -156,8 +169,7 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
   const [printing, setPrinting] = useState(null);
   const [albumQr, setAlbumQr] = useState(null);
   const params = new URLSearchParams({
-    ...(from ? { from } : {}), ...(to ? { to } : {}), ...(status ? { status } : {}),
-    ...(room ? { room } : {}), ...(payment ? { paymentMethod: payment } : {}),
+    ...(from ? { from } : {}), ...(to ? { to } : {}), ...(payment ? { paymentMethod: payment } : {}),
   });
   const load = useLiveData(`/admin/bookings?${params}`, (data) => {
     setItems(data); setError(""); lastError.current = "";
@@ -168,22 +180,15 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
   }, 20000);
   const filtered = useMemo(() => items.filter((booking) =>
     `${booking.name} ${booking.phone} ${booking.code} ${booking._id}`.toLowerCase().includes(query.trim().toLowerCase())), [items, query]);
-  // Máy trong danh mục (đúng chi nhánh) và cả máy cũ còn trong đơn đã lọc.
-  const rooms = useMemo(() => [...new Set([
-    ...catalogRooms.filter((r) => !assignedBranch || r.branch === assignedBranch).map((r) => r.name),
-    ...items.map((booking) => booking.roomName),
-  ].filter(Boolean))].sort((a, b) => a.localeCompare(b, "vi")), [items, catalogRooms, assignedBranch]);
   const totals = useMemo(() => ({
     revenue: filtered.reduce((sum, booking) => sum + (booking.total || 0), 0),
     received: filtered.reduce((sum, booking) => sum + (booking.paid ? booking.total || 0 : 0), 0),
   }), [filtered]);
-  const hasFilters = query.trim() || from !== today || to !== today || status || room || payment;
+  const hasFilters = query.trim() || from !== today || to !== today || payment;
   const resetFilters = () => {
     setQuery("");
     setFrom(today);
     setTo(today);
-    setStatus("");
-    setRoom("");
     setPayment("");
   };
 
@@ -223,12 +228,6 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
         <input aria-label="Từ ngày" type="date" value={from} onChange={(event) => setFrom(event.target.value)} /><span>→</span>
         <input aria-label="Đến ngày" type="date" value={to} min={from} onChange={(event) => setTo(event.target.value)} />
       </label>
-      <select aria-label="Lọc máy" value={room} onChange={(event) => setRoom(event.target.value)}>
-        <option value="">Máy: Tất cả</option>{rooms.map((name) => <option key={name} value={name}>{name}</option>)}
-      </select>
-      <select aria-label="Lọc trạng thái" value={status} onChange={(event) => setStatus(event.target.value)}>
-        <option value="">Tất cả trạng thái</option>{Object.entries(labels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-      </select>
       <select aria-label="Lọc thanh toán" value={payment} onChange={(event) => setPayment(event.target.value)}>
         <option value="">Thanh toán: Tất cả</option><option value="cash">Tiền mặt</option><option value="transfer">Chuyển khoản</option>
       </select>
@@ -253,7 +252,7 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
         return <article className="order-card" key={booking._id} title={`Mã hệ thống: ${booking._id}`}>
           <div className="order-identity">
             <OrderThumb booking={booking} />
-            <div className="order-main"><time>{formatDateTime(booking.createdAt)}</time><strong>#{booking.code} · {booking.name || "Khách tại quầy"}</strong><small>{booking.roomName || "Chưa chọn máy"} · {booking.packageName || "Gói chụp"}</small>
+            <div className="order-main"><div className="order-when"><time>{formatDateTime(booking.createdAt)}</time>{booking.status !== "completed" && <span className={`badge ${booking.status}`}>{labels[booking.status]}</span>}</div><strong>#{booking.code} · {booking.name || "Khách tại quầy"}</strong><small>{booking.roomName || "Chưa chọn máy"} · {booking.packageName || "Gói chụp"}</small>
               <div className="order-card-actions">{booking.accessToken && <>
                 <a className="order-album-link" href={albumUrl(booking)} target="_blank" rel="noreferrer">Link ảnh <ExternalLink size={14} /></a>
                 {canPrint && <button onClick={() => setPrinting(booking)}>In ảnh <Printer size={14} /></button>}
@@ -269,7 +268,6 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
             <div><dt>Giảm giá:</dt><dd>{money(booking.discount || 0)}</dd></div><div><dt>Tổng đơn:</dt><dd>{money(booking.total)}</dd></div></dl>}
           <dl className="order-payment"><div><dt>Thanh toán:</dt><dd>{paymentLabel(booking.paymentMethod)}</dd></div>
             {canSeeMoney && <><div><dt>Tổng đơn:</dt><dd>{money(booking.total)}</dd></div><div className={booking.paid ? "received" : "unpaid"}><dt>Thực nhận:</dt><dd>{money(booking.paid ? booking.total : 0)}</dd></div></>}
-            <div><dt>Trạng thái:</dt><dd><span className={`badge ${booking.status}`}>{labels[booking.status]}</span></dd></div>
           </dl>
           {((booking.status === "completed" && !booking.mediaDeleted && booking.accessToken) ||
             (booking.status === "pending" && booking.source === "counter") ||

@@ -105,13 +105,15 @@ export function StorageLifecycle({
             {busy === "cleanup" ? "Đang dọn…" : "Dọn ảnh đã hết hạn"}
           </Button>
         )}
-        <Button
-          className="outline small"
-          onClick={onShowPrinted}
-          disabled={!!busy}
-        >
-          <Printer size={16} aria-hidden="true" /> Xem lệnh đã in
-        </Button>
+        {onShowPrinted && (
+          <Button
+            className="outline small"
+            onClick={onShowPrinted}
+            disabled={!!busy}
+          >
+            <Printer size={16} aria-hidden="true" /> Xem lệnh đã in
+          </Button>
+        )}
       </div>
       <p className="storage-cleanup-reason" role="status">
         {canManageStorage

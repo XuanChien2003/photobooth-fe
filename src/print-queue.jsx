@@ -117,7 +117,7 @@ function beep() {
 }
 
 // Nhận lệnh in mới theo thời gian thực (Server-Sent Events) + đếm số lệnh đang chờ.
-export function PrintAlerts({ onCount }) {
+export function PrintAlerts({ onCount = () => {} }) {
   const toast = useToast();
   const refresh = useLiveData(
     "/admin/print-jobs?status=pending",
@@ -138,7 +138,7 @@ export function PrintAlerts({ onCount }) {
       toast.info(text, 8000);
       beep();
       if ("Notification" in window && Notification.permission === "granted")
-        new Notification("NXC — Hàng chờ in", { body: text });
+        new Notification("NXC — Lệnh in mới", { body: text });
       window.dispatchEvent(new Event("nxc:print"));
     };
     const connect = () => {
