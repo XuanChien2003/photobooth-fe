@@ -41,3 +41,13 @@ test("unready or invalid camera dimensions do not produce a broken layout", () =
   ])
     assert.equal(livePreviewLayout(...dimensions), null);
 });
+
+test("extra crop hides camera info at every edge and stays centred", () => {
+  const layout = livePreviewLayout(1920, 1080, 1366, 768, 0.15);
+  const scale = layout.width / 1920;
+  // Mép trái / phải của khung nhìn nằm trong vùng đã cắt 15% mỗi bên.
+  assert.ok(-layout.left / scale >= 1920 * 0.15 - 1e-6);
+  assert.ok((1366 - layout.left) / scale <= 1920 * 0.85 + 1e-6);
+  assert.ok(-layout.top / scale >= 1080 * 0.15 - 1e-6);
+  assert.ok((768 - layout.top) / scale <= 1080 * 0.85 + 1e-6);
+});

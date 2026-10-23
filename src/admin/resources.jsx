@@ -159,6 +159,8 @@ export function ResourceManager({ resource, notify, me }) {
                 ? 12
                 : key === "countdownSeconds"
                   ? 10
+                  : key === "selectCount"
+                    ? 4
               : 0
             : type === "color"
               ? key === "color"
@@ -170,6 +172,10 @@ export function ResourceManager({ resource, notify, me }) {
                   ? "device"
                   : type === "branches"
                     ? []
+                    : type === "payment"
+                      ? "counter"
+                      : type === "checkbox"
+                        ? false
                     : type === "permissions"
                       ? DEFAULT_STAFF_PERMISSIONS
                       : type === "role"
@@ -452,7 +458,11 @@ export function ResourceManager({ resource, notify, me }) {
                             .filter(Boolean)
                             .join(" · ") || "Chưa nhập thông tin máy"}
                         </small>
-                        <small className="room-flip">Chế độ lật ảnh: {FLIP_LABELS[item.flip || "device"]}</small>
+                        <small className="room-flip">
+                          Chế độ lật ảnh: {FLIP_LABELS[item.flip || "device"]} ·{" "}
+                          {item.payment === "cash" ? "Khách đút tiền tại máy" : "Khách mua mã ở quầy"}
+                          {item.paymentTest ? " · đang bật chế độ thử" : ""}
+                        </small>
                       </>
                     ) : (
                       item.caption || item.description

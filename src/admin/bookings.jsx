@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, Copy, Download, ExternalLink, Image as ImageIcon, Plus, Printer, RefreshCw, Search, X } from "lucide-react";
+import { CalendarDays, ChevronDown, Copy, Download, ExternalLink, FileArchive, Image as ImageIcon, Plus, Printer, RefreshCw, Search, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { api, assetUrl, formatDateTime, getApiUrl, labels, localDate, money } from "../api";
 import { isConnectivityError } from "../network.js";
+import { directMediaUrl } from "../media-delivery.js";
 import { useLiveData } from "../use-live-data";
 import { Button, ErrorBox, useStudio, useToast } from "../studio";
 import { CounterTicket } from "../counter-ticket";
@@ -11,6 +12,64 @@ import { ExtraPrints } from "../extra-prints";
 
 const paymentLabel = (method) => method === "cash" ? "Tiền mặt" : method === "transfer" ? "Chuyển khoản" : "—";
 const albumUrl = (booking) => booking.accessToken ? `${window.location.origin}/album/${booking.accessToken}` : "";
+
+// Ảnh đại diện của đơn: ảnh đã ghép khung (lệnh in gần nhất), chưa có thì tấm đầu tiên khách chụp.
+function OrderThumb({ booking }) {
+  const job = booking.latestPrint;
+  const src = job?.image
+    ? assetUrl(`${job.image}?size=thumbnail`)
+    : booking.coverPhoto ? assetUrl(directMediaUrl(booking.coverPhoto)) : "";
+  const [failed, setFailed] = useState("");
+  return (
+    <div className="order-thumb">
+      {src && failed !== src
+        ? <img src={src} alt={job?.image ? "Ảnh đã ghép khung" : "Ảnh đầu tiên"} loading="lazy" onError={() => setFailed(src)} />
+        : <ImageIcon />}
+    </div>
+  );
+}
+
+// Tải ảnh: tất cả ảnh gốc (ZIP) hoặc ảnh final đã ghép khung.
+function DownloadMenu({ booking }) {
+  const [open, setOpen] = useState(false);
+  const menu = useRef(null);
+  const job = booking.latestPrint;
+  const zip = booking.status === "completed" && !booking.mediaDeleted;
+  useEffect(() => {
+    if (!open) return;
+    const close = (event) => {
+      if (event.type === "keydown" ? event.key === "Escape" : !menu.current?.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+  if (!zip && !job?.image) return null;
+  return (
+    <div className="order-download" ref={menu}>
+      <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <ChevronDown size={14} aria-hidden="true" /> Tải ảnh <Download size={14} aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="order-download-menu" role="menu">
+          {zip && (
+            <a role="menuitem" href={getApiUrl(`/api/albums/${booking.accessToken}/download`)} onClick={() => setOpen(false)}>
+              <FileArchive size={16} aria-hidden="true" /> Tải tất cả ảnh (ZIP)
+            </a>
+          )}
+          {job?.image && (
+            <a role="menuitem" href={`${assetUrl(job.image)}?download=1&sheet=0`} onClick={() => setOpen(false)}>
+              <ImageIcon size={16} aria-hidden="true" /> Tải ảnh final ({(job.format || "png").toUpperCase()})
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function PrintOrderDialog({ booking, onClose, onExtra, onPrinted }) {
   const toast = useToast();
@@ -183,13 +242,12 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
         const job = booking.latestPrint;
         return <article className="order-card" key={booking._id} title={`Mã hệ thống: ${booking._id}`}>
           <div className="order-identity">
-            <div className="order-thumb">{job?.image ? <img src={assetUrl(`${job.image}?size=thumbnail`)} alt="" /> : <ImageIcon />}</div>
+            <OrderThumb booking={booking} />
             <div className="order-main"><time>{formatDateTime(booking.createdAt)}</time><strong>#{booking.code} · {booking.name || "Khách tại quầy"}</strong><small>{booking.roomName || "Chưa chọn máy"} · {booking.packageName || "Gói chụp"}</small>
               <div className="order-card-actions">{booking.accessToken && <>
-                <button onClick={() => copyAlbum(booking)}>Link ảnh <Copy size={14} /></button>
+                <a className="order-album-link" href={albumUrl(booking)} target="_blank" rel="noreferrer">Link ảnh <ExternalLink size={14} /></a>
                 {canPrint && <button onClick={() => setPrinting(booking)}>In ảnh <Printer size={14} /></button>}
-                <a href={getApiUrl(`/api/albums/${booking.accessToken}/download`)}>Tải ảnh (ZIP) <Download size={14} /></a>
-                {job?.image && <a href={assetUrl(job.image)} download={`don-${booking.code}.jpg`} target="_blank" rel="noreferrer">Tải ảnh in <Download size={14} /></a>}
+                <DownloadMenu booking={booking} />
               </>}</div>
             </div>
           </div>
@@ -203,11 +261,15 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
             {canSeeMoney && <><div><dt>Tổng đơn:</dt><dd>{money(booking.total)}</dd></div><div className={booking.paid ? "received" : "unpaid"}><dt>Thực nhận:</dt><dd>{money(booking.paid ? booking.total : 0)}</dd></div></>}
             <div><dt>Trạng thái:</dt><dd><span className={`badge ${booking.status}`}>{labels[booking.status]}</span></dd></div>
           </dl>
-          <div className="order-more-actions">
-            {booking.status === "completed" && !booking.mediaDeleted && <button onClick={() => setAlbumQr(booking)}>QR ảnh</button>}
-            {booking.status === "pending" && booking.source === "counter" && <button onClick={() => setCollecting(booking)}>Xác nhận đã thu</button>}
-            {canCancel && booking.status === "confirmed" && <button disabled={busyId === booking._id} onClick={() => update(booking, { status: "cancelled" })}>Hủy đơn</button>}
-          </div>
+          {((booking.status === "completed" && !booking.mediaDeleted && booking.accessToken) ||
+            (booking.status === "pending" && booking.source === "counter") ||
+            (canCancel && booking.status === "confirmed")) && (
+            <div className="order-more-actions">
+              {booking.status === "completed" && !booking.mediaDeleted && booking.accessToken && <button onClick={() => setAlbumQr(booking)}>QR ảnh</button>}
+              {booking.status === "pending" && booking.source === "counter" && <button onClick={() => setCollecting(booking)}>Xác nhận đã thu</button>}
+              {canCancel && booking.status === "confirmed" && <button disabled={busyId === booking._id} onClick={() => update(booking, { status: "cancelled" })}>Hủy đơn</button>}
+            </div>
+          )}
         </article>;
       })}
       {!filtered.length && <div className="empty-state"><CalendarDays /><h3>Chưa có đơn hàng phù hợp.</h3><p>Thử đổi khoảng ngày hoặc bộ lọc.</p></div>}
@@ -217,6 +279,10 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
     {albumQr && <div className="modal-backdrop" onClick={() => setAlbumQr(null)}><section className="modal center" role="dialog" aria-modal="true" aria-label="QR nhận ảnh" onClick={(event) => event.stopPropagation()}>
       <button aria-label="Đóng" className="modal-close icon-button" onClick={() => setAlbumQr(null)}><X /></button><h2>QR nhận ảnh · đơn #{albumQr.code}</h2>
       <p>Cho khách quét mã này để mở lại album ảnh.</p><QRCodeSVG value={albumUrl(albumQr)} size={240} marginSize={2} />
+      <div className="order-qr-actions">
+        <Button className="outline small" onClick={() => copyAlbum(albumQr)}><Copy size={15} /> Sao chép link</Button>
+        <a className="button outline small" href={albumUrl(albumQr)} target="_blank" rel="noreferrer">Mở album <ExternalLink size={15} /></a>
+      </div>
     </section></div>}
     {printing && <PrintOrderDialog booking={printing} onClose={() => setPrinting(null)} onExtra={() => { setSelling(printing); setPrinting(null); }} onPrinted={() => { setPrinting(null); load(); }} />}
     {selling && <ExtraPrints booking={selling} canEditPrice={canSeeMoney} onClose={() => setSelling(null)} onSold={(updated, sheets) => { setSelling(null); load(); notify(`Đã cộng ${sheets} tờ in cho đơn #${updated.code}.`); }} />}

@@ -22,6 +22,7 @@ export function KioskEntry({
   folder,
   folderAccess,
   roomId,
+  onTap,
   children,
 }) {
   const { settings = {}, screens = [] } = useStudio();
@@ -69,7 +70,7 @@ export function KioskEntry({
         <button
           type="button"
           className={`kiosk-tap ${image ? "has-image" : ""}`}
-          onClick={() => setStep("code")}
+          onClick={onTap || (() => setStep("code"))}
           aria-label="Chạm để bắt đầu"
         >
           {image && (

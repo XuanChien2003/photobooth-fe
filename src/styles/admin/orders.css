@@ -61,7 +61,8 @@
     display: grid;
     grid-template-columns: minmax(330px, 1.5fr) minmax(190px, 0.8fr) minmax(175px, 0.75fr) minmax(190px, 0.8fr);
     min-width: 0;
-    overflow: hidden;
+    /* Không cắt nội dung: menu "Tải ảnh" mở ra ngoài thẻ. */
+    overflow: visible;
     border: 1px solid var(--line);
     border-radius: 13px;
     background: #fff;
@@ -138,8 +139,48 @@
     text-decoration: none;
     cursor: pointer;
   }
-  .admin-shell .order-card-actions button:first-child {
+  .admin-shell .order-card-actions > :first-child {
     color: #3569d4;
+  }
+  /* Tải ảnh: menu 2 lựa chọn (tất cả ảnh ZIP / ảnh final đã ghép khung). */
+  .admin-shell .order-download {
+    position: relative;
+  }
+  .admin-shell .order-download-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 20;
+    display: grid;
+    min-width: 220px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 12px 28px rgb(48 40 34 / 14%);
+  }
+  .admin-shell .order-card-actions .order-download-menu a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 8px;
+    color: var(--ink);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .admin-shell .order-card-actions .order-download-menu a:hover,
+  .admin-shell .order-card-actions .order-download-menu a:focus-visible {
+    background: var(--stone, #f5f1ec);
+  }
+  .admin-shell .order-qr-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 14px;
   }
   .admin-shell .order-card dl {
     display: grid;
@@ -169,13 +210,14 @@
   .admin-shell .order-payment .unpaid dd {
     color: #cf594f;
   }
-  .admin-shell .order-more-actions {
-    position: absolute;
-    right: 10px;
-    bottom: 8px;
+  .admin-shell .order-card > .order-more-actions {
+    grid-column: 1 / -1;
     display: flex;
-    gap: 5px;
-    padding: 0;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 8px 16px;
+    border-top: 1px solid var(--line);
+    border-left: 0;
   }
   .admin-shell .order-more-actions button {
     min-height: 25px;

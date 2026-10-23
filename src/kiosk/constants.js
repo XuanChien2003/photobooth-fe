@@ -3,5 +3,3 @@ export const QR_SECONDS = 120;
 export const CAMERA_KEY = "photo-camera";
 export const MIRROR_KEY = "photo-mirror";
 export const FOLDER_KEY = "camera-folder";
-export const SAVING_MESSAGE =
-  "Ảnh đang được lưu lên hệ thống, vui lòng đợi trong giây lát...";

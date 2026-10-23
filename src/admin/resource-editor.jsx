@@ -147,6 +147,14 @@ export function ResourceEditor({
             <option value="on">Có lật ảnh (như gương)</option>
             <option value="off">Không lật ảnh</option>
           </select>
+        ) : type === "payment" ? (
+          <select
+            value={edit[key] || "counter"}
+            onChange={(event) => update(key, event.target.value)}
+          >
+            <option value="counter">Mua mã ở quầy rồi nhập mã ở máy chụp</option>
+            <option value="cash">Đút tiền vào máy đọc tiền tại máy chụp</option>
+          </select>
         ) : type === "branches" ? (
           <BranchesField value={edit[key] || []} onChange={(value) => update(key, value)} />
         ) : type === "permissions" ? (
@@ -272,7 +280,7 @@ export function ResourceEditor({
                   </li>
                   <li>
                     <InfinityIcon size={17} aria-hidden="true" />
-                    {Number(edit.shots) || 0} ảnh · {Number(edit.countdownSeconds) || 10} giây/ảnh
+                    {Number(edit.shots) || 0} lần chụp · chọn {Number(edit.selectCount) || 4} ảnh ghép khung · {Number(edit.countdownSeconds) || 10} giây/ảnh
                   </li>
                 </ul>
               </aside>

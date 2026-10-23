@@ -13,6 +13,7 @@ import {
 } from "./camera.js";
 import { canPickFolder, isMac, PHOTO_FOLDER_EXAMPLE } from "./folder.js";
 import { FolderCheck } from "./FolderCheck.jsx";
+import { KioskDevices } from "./KioskDevices.jsx";
 
 export function KioskSettings({
   folder,
@@ -25,6 +26,9 @@ export function KioskSettings({
   mirror,
   setMirror,
   mirrorLocked = false,
+  zoom,
+  setZoom,
+  roomInfo,
   toast,
 }) {
   return (
@@ -94,8 +98,8 @@ export function KioskSettings({
               (firmware 2.00 trở lên) để CONNECTION SETTING → CONNECTION MODE =
               USB TETHER SHOOTING AUTO, chất lượng ảnh FINE hoặc FINE+RAW (cần
               có JPEG). Hình trực tiếp lấy qua cáp HDMI + thẻ ghi hình, không
-              dùng FUJIFILM X Webcam; khách bấm nút chụp / điều khiển từ xa của máy ảnh
-              (không có nút chụp trên màn hình).
+              dùng FUJIFILM X Webcam. Khách chọn “Bấm dây” (tự bấm dây bấm của máy
+              ảnh) hoặc “Đếm giờ” (máy chụp tự chụp — xem mục “Tự chụp” bên dưới).
             </small>
           </details>
         </div>
@@ -162,6 +166,7 @@ export function KioskSettings({
           Lưu ảnh lật như gương (giống hình trên màn hình)
           {mirrorLocked && " — quản trị đã đặt ở mục Quản lý máy"}
         </label>
+        <KioskDevices zoom={zoom} setZoom={setZoom} roomInfo={roomInfo} toast={toast} />
         <Button
           type="button"
           className="outline small"

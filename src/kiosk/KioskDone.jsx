@@ -1,66 +1,61 @@
 import {
-  PiDeviceMobileDuotone,
-  PiFrameCornersDuotone,
-  PiHeartDuotone,
+  PiFilmStripDuotone,
   PiPrinterDuotone,
-  PiSealCheckDuotone,
+  PiWarningCircleDuotone,
 } from "react-icons/pi";
 import { QRCodeSVG } from "qrcode.react";
-import { formatDateTime } from "../api";
-import { Button } from "../studio";
+import { Brand, Button } from "../studio";
 
+const PRINT_TEXT = {
+  sending: "Đang gửi ảnh tới máy in…",
+  waiting: "Đang chờ tải ảnh lên để in…",
+  sent: "Ảnh đang được in — lấy ảnh tại khay ảnh",
+  failed: "Chưa in được — nhờ nhân viên in lại giúp bạn",
+};
+
+// Màn cuối: ảnh đã ghép khung (trái), mã QR tải ảnh & video (giữa), video tua nhanh (phải).
 export function KioskDone({ done, pending, left, nextGuest }) {
+  const print = done.print?.status;
   return (
-    <section className="kiosk-done">
-      <div className="kiosk-done-card">
-        <span className="kiosk-entry-icon">
-          <PiSealCheckDuotone />
-        </span>
-        <p className="kiosk-session-status">
-          {done.expired ? "ĐÃ HẾT THỜI GIAN CHỤP" : "HOÀN TẤT BUỔI CHỤP"} · VÉ{" "}
-          {done.code}
-        </p>
-        <h1>Quét mã để nhận {done.photos} ảnh</h1>
-        <p>
-          Mở camera điện thoại, quét mã QR rồi chọn ảnh, chỉnh sửa và ghép khung
-          ngay trên máy của bạn.
-        </p>
-        <div className="kiosk-qr-box">
-          <QRCodeSVG value={done.url} size={260} marginSize={2} />
-        </div>
-        <p className="kiosk-done-fallback">
-          Không quét được? Nhờ lễ tân mở lại mã QR — mã vé <b>{done.code}</b>
-        </p>
-        <p className="kiosk-done-retention">
-          Mỗi ảnh lưu miễn phí 24 giờ kể từ lúc chụp
-          {done.expiresAt && (
-            <> (ảnh đầu tiên tự xóa lúc {formatDateTime(done.expiresAt)})</>
+    <section className="kiosk-flow done-screen">
+      <header className="flow-head">
+        <Brand />
+      </header>
+      <div className="done-cards">
+        <figure className="done-card">
+          {done.composite ? (
+            <img src={done.composite} alt="Ảnh đã ghép khung" />
+          ) : (
+            <div className="done-empty">Ảnh của bạn</div>
           )}
-        </p>
-        <ol className="kiosk-done-steps">
-          <li>
-            <PiDeviceMobileDuotone /> Quét mã QR
-          </li>
-          <li>
-            <PiHeartDuotone /> Chọn ảnh theo số ô của bộ khung
-          </li>
-          <li>
-            <PiFrameCornersDuotone /> Chọn bộ khung & ghép ảnh
-          </li>
-          <li>
-            <PiPrinterDuotone /> Gửi in tại quầy
-          </li>
-        </ol>
-        {pending.length > 0 && (
-          <p className="kiosk-done-sync">
-            Đang đồng bộ {pending.length} ảnh cuối, vui lòng giữ nguyên màn
-            hình…
-          </p>
-        )}
-        <Button className="full kiosk-start" onClick={nextGuest}>
-          Khách tiếp theo ({left}s)
-        </Button>
+          <figcaption>Ảnh đã ghép</figcaption>
+        </figure>
+        <figure className="done-card done-qr">
+          <QRCodeSVG value={done.url} size={260} marginSize={2} />
+          <figcaption>Quét QR</figcaption>
+        </figure>
+        <figure className="done-card">
+          {done.video ? (
+            <video src={done.video} autoPlay loop muted playsInline />
+          ) : (
+            <div className="done-empty">
+              <PiFilmStripDuotone aria-hidden="true" />
+              {done.videoPending ? "Đang làm video…" : "Chưa có video"}
+            </div>
+          )}
+          <figcaption>Video</figcaption>
+        </figure>
       </div>
+      <h1 className="done-title">Quét QR để tải ảnh & video. Lấy ảnh tại khay ảnh.</h1>
+      <p className={`done-print ${print === "failed" ? "is-warn" : ""}`} role="status">
+        {print === "failed" ? <PiWarningCircleDuotone aria-hidden="true" /> : <PiPrinterDuotone aria-hidden="true" />}
+        {done.prints ? PRINT_TEXT[print] || PRINT_TEXT.sending : "Gói của bạn không kèm tờ in — tải ảnh bằng mã QR."}
+        {" · "}Vé {done.code} · ảnh lưu 24 giờ
+      </p>
+      {pending > 0 && <p className="done-sync">Đang tải {pending} ảnh gốc lên album — vui lòng giữ nguyên màn hình…</p>}
+      <footer className="flow-foot">
+        <Button className="kiosk-next" onClick={nextGuest}>Khách tiếp theo ({left}s)</Button>
+      </footer>
     </section>
   );
 }

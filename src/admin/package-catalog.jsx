@@ -95,7 +95,7 @@ export function PackageCatalog({
 
             <p className="package-card-included">
               <Images size={17} aria-hidden="true" />
-              {item.shots || 12} ảnh · {item.countdownSeconds || 10} giây/ảnh · {item.printSize === "strip" ? "2 dải nhỏ" : "ảnh lớn 10 × 15"}
+              {item.shots || 12} lần chụp · chọn {item.selectCount || 4} ảnh · {item.countdownSeconds || 10} giây/ảnh · {item.printSize === "strip" ? "2 dải nhỏ" : "ảnh lớn 10 × 15"}
             </p>
             <p className="package-card-branches">
               {item.branches?.length ? `Cấu hình riêng: ${item.branches.join(", ")}` : "Cấu hình chung · mọi chi nhánh"}

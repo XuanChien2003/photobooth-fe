@@ -7,10 +7,43 @@ import {
 } from "react-icons/pi";
 import { QRCodeSVG } from "qrcode.react";
 import { Button, ErrorBox, useToast } from "./studio";
-import { labels, formatDate, formatDateTime } from "./api";
+import { api, getApiUrl, labels, formatDate, formatDateTime } from "./api";
 import { useLiveData } from "./use-live-data";
 import { isConnectivityError } from "./network.js";
 import { AlbumStudio } from "./album-studio";
+
+// Ảnh đã ghép & in tại máy chụp và video tua nhanh của lượt chụp (khách tải về bằng mã QR).
+function AlbumKeepsakes({ token, booking }) {
+  const [job, setJob] = useState(null);
+  useEffect(() => {
+    api(`/albums/${token}/print`, { allowNull: true }).then(setJob, () => {});
+  }, [token, booking.printSheets]);
+  const sheet = job?._id ? getApiUrl(`/api/albums/${token}/prints/${job._id}`) : "";
+  const video = booking.video ? getApiUrl(`/api/albums/${token}/video`) : "";
+  if (!sheet && !video) return null;
+  return (
+    <section className="album-keepsakes" aria-label="Ảnh đã ghép và video">
+      {sheet && (
+        <figure>
+          <img src={`${sheet}?size=thumbnail`} alt="Ảnh đã ghép khung" loading="lazy" />
+          <figcaption>
+            Ảnh đã ghép khung
+            <a className="button outline small" href={sheet} download={`anh-ghep-${booking.code}.jpg`}>Tải ảnh</a>
+          </figcaption>
+        </figure>
+      )}
+      {video && (
+        <figure>
+          <video src={video} controls playsInline loop muted preload="metadata" />
+          <figcaption>
+            Video tua nhanh
+            <a className="button outline small" href={`${video}?download=1`}>Tải video</a>
+          </figcaption>
+        </figure>
+      )}
+    </section>
+  );
+}
 
 // Trang khách mở bằng mã QR trên máy chụp: chọn, chỉnh, ghép khung, tải và gửi in ảnh.
 export function AlbumPage() {
@@ -124,6 +157,7 @@ function AlbumSession({ token }) {
               </small>
             )}
           </div>
+          <AlbumKeepsakes token={token} booking={booking} />
           <AlbumStudio
             booking={booking}
             setBooking={setBooking}

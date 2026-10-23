@@ -11,14 +11,17 @@ const sha1 = async (text) =>
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
+// Mã cố định theo tệp: tải lại trang / đọc lại thư mục không bị trùng ảnh. Chỉ cần tên, kích thước
+// và giờ ghi tệp nên kiểm tra được ảnh đã nhận trước khi đọc 15 MB của tệp.
+export const cameraPhotoId = async (file, path) =>
+  "camera-" + (await sha1(`${path}:${file.size}:${file.lastModified}`));
+
 export async function prepareCameraPhoto(file, path, isMirrored) {
   const mirrored = Boolean(isMirrored());
   // The capture app may overwrite the same path while the browser is reading it.
   // Snapshot the bytes once and derive the preview from that exact snapshot.
   const image = new Blob([await file.arrayBuffer()], { type: "image/jpeg" });
   const preview = await prepareCameraImageAsync(image, mirrored);
-  // Mã cố định theo tệp: tải lại trang / đọc lại thư mục không bị trùng ảnh.
-  const id =
-    "camera-" + (await sha1(`${path}:${file.size}:${file.lastModified}`));
+  const id = await cameraPhotoId(file, path);
   return { id, image, preview, mirrored };
 }
