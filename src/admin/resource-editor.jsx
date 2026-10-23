@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { Clock3, Image, Infinity as InfinityIcon, Package, Printer, Search, X } from "lucide-react";
+import { Clock3, Infinity as InfinityIcon, Package, Printer, Search, X } from "lucide-react";
 import { money } from "../api";
 import { Button, ErrorBox, useStudio } from "../studio";
 import { FieldError } from "../validate";
-import { FrameImageField } from "../frame-admin";
 import { definitions, DEFAULT_STAFF_PERMISSIONS, PERMISSION_GROUPS } from "./config";
 
 const ALL_PERMISSIONS = PERMISSION_GROUPS.flatMap(([, items]) => items.map(([key]) => key));
@@ -83,36 +82,25 @@ export function ResourceEditor({
   onChange,
   onClose,
   onSubmit,
-  themeOptions = [],
 }) {
-  const catalog = resource === "packages" || resource === "frames";
-  const frames = resource === "frames";
-  const Icon = frames ? Image : Package;
+  const catalog = resource === "packages";
   const title =
     resource === "packages"
       ? `${edit._id ? "Chỉnh sửa" : "Thêm"} gói chụp`
-      : frames
-        ? edit._id
-          ? "Chỉnh sửa khung ảnh"
-          : "Thêm khung ảnh"
-        : edit._id
-          ? "Chỉnh sửa"
-          : "Thêm mới";
+      : edit._id
+        ? "Chỉnh sửa"
+        : "Thêm mới";
   const update = (key, value) => {
     onChange({ ...edit, [key]: value });
     form.clear(key);
   };
   const field = ([key, label, type = "text"]) => {
     if (type === "permissions" && edit.role !== "staff") return null;
-    const Field = ["frameImage", "branches", "permissions"].includes(type) ? "div" : "label";
+    const Field = ["branches", "permissions"].includes(type) ? "div" : "label";
     return (
       <Field
         key={key}
-        className={
-          catalog || type === "frameImage"
-            ? `form-field resource-field resource-field-${key}`
-            : undefined
-        }
+        className={catalog ? `form-field resource-field resource-field-${key}` : undefined}
       >
         <span>{label}</span>
         {type === "textarea" ? (
@@ -121,14 +109,6 @@ export function ResourceEditor({
             aria-invalid={Boolean(form.errors[key])}
             value={edit[key] || ""}
             onChange={(event) => update(key, event.target.value)}
-          />
-        ) : type === "frameImage" ? (
-          <FrameImageField
-            value={edit}
-            onChange={(value) => {
-              onChange({ ...edit, ...value });
-              form.clear("image");
-            }}
           />
         ) : type === "printSize" ? (
           <select
@@ -178,7 +158,6 @@ export function ResourceEditor({
           <input
             name={key}
             type={type}
-            list={key === "themeName" && themeOptions.length ? "theme-options" : undefined}
             inputMode={type === "number" ? "numeric" : undefined}
             autoComplete={type === "password" ? "new-password" : undefined}
             placeholder={
@@ -214,17 +193,13 @@ export function ResourceEditor({
           <div className="resource-editor-title">
             {catalog && (
               <span className="resource-editor-icon">
-                <Icon size={23} aria-hidden="true" />
+                <Package size={23} aria-hidden="true" />
               </span>
             )}
             <div>
               <h2>{title}</h2>
               {catalog && (
-                <p>
-                  {frames
-                    ? "Đặt tên, gom chủ đề và kiểm tra các ô đặt ảnh."
-                    : "Thiết lập giá, thời gian chụp và số tờ in đi kèm."}
-                </p>
+                <p>Thiết lập giá, thời gian chụp và số tờ in đi kèm.</p>
               )}
             </div>
           </div>
@@ -238,25 +213,11 @@ export function ResourceEditor({
           </button>
         </div>
         <ErrorBox error={error} />
-        {themeOptions.length > 0 && (
-          <datalist id="theme-options">
-            {themeOptions.map((name) => <option key={name} value={name} />)}
-          </datalist>
-        )}
         <form onSubmit={onSubmit} noValidate>
           <div className="resource-editor-content">
             <div className="resource-editor-fields">
-              {definitions[resource]
-                .filter(([, , type]) => type !== "frameImage")
-                .map(field)}
+              {definitions[resource].map(field)}
             </div>
-            {frames && (
-              <div className="resource-editor-media">
-                {definitions[resource]
-                  .filter(([, , type]) => type === "frameImage")
-                  .map(field)}
-              </div>
-            )}
             {resource === "packages" && (
               <aside
                 className="catalog-editor-preview"

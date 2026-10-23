@@ -14,10 +14,11 @@ export const assetUrl = (src) =>
 export const withAssetUrls = (catalog) => ({
   ...catalog,
   ...(catalog.frames && {
-    frames: catalog.frames.map((f) => ({ ...f, image: assetUrl(f.image) })),
+    // thumb: ảnh xem nhanh (WebP nhẹ) cho bộ chọn; ghép ảnh / in dùng image (ảnh gốc).
+    frames: catalog.frames.map((f) => ({ ...f, image: assetUrl(f.image), thumb: f.thumb ? assetUrl(f.thumb) : assetUrl(f.image) })),
   }),
   ...(catalog.stickers && {
-    stickers: catalog.stickers.map((s) => ({ ...s, image: assetUrl(s.image) })),
+    stickers: catalog.stickers.map((s) => ({ ...s, image: assetUrl(s.image), thumb: assetUrl(s.thumb || s.image) })),
   }),
   ...(catalog.screens && {
     screens: catalog.screens.map((s) => ({

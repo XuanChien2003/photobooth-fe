@@ -99,7 +99,8 @@ export function Result({
         results.push({
           canvas,
           name: l.name,
-          printSize: frame.printSize,
+          // Khung phủ cả tờ (khung nhỏ đã có 2 dải) in nguyên tờ, không ghép thêm.
+          printSize: frame.sheet ? "full" : frame.printSize,
           url: await jpegDataUrl(canvas, 0.85),
         });
       }

@@ -22,6 +22,7 @@ import {
   loadFrameImage,
   slotRect,
 } from "../frame-utils";
+import { qrImage } from "../qr-image.js";
 import { clamp, hitSlot } from "./utils";
 import { ActionBar, SheetPhoto, CarouselThumb } from "./shared";
 import {
@@ -69,6 +70,17 @@ export function FrameEditor({
   const selectedDecor = decorations[decorIndex];
   // Sticker ảnh nạp xong thì vẽ lại khung.
   const [stickerLoads, setStickerLoads] = useState(0);
+  // Mã QR của khung (vùng "Thêm QR" của quản trị) = link album này; vẽ lại khi tạo xong.
+  const [qr, setQr] = useState(null);
+  const hasQr = frame.marks?.some((m) => m.kind === "qr");
+  useEffect(() => {
+    if (!hasQr) return;
+    let live = true;
+    qrImage(window.location.origin + window.location.pathname).then((image) => live && setQr(image), () => {});
+    return () => {
+      live = false;
+    };
+  }, [hasQr]);
   useEffect(() => {
     // Kéo / sửa chữ liên tục: sticker đã nạp thì không vẽ lại thêm lần nữa.
     if (decorationsReady(decorations)) return;
@@ -209,6 +221,8 @@ export function FrameEditor({
         slots.map((s) => s.photo && images[s.photo]),
         slots,
         decorations,
+        // Trang album là /album/<mã>: QR trên khung mở đúng album này.
+        { frame, qr },
       );
       const ctx = c.getContext("2d");
       if (mode === "decor") {
@@ -246,7 +260,7 @@ export function FrameEditor({
     // backing bitmap instead of reallocating it on every movement.
     const request = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(request);
-  }, [bg, images, slots, selected, decorations, mode, selectedDecor, stickerLoads]);
+  }, [bg, images, slots, selected, decorations, mode, selectedDecor, stickerLoads, qr]);
 
   const setDecor = (items) => onDecorations(items);
   const patchDecor = (i, changes) =>
@@ -357,7 +371,7 @@ export function FrameEditor({
               <button key={s._id} aria-label={`Nhãn dán ${s.name}`}
                 onClick={() => addDecor({ type: "sticker", src: s.image, size: 60,
                   x: 0.3 + Math.random() * 0.4, y: 0.3 + Math.random() * 0.4 })}>
-                <img src={s.image} alt="" crossOrigin="anonymous" />
+                <img src={s.thumb || s.image} alt="" loading="lazy" decoding="async" />
               </button>
             ))}
             {DECOR_STICKERS.map((s) => (

@@ -99,7 +99,7 @@ export function StickersManager({ notify }) {
               </li>
               {stickers.map((s) => (
                 <li key={s._id} title={s.name}>
-                  <img src={assetUrl(s.image)} alt={s.name} crossOrigin="anonymous" loading="lazy" />
+                  <img src={assetUrl(s.thumb || s.image)} alt={s.name} loading="lazy" decoding="async" />
                   <button className="icon-button" aria-label={`Xóa nhãn dán ${s.name}`} disabled={Boolean(busy)} onClick={() => remove(s)}>
                     <Trash2 size={16} />
                   </button>

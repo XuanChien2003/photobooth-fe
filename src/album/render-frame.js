@@ -1,4 +1,5 @@
-import { drawSlot, slotRect, slotScale } from "../frame-utils.js";
+import { drawMarks, drawSlot, slotRect, slotScale } from "../frame-utils.js";
+import { qrImage } from "../qr-image.js";
 import { drawDecorations, preloadDecorations } from "./decorations.js";
 
 // Server print sources are 3000 px on the long edge (smaller sources are the full original).
@@ -13,7 +14,8 @@ export const PRINT_SOURCE_EDGE = 3000;
 // a fraction of the 15 MB original. Only a slot zoomed beyond what that copy holds switches
 // to the camera original, so a print is never upscaled.
 export async function renderPrintFrame(canvas, background, frame, slots, engine, adjustOf,
-  isActive = () => true, decorations = []) {
+  isActive = () => true, decorations = [], qrUrl = globalThis.location
+    ? globalThis.location.origin + globalThis.location.pathname : "") {
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
@@ -51,6 +53,16 @@ export async function renderPrintFrame(canvas, background, frame, slots, engine,
         if (!isActive()) return false;
       }
       drawSlot(ctx, source, rect, slot);
+      // Ô bản sao cùng số ảnh (vd. dải thứ hai của khung nhỏ): cùng ảnh, cùng cách căn chỉnh.
+      for (const copy of frame.copies || [])
+        if (copy.of === index)
+          drawSlot(ctx, source, slotRect(copy.slot, canvas.width, canvas.height), slot);
+    }
+    if (frame.marks?.length) {
+      const qr = frame.marks.some((m) => m.kind === "qr") && qrUrl
+        ? await qrImage(qrUrl).catch(() => null) : null;
+      if (!isActive()) return false;
+      drawMarks(ctx, frame, qr, canvas.width, canvas.height);
     }
     await preloadDecorations(decorations);
     if (!isActive()) return false;

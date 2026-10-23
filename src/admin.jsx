@@ -10,6 +10,7 @@ import { Overview } from "./admin/overview";
 import { Statistics } from "./admin/statistics";
 import { ScreensManager } from "./admin/screens";
 import { ThemesManager } from "./admin/themes";
+import { FramesManager } from "./admin/frames";
 import { StickersManager } from "./admin/stickers";
 import { FiltersManager } from "./admin/filters";
 import { Reconciliation } from "./admin/reconciliation";
@@ -17,6 +18,17 @@ import { useAdminSession } from "./admin/use-admin-session";
 import { LoginPage, PasswordDialog } from "./admin/auth";
 import { StorageMonitorProvider } from "./admin/storage-monitor";
 import { StorageWarning } from "./admin/storage-warning";
+
+// Trang album chỉ tải bản CSS không có phần quản trị (xem guestStylesheet trong vite.config.js); vào
+// quản trị từ đó mà không tải lại trang thì nạp thêm bản đầy đủ.
+const fullStylesheet = window.__fullStylesheet;
+if (fullStylesheet && !document.querySelector(`link[href="${fullStylesheet}"]`)) {
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.crossOrigin = "";
+  link.href = fullStylesheet;
+  document.head.appendChild(link);
+}
 
 export function Admin() {
   const [tab, setTab] = useState("overview");
@@ -180,6 +192,8 @@ export function Admin() {
               />
             ) : currentTab === "screens" ? (
               <ScreensManager notify={notify} />
+            ) : currentTab === "frames" ? (
+              <FramesManager notify={notify} />
             ) : currentTab === "themes" ? (
               <ThemesManager notify={notify} onOpenFrames={() => open("frames")} />
             ) : currentTab === "stickers" ? (

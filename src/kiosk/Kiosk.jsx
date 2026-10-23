@@ -863,7 +863,8 @@ export function Kiosk() {
     try {
       let composite = "";
       if (frame) {
-        const canvas = await composePreview(frame, chosenShots.map((x) => bitmaps.get(x.key)).filter(Boolean), 700);
+        const albumLink = `${window.location.origin}/album/${s.accessToken}`;
+        const canvas = await composePreview(frame, chosenShots.map((x) => bitmaps.get(x.key)).filter(Boolean), 700, albumLink);
         composite = canvas.toDataURL("image/jpeg", 0.9);
         canvas.width = canvas.height = 0;
       }
@@ -873,8 +874,9 @@ export function Kiosk() {
         setPrint({ status: "sending" });
         (async () => {
           try {
-            const printFrame = await renderPrintFrame(frame, chosenShots, s.accessToken);
-            const images = await printSheets(printFrame, frame.printSize || "full", printsCount);
+            const printFrame = await renderPrintFrame(frame, chosenShots, s.accessToken,
+              `${window.location.origin}/album/${s.accessToken}`);
+            const images = await printSheets(printFrame, frame, printsCount);
             printFrame.width = printFrame.height = 0;
             await queueKioskPrint({
               token: s.accessToken,
@@ -1159,6 +1161,7 @@ export function Kiosk() {
         secondsLeft={selectLeft}
         frame={frames[0]}
         onNext={toFrames}
+        qrUrl={`${window.location.origin}/album/${session.accessToken}`}
       />
     );
   if (session && phase === "frame")
@@ -1172,6 +1175,7 @@ export function Kiosk() {
         secondsLeft={frameLeft}
         onConfirm={confirmFrame}
         busy={composing}
+        qrUrl={`${window.location.origin}/album/${session.accessToken}`}
       />
     );
   if (session)

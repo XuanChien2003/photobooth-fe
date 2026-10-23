@@ -28,7 +28,6 @@ import {
 export const RESOURCE_LABELS = {
   rooms: "phòng",
   packages: "gói chụp",
-  frames: "khung",
   users: "nhân viên",
 };
 
@@ -55,18 +54,6 @@ export const RESOURCE_RULES = {
     selectCount: ["Số ảnh khách chọn để ghép", required, intRange(1, 12)],
     countdownSeconds: ["Đếm ngược mỗi ảnh", required, intRange(1, 30)],
     prints: ["Số tờ in", required, intRange(0, 20)],
-  },
-  frames: {
-    name: ["Tên khung", required, maxLength(200)],
-    themeName: ["Tên bộ chủ đề", maxLength(100)],
-    order: ["Thứ tự trong bộ", intRange(0, 999)],
-    image: [
-      "Ảnh khung",
-      custom(
-        (v, all) => Boolean(v) && all.slots?.length > 0,
-        "Vui lòng import ảnh khung có ít nhất 1 ô đặt ảnh.",
-      ),
-    ],
   },
   users: {
     name: ["Tên nhân viên", required, maxLength(200)],
@@ -145,7 +132,7 @@ export const NAV_DESCRIPTIONS = {
   rooms: "Thông tin máy, chế độ lật ảnh, trạng thái kết nối và liên kết cài máy chụp.",
   screens: "Ảnh và lời mời trên màn hình chờ: cấu hình chung cho mọi máy hoặc riêng từng máy.",
   themes: "Nhóm khung theo chủ đề, bật / tắt chủ đề và sắp xếp thứ tự khách thấy.",
-  frames: "Thêm khung, chia theo chủ đề và sắp xếp thứ tự khách sẽ thấy.",
+  frames: "Xem mọi khung, lọc theo kích thước / chủ đề; thêm khung mới và đặt vùng ảnh, QR, ngày in.",
   packages: "Giá, thời gian chụp, số tờ in của từng gói, chi nhánh áp dụng và giá in thêm.",
   stickers: "Thư viện nhãn dán khách dùng để trang trí ảnh.",
   filters: "Bật bộ lọc có sẵn và tự tạo filter màu riêng của tiệm.",
@@ -177,13 +164,6 @@ export const definitions = {
     ["printSize", "Kiểu in", "printSize"],
     ["prints", "Số tờ in 10 × 15 kèm gói", "number"],
     ["branches", "Chi nhánh áp dụng", "branches"],
-  ],
-  frames: [
-    ["name", "Tên khung"],
-    ["themeName", "Tên bộ chủ đề (cùng tên để gom chung)"],
-    ["order", "Thứ tự trong bộ", "number"],
-    ["printSize", "Kích thước khung", "printSize"],
-    ["image", "Ảnh khung", "frameImage"],
   ],
   users: [
     ["name", "Tên nhân viên"],

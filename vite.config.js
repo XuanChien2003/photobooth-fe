@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import postcss from 'postcss';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
@@ -35,11 +37,54 @@ function albumRoutePreload() {
     },
   };
 }
+// Album pages never render .admin-shell / .admin-login, yet about 45 % of the stylesheet is scoped
+// to them, and a guest on 4G must download and parse the whole file before the album can paint.
+// The build also emits a guest copy without those rules (every other rule kept, in its original
+// order, so album pages render exactly the same) and the page picks it on /album/ paths. Admin,
+// kiosk and all other pages keep the full stylesheet.
+const ADMIN_ONLY = /^\.admin-(?:shell|login)(?![\w-])/;
+function guestStylesheet() {
+  return {
+    name: 'guest-stylesheet',
+    apply: 'build',
+    enforce: 'post',
+    generateBundle(_, bundle) {
+      const html = bundle['index.html'];
+      if (!html) return;
+      const page = String(html.source);
+      const link = /<link rel="stylesheet" crossorigin href="\/(assets\/[^"]+\.css)">/.exec(page);
+      if (!link || !bundle[link[1]]) this.error('guest-stylesheet: main stylesheet not found in index.html');
+      const root = postcss.parse(String(bundle[link[1]].source));
+      root.walkRules((rule) => {
+        if (rule.selectors.every((selector) => ADMIN_ONLY.test(selector.trim()))) rule.remove();
+      });
+      // @media / @layer / @supports blocks left empty.
+      for (let emptied = true; emptied; ) {
+        emptied = false;
+        root.walkAtRules((at) => {
+          if (at.nodes && !at.nodes.length) {
+            at.remove();
+            emptied = true;
+          }
+        });
+      }
+      const source = root.toString();
+      const fileName = `assets/guest-${createHash('sha256').update(source).digest('hex').slice(0, 8)}.css`;
+      this.emitFile({ type: 'asset', fileName, source });
+      // Written by the parser while it reads <head>, so either file blocks rendering like the
+      // original <link> did (no flash of unstyled content).
+      const choose = `<script>window.__fullStylesheet="/${link[1]}";document.write('<link rel="stylesheet" crossorigin href="'+(location.pathname.indexOf("/album/")===0?"/${fileName}":window.__fullStylesheet)+'">')</script>` +
+        `<noscript>${link[0]}</noscript>`;
+      html.source = page.replace(link[0], choose);
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const proxy = { '/api': env.API_PROXY_TARGET || 'http://localhost:8080' };
   return {
-    plugins: [react(), tailwindcss(), albumRoutePreload()],
+    plugins: [react(), tailwindcss(), albumRoutePreload(), guestStylesheet()],
     server: { host: '0.0.0.0', port: 5173, strictPort: true, proxy },
     preview: { port: 5173, strictPort: true, proxy },
     build: {

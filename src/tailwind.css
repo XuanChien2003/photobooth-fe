@@ -33,7 +33,6 @@
 @import "./admin-ui.css";
 @import "./styles/polish/catalog-controls.css";
 @import "./styles/polish/package-catalog.css";
-@import "./styles/polish/frame-catalog.css";
 @import "./styles/polish/album-theme-picker.css";
 @import "./styles/polish/brown-experience.css";
 @import "./styles/polish/brand-logo.css";
@@ -53,4 +52,5 @@
 @import "./styles/admin/orders.css";
 @import "./styles/admin/usability.css";
 @import "./styles/admin/studio-setup.css";
+@import "./styles/admin/frames.css";
 @import "./styles/entry/kiosk-flow.css";

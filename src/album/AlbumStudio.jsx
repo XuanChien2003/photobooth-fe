@@ -14,7 +14,7 @@ import { readPending, removePending } from "../capture-store";
 import { useStudio, useToast } from "../studio";
 import { transition } from "../transitions";
 import { DEFAULT_ADJUST } from "../beauty";
-import { groupFramePacks } from "../frame-utils";
+import { groupFramePacks, photoLayout } from "../frame-utils";
 import { ACCEPTED_IMAGES, MAX_UPLOAD_MB, autoLayouts, isFilled } from "./utils";
 import { compositionPhotos, packCapacity } from "./frame-capacity";
 import { createFavoriteQueue } from "./favorite-queue";
@@ -42,7 +42,9 @@ export function AlbumStudio({
   reloadBooking,
   onMutationChange = () => {},
 }) {
-  const { frames: catalog, settings } = useStudio();
+  const { frames: shopFrames, settings } = useStudio();
+  // Khách chọn ảnh cho từng số ảnh; ô bản sao, QR và ngày in tự vẽ khi ghép (xem photoLayout).
+  const catalog = useMemo(() => shopFrames?.map(photoLayout), [shopFrames]);
   const toast = useToast();
   const photos = booking.photos.filter((p) => p.kind === "original");
   // The gallery and the editor show the newest photo first (numbers still count up from #01).

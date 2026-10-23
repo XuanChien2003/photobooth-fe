@@ -11,3 +11,6 @@
 
 /logo-m.jpg
   Cache-Control: public, max-age=86400
+
+/logo-m-384.jpg
+  Cache-Control: public, max-age=86400

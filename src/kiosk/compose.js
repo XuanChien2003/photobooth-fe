@@ -3,12 +3,16 @@ import { readSetting, saveSetting } from "../capture-store.js";
 import { compareFrameOrder } from "../frame-catalog-data.js";
 import {
   composeLayout,
+  drawMarks,
   drawSlot,
+  frameCapacity,
   frameOutputSize,
   loadFrameImage,
   packPrintSheets,
+  photoLayout,
   slotRect,
 } from "../frame-utils.js";
+import { qrImage } from "../qr-image.js";
 import { fetchMediaBlob } from "../media-delivery.js";
 import { jpegDataUrl } from "../album/encode-jpeg.js";
 import { printPackUpload } from "../album/print-upload.js";
@@ -62,7 +66,7 @@ const release = (image) => {
 // Khung hợp với số ảnh khách chọn: đúng số ô và đúng khổ in của gói; không có thì nới dần
 // (đúng số ô mọi khổ → mọi khung, ảnh được lặp lại cho đủ ô). Xếp theo thứ tự chủ đề.
 export function frameCandidates(frames, { count, printSize, themeOrder = [] }) {
-  const usable = frames.filter((f) => f.slots?.length);
+  const usable = frames.filter((f) => frameCapacity(f) > 0);
   const rank = (f) => {
     const index = themeOrder.indexOf(f.themeName?.trim());
     return index < 0 ? themeOrder.length : index;
@@ -71,31 +75,39 @@ export function frameCandidates(frames, { count, printSize, themeOrder = [] }) {
     rank(a) - rank(b) ||
     String(a.themeName || "").localeCompare(String(b.themeName || ""), "vi") ||
     compareFrameOrder(a, b));
-  const exact = sorted.filter((f) => f.slots.length === count && (f.printSize || "full") === (printSize || "full"));
+  const exact = sorted.filter((f) => frameCapacity(f) === count && (f.printSize || "full") === (printSize || "full"));
   if (exact.length) return exact;
-  const sameCount = sorted.filter((f) => f.slots.length === count);
+  const sameCount = sorted.filter((f) => frameCapacity(f) === count);
   return sameCount.length ? sameCount : sorted;
 }
 
-// Ghép nhanh để xem trên màn hình (ảnh 1600 px), ảnh lặp lại khi khung nhiều ô hơn số ảnh.
-export async function composePreview(frame, images, width = 900) {
-  const background = await loadFrameImage(frame.image);
+// Ghép nhanh để xem trên màn hình (ảnh 1600 px), ảnh lặp lại khi khung nhiều số ảnh hơn số ảnh đã
+// chọn. qrUrl: link album của khách (vùng QR trên khung).
+export async function composePreview(frame, images, width = 900, qrUrl = "") {
+  const layout = photoLayout(frame);
+  const [background, qr] = await Promise.all([
+    loadFrameImage(frame.image),
+    layout.marks.some((m) => m.kind === "qr") && qrUrl ? qrImage(qrUrl).catch(() => null) : null,
+  ]);
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = Math.round((width * background.naturalHeight) / background.naturalWidth);
   composeLayout(
     canvas,
     background,
-    frame.slots,
-    frame.slots.map((_, i) => (images.length ? images[i % images.length] : null)),
+    layout.slots,
+    layout.slots.map((_, i) => (images.length ? images[i % images.length] : null)),
     [],
+    [],
+    { frame: layout, qr },
   );
   return canvas;
 }
 
 // Ghép bản in: đúng kích thước in của khung, mỗi ô vẽ từ ảnh chất lượng cao, lần lượt từng ảnh
 // (ảnh 26 MP giải mã ~100 MB nên không giữ nhiều ảnh cùng lúc).
-export async function renderPrintFrame(frame, shots, token) {
+export async function renderPrintFrame(frame, shots, token, qrUrl = "") {
+  const layout = photoLayout(frame);
   const background = await loadFrameImage(frame.image);
   const canvas = document.createElement("canvas");
   Object.assign(canvas, frameOutputSize(frame, background));
@@ -107,7 +119,7 @@ export async function renderPrintFrame(frame, shots, token) {
   ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
   const sources = new Map();
   try {
-    for (const [index, slot] of frame.slots.entries()) {
+    for (const [index, slot] of layout.slots.entries()) {
       const shot = shots.length ? shots[index % shots.length] : null;
       if (!shot) continue;
       if (!sources.has(shot.key)) {
@@ -115,7 +127,16 @@ export async function renderPrintFrame(frame, shots, token) {
         sources.clear();
         sources.set(shot.key, await printSource(shot, token));
       }
-      drawSlot(ctx, sources.get(shot.key), slotRect(slot, canvas.width, canvas.height));
+      const source = sources.get(shot.key);
+      drawSlot(ctx, source, slotRect(slot, canvas.width, canvas.height));
+      // Ô bản sao cùng số ảnh (vd. dải thứ hai của khung nhỏ).
+      for (const copy of layout.copies)
+        if (copy.of === index) drawSlot(ctx, source, slotRect(copy.slot, canvas.width, canvas.height));
+    }
+    if (layout.marks.length) {
+      const qr = layout.marks.some((m) => m.kind === "qr") && qrUrl
+        ? await qrImage(qrUrl).catch(() => null) : null;
+      drawMarks(ctx, layout, qr, canvas.width, canvas.height);
     }
   } finally {
     for (const image of sources.values()) release(image);
@@ -123,9 +144,11 @@ export async function renderPrintFrame(frame, shots, token) {
   return canvas;
 }
 
-// Tờ in 10 × 15 cm cho cả lượt: khung nguyên tờ in `prints` tờ; khung dải ghép 2 dải / tờ.
-export async function printSheets(frameCanvas, printSize, prints) {
+// Tờ in 10 × 15 cm cho cả lượt: khung nguyên tờ (kể cả khung nhỏ phủ cả tờ — 2 dải, máy in cắt đôi)
+// in `prints` tờ; khung dải cũ (một dải) ghép 2 dải / tờ.
+export async function printSheets(frameCanvas, frame, prints) {
   if (!prints) return [];
+  const printSize = frame.sheet ? "full" : frame.printSize || "full";
   const copies = printSize === "strip" ? prints * 2 : prints;
   const outputs = Array.from({ length: copies }, () => ({ canvas: frameCanvas, printSize }));
   const sheets = packPrintSheets(outputs);

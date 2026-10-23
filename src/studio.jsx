@@ -180,7 +180,7 @@ export function Brand() {
       <img
         className="brand-logo"
         // Đổi logo thì đặt tên file mới: Cloudflare và trình duyệt lưu đệm logo theo tên file.
-        src="/logo-m.jpg"
+        src="/logo-m-384.jpg"
         alt={`Logo ${settings?.name || "Photobooth"}`}
         width={256}
         height={256}

@@ -7,6 +7,7 @@ import {
   PiStackDuotone,
   PiWarningCircleDuotone,
 } from "react-icons/pi";
+import { useEffect } from "react";
 import { Button } from "../studio";
 import { packCapacity } from "./frame-capacity";
 import { ActionBar } from "./shared";
@@ -24,6 +25,22 @@ export function ThemePicker({
 }) {
   const pack = packs.find((p) => p.id === selected);
   const capacity = packCapacity(pack);
+  // Danh sách chỉ tải ảnh xem nhanh; ảnh khung gốc của bộ đang chọn tải trước lúc rảnh để bước
+  // ghép ảnh mở ngay (cùng kiểu tải CORS với bước ghép nên dùng lại được bản đã tải).
+  const preload = pack?.frames.map((f) => f.image).join("|") || "";
+  useEffect(() => {
+    if (!preload) return;
+    const start = () => {
+      for (const src of preload.split("|")) {
+        const image = new Image();
+        image.crossOrigin = "anonymous";
+        image.src = src;
+      }
+    };
+    const idle = window.requestIdleCallback?.(start, { timeout: 1500 });
+    const timer = idle === undefined ? setTimeout(start, 300) : null;
+    return () => (idle === undefined ? clearTimeout(timer) : window.cancelIdleCallback?.(idle));
+  }, [preload]);
   const extra = pack ? Math.max(0, favorites - capacity) : 0;
   const missing = pack ? Math.max(0, capacity - favorites) : 0;
   return (
@@ -77,7 +94,7 @@ export function ThemePicker({
               {p.frames.map((f) => (
                 <span className="theme-preview-frame" key={f._id}>
                   <img
-                    src={f.image}
+                    src={f.thumb || f.image}
                     alt={f.name}
                     loading="lazy"
                     crossOrigin="anonymous"

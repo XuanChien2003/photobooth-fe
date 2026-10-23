@@ -1,0 +1,603 @@
+/*
+  Khung ảnh (như Snapbox): lưới mọi khung có bộ lọc chủ đề / kích thước, trang thêm – sửa khung với
+  form bên trái và khung bên phải để đặt vùng ảnh, QR, ngày in.
+*/
+@layer components {
+  /* ── Danh sách khung ─────────────────────────────────────── */
+  .admin-shell .frames-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 18px;
+    margin-bottom: 18px;
+  }
+  .admin-shell .frames-toolbar > label {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: var(--mellow-muted, var(--muted));
+    font-size: 13.5px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .admin-shell .frames-toolbar > label select {
+    min-width: 170px;
+  }
+  .admin-shell .frames-add {
+    position: relative;
+    margin-left: auto;
+  }
+  .admin-shell .frames-add-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 20;
+    display: grid;
+    min-width: 280px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 12px 28px rgb(48 40 34 / 14%);
+  }
+  .admin-shell .frames-add-menu button {
+    display: grid;
+    gap: 2px;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ink);
+    font-weight: 700;
+    text-align: left;
+    box-shadow: none;
+  }
+  .admin-shell .frames-add-menu button small {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .admin-shell .frames-add-menu button:hover,
+  .admin-shell .frames-add-menu button:focus-visible {
+    background: var(--stone, #f5f1ec);
+  }
+  .admin-shell .frames-count {
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .admin-shell .frames-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .admin-shell .frames-grid > li {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    overflow: hidden;
+    border: 1px solid var(--mellow-line, var(--line));
+    border-radius: 14px;
+    background: var(--mellow-card, #fff);
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+  }
+  .admin-shell .frames-grid > li:hover {
+    box-shadow: 0 10px 24px rgb(48 40 34 / 12%);
+    transform: translateY(-1px);
+  }
+  .admin-shell .frames-grid > li.is-off .frames-card-image img {
+    opacity: 0.45;
+    filter: grayscale(0.6);
+  }
+  .admin-shell .frames-card-image {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    /* Ô trong suốt của khung hiện ô cờ để thấy rõ vùng ảnh. */
+    background:
+      repeating-conic-gradient(#f3eee8 0 25%, #fff 0 50%) 0 0 / 16px 16px;
+    box-shadow: none;
+    cursor: pointer;
+  }
+  .admin-shell .frames-card-image img {
+    position: absolute;
+    inset: 12px;
+    width: calc(100% - 24px);
+    max-width: none;
+    height: calc(100% - 24px);
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgb(48 40 34 / 18%));
+  }
+  .admin-shell .frames-off {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgb(48 40 34 / 78%);
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+  .admin-shell .frames-grid dl {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 12px 14px 6px;
+    font-size: 13px;
+  }
+  .admin-shell .frames-grid dl > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .admin-shell .frames-grid dt {
+    color: var(--muted);
+  }
+  .admin-shell .frames-grid dd {
+    margin: 0;
+    overflow: hidden;
+    color: var(--ink);
+    font-weight: 600;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .admin-shell .frames-card-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+    padding: 8px 10px 12px;
+  }
+  .admin-shell .frames-card-actions button {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: #fff;
+    color: var(--mellow-cocoa, var(--wine));
+    box-shadow: none;
+  }
+  .admin-shell .frames-card-actions button:hover:not(:disabled) {
+    border-color: var(--mellow-cocoa, var(--wine));
+    background: var(--stone, #f5f1ec);
+  }
+  .admin-shell .frames-card-actions button:last-child:hover:not(:disabled) {
+    border-color: #a03d43;
+    color: #a03d43;
+  }
+  .admin-shell .frames-card-actions button:disabled {
+    opacity: 0.45;
+  }
+  .admin-shell .frames-pages {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 22px;
+  }
+  .admin-shell .frames-pages button {
+    min-width: 38px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: #fff;
+    color: var(--ink);
+    box-shadow: none;
+  }
+  .admin-shell .frames-pages button.active {
+    border-color: var(--mellow-cocoa, var(--wine));
+    background: var(--mellow-cocoa, var(--wine));
+    color: #fff;
+  }
+  .admin-shell .frames-pages button:disabled {
+    opacity: 0.4;
+  }
+
+  /* ── Thêm / sửa khung ────────────────────────────────────── */
+  .admin-shell .frame-editor-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .admin-shell .frame-editor-head h3 {
+    margin: 0;
+    font-size: 20px;
+  }
+  .admin-shell .frame-editor-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    align-items: start;
+    gap: 22px;
+  }
+  .admin-shell .frame-editor-form {
+    position: sticky;
+    top: 16px;
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+    border: 1px solid var(--mellow-line, var(--line));
+    border-radius: 14px;
+    background: var(--mellow-card, #fff);
+  }
+  .admin-shell .frame-editor-form > label {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+  }
+  .admin-shell .frame-editor-form > label > span,
+  .admin-shell .frame-capacity > span {
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .admin-shell .frame-editor-form > label.checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13.5px;
+  }
+  .admin-shell .frame-color {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+  }
+  .admin-shell .frame-color > span {
+    grid-column: 1 / -1;
+  }
+  .admin-shell .frame-color input[type="color"] {
+    width: 54px;
+    height: 40px;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: #fff;
+    cursor: pointer;
+  }
+  .admin-shell .frame-color small {
+    font-family: var(--mellow-display, inherit);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .admin-shell .frame-capacity {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 2px 10px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: var(--stone, #f5f1ec);
+  }
+  .admin-shell .frame-capacity strong {
+    grid-row: span 2;
+    color: var(--mellow-cocoa, var(--wine));
+    font-size: 26px;
+    line-height: 1;
+  }
+  .admin-shell .frame-capacity small {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .admin-shell .frame-editor-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .admin-shell .frame-editor-stage {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+  }
+  .admin-shell .frame-upload {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 10px;
+    min-height: 460px;
+    padding: 30px;
+    border: 2px dashed var(--mellow-line, var(--line));
+    border-radius: 16px;
+    background: var(--mellow-card, #fff);
+    color: var(--muted);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .admin-shell .frame-upload svg {
+    color: var(--mellow-cocoa, var(--wine));
+  }
+  .admin-shell .frame-upload strong {
+    color: var(--ink);
+    font-size: 16px;
+  }
+  .admin-shell .frame-upload:hover,
+  .admin-shell .frame-upload:focus-visible,
+  .admin-shell .frame-upload.over {
+    border-color: var(--mellow-cocoa, var(--wine));
+    background: var(--stone, #f5f1ec);
+  }
+  .admin-shell .frame-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .admin-shell .frame-tools button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 38px;
+    padding: 7px 13px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: none;
+  }
+  .admin-shell .frame-tools button:hover {
+    border-color: var(--mellow-cocoa, var(--wine));
+    background: var(--stone, #f5f1ec);
+  }
+  .admin-shell .frame-tools button:first-child {
+    border-color: #c8423b;
+    background: #c8423b;
+    color: #fff;
+  }
+  .admin-shell .frame-region-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 16px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: var(--stone, #f5f1ec);
+    font-size: 13px;
+  }
+  .admin-shell .frame-region-bar label {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-weight: 700;
+  }
+  .admin-shell .frame-region-bar select {
+    width: 76px;
+    min-height: 34px;
+    padding: 4px 8px;
+  }
+  .admin-shell .frame-region-bar small {
+    color: var(--muted);
+  }
+  .admin-shell .frame-board-wrap {
+    display: grid;
+    place-items: center;
+    padding: 44px 20px 24px;
+    border: 1px solid var(--mellow-line, var(--line));
+    border-radius: 16px;
+    background:
+      repeating-conic-gradient(#ece6df 0 25%, #fbf9f7 0 50%) 0 0 / 20px 20px;
+    overflow: auto;
+  }
+  .admin-shell .frame-board {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    line-height: 0;
+    box-shadow: 0 8px 26px rgb(48 40 34 / 20%);
+    user-select: none;
+    touch-action: none;
+  }
+  .admin-shell .frame-board > img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: max(420px, calc(100vh - 190px));
+    pointer-events: none;
+  }
+  .admin-shell .frame-region {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    border: 2px solid #d9443b;
+    background: rgb(217 68 59 / 28%);
+    line-height: 1.2;
+    cursor: move;
+    touch-action: none;
+  }
+  .admin-shell .frame-region > strong {
+    min-width: 26px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #d9443b;
+    color: #fff;
+    font-size: 15px;
+    text-align: center;
+    pointer-events: none;
+  }
+  /* Bản sao (cùng số ảnh với một vùng trước) màu xanh như mẫu. */
+  .admin-shell .frame-region.is-copy {
+    border-color: #2f6fd6;
+    background: rgb(47 111 214 / 26%);
+  }
+  .admin-shell .frame-region.is-copy > strong {
+    background: #2f6fd6;
+  }
+  .admin-shell .frame-region.kind-qr {
+    border-color: #2d2622;
+    background: rgb(45 38 34 / 22%);
+  }
+  .admin-shell .frame-region.kind-qr > strong {
+    background: #2d2622;
+  }
+  .admin-shell .frame-region.kind-date {
+    border-style: dashed;
+    border-color: #2f8a57;
+    background: rgb(47 138 87 / 18%);
+  }
+  .admin-shell .frame-region.kind-date > strong {
+    padding: 0 4px;
+    background: transparent;
+    color: #1f6b41;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .admin-shell .frame-region.selected {
+    z-index: 2;
+    outline: 2px solid #fff;
+    outline-offset: 1px;
+    box-shadow: 0 0 0 4px rgb(48 40 34 / 35%);
+  }
+  .admin-shell .frame-region-tools {
+    position: absolute;
+    right: -2px;
+    bottom: calc(100% + 6px);
+    display: flex;
+    gap: 4px;
+  }
+  .admin-shell .frame-region-tools button {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+    min-height: 30px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ink);
+    box-shadow: 0 2px 6px rgb(48 40 34 / 18%);
+    cursor: pointer;
+  }
+  .admin-shell .frame-region-tools button:last-child {
+    color: #a03d43;
+  }
+  .admin-shell .frame-handle {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #d9443b;
+    border-radius: 3px;
+    background: #fff;
+    touch-action: none;
+  }
+  .admin-shell .frame-region.is-copy .frame-handle {
+    border-color: #2f6fd6;
+  }
+  .admin-shell .frame-handle.h-n,
+  .admin-shell .frame-handle.h-s {
+    left: calc(50% - 7px);
+    cursor: ns-resize;
+  }
+  .admin-shell .frame-handle.h-e,
+  .admin-shell .frame-handle.h-w {
+    top: calc(50% - 7px);
+    cursor: ew-resize;
+  }
+  .admin-shell .frame-handle.h-n,
+  .admin-shell .frame-handle.h-ne,
+  .admin-shell .frame-handle.h-nw {
+    top: -8px;
+  }
+  .admin-shell .frame-handle.h-s,
+  .admin-shell .frame-handle.h-se,
+  .admin-shell .frame-handle.h-sw {
+    bottom: -8px;
+  }
+  .admin-shell .frame-handle.h-e,
+  .admin-shell .frame-handle.h-ne,
+  .admin-shell .frame-handle.h-se {
+    right: -8px;
+  }
+  .admin-shell .frame-handle.h-w,
+  .admin-shell .frame-handle.h-nw,
+  .admin-shell .frame-handle.h-sw {
+    left: -8px;
+  }
+  .admin-shell .frame-handle.h-ne,
+  .admin-shell .frame-handle.h-sw {
+    cursor: nesw-resize;
+  }
+  .admin-shell .frame-handle.h-nw,
+  .admin-shell .frame-handle.h-se {
+    cursor: nwse-resize;
+  }
+
+  @media (max-width: 900px) {
+    .admin-shell .frame-editor-layout {
+      grid-template-columns: 1fr;
+    }
+    .admin-shell .frame-editor-form {
+      position: static;
+      order: 2;
+    }
+    .admin-shell .frames-add {
+      margin-left: 0;
+    }
+    .admin-shell .frames-add-menu {
+      right: auto;
+      left: 0;
+    }
+  }
+  @media (max-width: 560px) {
+    .admin-shell .frames-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .admin-shell .frames-toolbar > label {
+      flex: 1 1 100%;
+      justify-content: space-between;
+    }
+    .admin-shell .frames-toolbar > label select {
+      flex: 1;
+      min-width: 0;
+    }
+    .admin-shell .frames-grid dl {
+      padding: 10px 10px 4px;
+      font-size: 12.5px;
+    }
+    .admin-shell .frames-grid dl > div {
+      display: grid;
+      gap: 0;
+    }
+    .admin-shell .frames-grid dd {
+      text-align: left;
+    }
+    .admin-shell .frames-card-actions {
+      padding: 6px 8px 10px;
+    }
+    .admin-shell .frames-card-actions button {
+      width: 30px;
+      min-width: 30px;
+      height: 30px;
+      min-height: 30px;
+    }
+    .admin-shell .frame-board-wrap {
+      padding: 40px 8px 16px;
+    }
+    .admin-shell .frame-handle {
+      width: 18px;
+      height: 18px;
+    }
+  }
+}

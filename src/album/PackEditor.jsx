@@ -43,7 +43,7 @@ export function PackEditor({
               className={isFilled(f, layouts[f._id]) ? "" : "missing"}
               onClick={() => onIndex(i)}
             >
-              <img src={f.image} alt="" crossOrigin="anonymous" />
+              <img src={f.thumb || f.image} alt="" crossOrigin="anonymous" />
               <span>{f.name}</span>
             </button>
           ))}

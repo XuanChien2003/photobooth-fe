@@ -1,14 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Plus,
   Pencil,
   X,
   ExternalLink,
-  Upload,
   DoorOpen,
   Package,
   Users,
-  Image,
   Info,
   Activity,
   SlidersHorizontal,
@@ -18,10 +16,9 @@ import {
   Monitor,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { api, assetUrl, money, localDate } from "../api";
+import { api, money } from "../api";
 import { Button, ErrorBox, useStudio, useToast } from "../studio";
 import { useValidation } from "../validate";
-import { FrameGrid } from "../frame-admin";
 import { RESOURCE_LABELS, RESOURCE_RULES, definitions, DEFAULT_STAFF_PERMISSIONS, PERMISSION_GROUPS, can } from "./config";
 import { PriceEditor } from "../extra-prints";
 import { TableHeading } from "./table-heading";
@@ -30,7 +27,6 @@ import { download, macScript, windowsScript } from "./kiosk-autostart";
 import { CatalogToolbar } from "./catalog-toolbar";
 import { PackageCatalog } from "./package-catalog";
 import { ResourceEditor } from "./resource-editor";
-import { frameTheme } from "../frame-catalog-data";
 
 const searchable = (value) =>
   String(value || "")
@@ -54,7 +50,6 @@ const RESOURCE_ICONS = {
   rooms: DoorOpen,
   packages: Package,
   users: Users,
-  frames: Image,
 };
 
 export function ResourceManager({ resource, notify, me }) {
@@ -62,7 +57,6 @@ export function ResourceManager({ resource, notify, me }) {
   const { settings = {}, reload: reloadCatalog } = useStudio();
   const form = useValidation();
   const kind = RESOURCE_LABELS[resource] || "mục";
-  const [themeOptions, setThemeOptions] = useState([]);
   const [items, setItems] = useState([]);
   const [edit, setEdit] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -71,46 +65,21 @@ export function ResourceManager({ resource, notify, me }) {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
-  const [theme, setTheme] = useState("all");
-  const [moving, setMoving] = useState(false);
-  const movingRef = useRef(false);
-  const isCatalog = resource === "packages" || resource === "frames";
+  // Khung ảnh có trang riêng (admin/frames.jsx); đây là máy, gói chụp và tài khoản.
+  const isCatalog = resource === "packages";
   const canManage = me?.role === "admin";
-  const filtered = Boolean(query.trim()) || status !== "all" || theme !== "all";
+  const filtered = Boolean(query.trim()) || status !== "all";
   const visibleItems = items.filter(
     (item) =>
       searchable(
-        [item.name, item.description, item.themeName].filter(Boolean).join(" "),
+        [item.name, item.description].filter(Boolean).join(" "),
       ).includes(searchable(query.trim())) &&
-      (status === "all" || Boolean(item.active) === (status === "active")) &&
-      (resource !== "frames" ||
-        theme === "all" ||
-        (theme === "none"
-          ? !item.themeName?.trim()
-          : item.themeName?.trim() === theme.slice(6))),
+      (status === "all" || Boolean(item.active) === (status === "active")),
   );
-  // Danh sách khung chỉ trả địa chỉ ảnh (nhẹ, cache được), không kèm ảnh base64.
-  const withImages = (list) =>
-    resource === "frames"
-      ? list.map((item) => ({ ...item, image: assetUrl(item.image) }))
-      : list;
   const load = async () => {
     setLoading(true);
     try {
-      const result = withImages(await api(`/admin/${resource}`));
-      setItems(result);
-      if (resource === "frames") {
-        setTheme((current) =>
-          current === "all" ||
-          result.some((item) =>
-            current === "none"
-              ? !item.themeName?.trim()
-              : item.themeName?.trim() === current.slice(6),
-          )
-            ? current
-            : "all",
-        );
-      }
+      setItems(await api(`/admin/${resource}`));
     } catch (e) {
       setError(e.message);
       toast.error(e.message);
@@ -124,26 +93,12 @@ export function ResourceManager({ resource, notify, me }) {
     setDevice(null);
     setQuery("");
     setStatus("all");
-    setTheme("all");
     load();
-    // Gợi ý tên chủ đề (kể cả chủ đề mới tạo ở mục Chủ đề, chưa có khung).
-    if (resource === "frames")
-      api("/admin/themes").then((list) => setThemeOptions(list.map((t) => t.name)), () => {});
   }, [resource]);
-  const openEditor = async (item) => {
+  const openEditor = (item) => {
     if (!canManage) return;
     setError("");
     form.setErrors({});
-    // Danh sách khung chỉ có địa chỉ ảnh: lấy đủ ảnh (data URL) của đúng khung này để xem / gửi
-    // lại khi lưu.
-    if (resource === "frames" && item._id && !item.image?.startsWith("data:")) {
-      try {
-        item = await api(`/admin/frames/${item._id}`);
-      } catch (e) {
-        toast.error(e.message);
-        return;
-      }
-    }
     setEdit(item);
   };
   const fields = definitions[resource];
@@ -185,29 +140,6 @@ export function ResourceManager({ resource, notify, me }) {
                     : "",
         ]),
         ["active", true],
-        ...(resource === "frames"
-          ? [
-              ["slots", []],
-              ["themeName", theme.startsWith("theme:") ? theme.slice(6) : ""],
-              [
-                "order",
-                Math.min(
-                  999,
-                  1 +
-                    Math.max(
-                      0,
-                      ...items
-                        .filter(
-                          (item) =>
-                            frameTheme(item) ===
-                            (theme.startsWith("theme:") ? theme.slice(6) : ""),
-                        )
-                        .map((item) => item.order || 0),
-                    ),
-                ),
-              ],
-            ]
-          : []),
       ]),
     );
   }
@@ -241,22 +173,11 @@ export function ResourceManager({ resource, notify, me }) {
   }
   async function deactivate(item) {
     if (!canManage) return;
-    if (
-      !confirm(
-        resource === "frames"
-          ? `Xóa khung ${item.name}?`
-          : `Ngừng sử dụng ${item.name || item.code}?`,
-      )
-    )
-      return;
+    if (!confirm(`Ngừng sử dụng ${item.name || item.code}?`)) return;
     try {
       await api(`/admin/${resource}/${item._id}`, { method: "DELETE" });
       load();
-      notify(
-        resource === "frames"
-          ? `Đã xóa khung “${item.name}”.`
-          : `Đã ngừng sử dụng ${kind} “${item.name || item.code}”.`,
-      );
+      notify(`Đã ngừng sử dụng ${kind} “${item.name || item.code}”.`);
     } catch (e) {
       toast.error(e.message);
     }
@@ -272,35 +193,6 @@ export function ResourceManager({ resource, notify, me }) {
       });
     } catch (e) {
       toast.error(e.message);
-    }
-  }
-  async function moveFrame(item, direction, siblings) {
-    if (!canManage || movingRef.current) return;
-    movingRef.current = true;
-    setMoving(true);
-    const focused = document.activeElement;
-    try {
-      const next = await api(`/admin/frames/${item._id}/move`, {
-        method: "POST",
-        body: { direction, expectedIds: siblings.map((frame) => frame._id) },
-      });
-      setItems(withImages(next));
-      notify(`Đã đổi thứ tự khung “${item.name}”.`);
-    } catch (e) {
-      toast.error(e.message);
-      if (e.status === 409 || e.status === 404)
-        await api("/admin/frames")
-          .then((list) => setItems(withImages(list)))
-          .catch(() => {});
-    } finally {
-      movingRef.current = false;
-      setMoving(false);
-      requestAnimationFrame(
-        () =>
-          focused?.isConnected &&
-          !focused.disabled &&
-          focused.focus({ preventScroll: true }),
-      );
     }
   }
   return (
@@ -327,8 +219,6 @@ export function ResourceManager({ resource, notify, me }) {
           onQueryChange={setQuery}
           status={status}
           onStatusChange={setStatus}
-          theme={theme}
-          onThemeChange={setTheme}
           onCreate={newItem}
           loading={loading}
         />
@@ -341,15 +231,7 @@ export function ResourceManager({ resource, notify, me }) {
           </p>
           {canManage && (
             <Button onClick={newItem}>
-              {resource === "frames" ? (
-                <>
-                  <Upload size={16} /> Nhập khung
-                </>
-              ) : (
-                <>
-                  <Plus size={16} /> Thêm mới
-                </>
-              )}
+              <Plus size={16} /> Thêm mới
             </Button>
           )}
         </div>
@@ -359,18 +241,6 @@ export function ResourceManager({ resource, notify, me }) {
           <LoaderCircle size={24} aria-hidden="true" />
           <span>Đang tải danh mục…</span>
         </div>
-      ) : resource === "frames" ? (
-        <FrameGrid
-          items={visibleItems}
-          allItems={items}
-          onMove={moveFrame}
-          moving={moving}
-          reorderFiltered={Boolean(query.trim()) || status !== "all"}
-          onEdit={(item) => openEditor({ ...item })}
-          onDelete={deactivate}
-          onCreate={newItem}
-          filtered={filtered}
-        />
       ) : resource === "packages" ? (
         <>
         {canManage && (
@@ -412,13 +282,6 @@ export function ResourceManager({ resource, notify, me }) {
                     data-label={resource === "rooms" ? "Tên phòng" : "Họ tên"}
                   >
                     <strong>{item.name || item.code}</strong>
-                    {resource === "frames" && item.image && (
-                      <img
-                        className="frame-thumb"
-                        src={item.image}
-                        alt={item.name}
-                      />
-                    )}
                   </td>
                   <td
                     data-label={
@@ -446,8 +309,6 @@ export function ResourceManager({ resource, notify, me }) {
                           </small>
                         )}
                       </>
-                    ) : resource === "frames" ? (
-                      `${item.slots?.length || 0} ô ảnh`
                     ) : resource === "rooms" ? (
                       <>
                         {item.branch || "Chưa đặt chi nhánh"}
@@ -509,15 +370,10 @@ export function ResourceManager({ resource, notify, me }) {
                             <Pencil size={16} />
                           </button>
                         )}
-                        {canManage &&
-                          (item.active || resource === "frames") && (
+                        {canManage && item.active && (
                             <button
-                              title={
-                                resource === "frames"
-                                  ? "Xóa khung"
-                                  : "Ngừng sử dụng"
-                              }
-                              aria-label={`${resource === "frames" ? "Xóa khung" : "Ngừng sử dụng"} ${item.name || item.code}`}
+                              title="Ngừng sử dụng"
+                              aria-label={`Ngừng sử dụng ${item.name || item.code}`}
                               className="icon-button"
                               onClick={() => deactivate(item)}
                             >
@@ -561,7 +417,6 @@ export function ResourceManager({ resource, notify, me }) {
           onChange={setEdit}
           onClose={() => setEdit(null)}
           onSubmit={save}
-          themeOptions={themeOptions}
         />
       )}
       {device && (

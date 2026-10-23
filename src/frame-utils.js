@@ -173,8 +173,69 @@ export function drawSlot(ctx, image, rect, t = DEFAULT_TRANSFORM) {
   ctx.restore();
 }
 
-// Ghép khung: nền khung trước, ảnh đặt vào các ô trắng/trong suốt.
-export function composeLayout(canvas, frameImage, slots, images, transforms, decorations = []) {
+// ─── Vùng trên khung: ô ảnh có số ảnh, bản sao, mã QR, ngày in ───────────
+export const isPhotoRegion = (region) => !region.kind || region.kind === "photo";
+// Khung để ghép: mỗi số ảnh là một ô (ô đầu tiên mang số đó). Các ô cùng số (bản sao — vd. 2 dải
+// giống nhau trên khung nhỏ) và vùng QR / ngày in vẽ thêm khi ghép. Khung cũ giữ nguyên các ô.
+export function photoLayout(frame) {
+  if (frame.copies) return frame;
+  const leaders = new Map(), copies = [], marks = [];
+  let next = 0;
+  for (const region of frame.slots || []) {
+    if (!isPhotoRegion(region)) {
+      marks.push(region);
+      continue;
+    }
+    const number = region.photo ?? ++next;
+    if (leaders.has(number)) copies.push({ slot: region, number });
+    else leaders.set(number, region);
+  }
+  const order = [...leaders.keys()].sort((a, b) => a - b);
+  return {
+    ...frame,
+    slots: order.map((n) => leaders.get(n)),
+    copies: copies.map(({ slot, number }) => ({ slot, of: order.indexOf(number) })),
+    marks,
+  };
+}
+// Số ảnh khác nhau khung cần (bản sao không tính thêm).
+export const frameCapacity = (frame) => photoLayout(frame).slots.length;
+export const printDate = (date = new Date()) =>
+  new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh",
+  }).format(date).replaceAll("/", ".");
+// Mã QR (ảnh đã nạp, chưa có thì ô trắng chờ) và ngày in theo màu chữ của khung.
+export function drawMarks(ctx, frame, qr, width, height) {
+  for (const region of frame.marks || []) {
+    const r = slotRect(region, width, height);
+    if (region.kind === "qr") {
+      const side = Math.min(r.w, r.h);
+      const x = r.x + (r.w - side) / 2, y = r.y + (r.h - side) / 2;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(x, y, side, side);
+      if (qr) ctx.drawImage(qr, x, y, side, side);
+    } else if (region.kind === "date") {
+      const text = printDate();
+      ctx.save();
+      ctx.fillStyle = frame.dateColor || "#2f1a12";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      let size = r.h * 0.8;
+      ctx.font = `600 ${size}px "Be Vietnam Pro", "Be Vietnam Pro Local", system-ui, sans-serif`;
+      const measured = ctx.measureText(text).width;
+      if (measured > r.w * 0.95) {
+        size *= (r.w * 0.95) / measured;
+        ctx.font = `600 ${size}px "Be Vietnam Pro", "Be Vietnam Pro Local", system-ui, sans-serif`;
+      }
+      ctx.fillText(text, r.x + r.w / 2, r.y + r.h / 2);
+      ctx.restore();
+    }
+  }
+}
+
+// Ghép khung: nền khung trước, ảnh đặt vào các ô trắng/trong suốt. `extras` (khung theo photoLayout
+// + ảnh QR) vẽ thêm các ô bản sao, mã QR và ngày in.
+export function composeLayout(canvas, frameImage, slots, images, transforms, decorations = [], extras = null) {
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
@@ -190,6 +251,12 @@ export function composeLayout(canvas, frameImage, slots, images, transforms, dec
         transforms[i],
       );
   });
+  if (extras?.frame) {
+    for (const copy of extras.frame.copies || [])
+      if (images[copy.of])
+        drawSlot(ctx, images[copy.of], slotRect(copy.slot, canvas.width, canvas.height), transforms[copy.of]);
+    drawMarks(ctx, extras.frame, extras.qr, canvas.width, canvas.height);
+  }
   drawDecorations(ctx, decorations, canvas.width, canvas.height);
   return canvas;
 }
@@ -216,7 +283,7 @@ export function groupFramePacks(frames, themeOrder = []) {
       ...g,
       index,
       frames: g.frames.sort(compareFrameOrder),
-      required: g.frames.reduce((n, f) => n + f.slots.length, 0),
+      required: g.frames.reduce((n, f) => n + frameCapacity(f), 0),
     }))
     .sort((a, b) => rank(a) - rank(b) || a.index - b.index)
     .map(({ index, ...g }) => g);
@@ -224,8 +291,9 @@ export function groupFramePacks(frames, themeOrder = []) {
 
 // Kích thước xuất của một khung: giữ đúng tỉ lệ thiết kế, vừa khổ in.
 export function frameOutputSize(frame, image) {
+  // Khung phủ cả tờ (khung nhỏ = 2 dải trên một tờ) in nguyên tờ; khung dải cũ chỉ nửa tờ.
   const box =
-    frame.printSize === "strip" ? { w: SHEET.w / 2, h: SHEET.h } : SHEET;
+    frame.printSize === "strip" && !frame.sheet ? { w: SHEET.w / 2, h: SHEET.h } : SHEET;
   const landscape = image.naturalWidth > image.naturalHeight;
   const [bw, bh] = landscape ? [box.h, box.w] : [box.w, box.h];
   const { width, height } = imageRect(
