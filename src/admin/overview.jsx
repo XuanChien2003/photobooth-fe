@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, Plus, Printer } from "lucide-react";
+import { CalendarDays, Camera, Plus, Printer } from "lucide-react";
 import { labels, localDate } from "../api";
 import { isConnectivityError } from "../network.js";
 import { useLiveData } from "../use-live-data";
@@ -12,6 +12,54 @@ const clockOf = (ms) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
+const ROOM_STATE = { free: "Đang trống", starting: "Đang vào phòng", shooting: "Đang chụp" };
+
+// Một phòng chụp: trạng thái, đồng hồ + thanh thời gian khi đang chụp, máy chụp có đang mở không.
+function RoomTile({ room, offset }) {
+  const now = Date.now() - offset;
+  const shooting = room.status === "shooting";
+  const total = shooting && room.startedAt ? new Date(room.endsAt) - new Date(room.startedAt) : 0;
+  const left = shooting ? new Date(room.endsAt) - now : 0;
+  const machine = shooting && !room.online
+    ? ["warn", "Máy chụp mất tín hiệu"]
+    : room.machine || room.online
+      ? ["on", "Máy chụp đang mở"]
+      : ["off", "Máy chụp chưa mở"];
+  return (
+    <article className={`room-tile ${room.status}`}>
+      <header className="room-tile-heading">
+        <span className="room-avatar" aria-hidden="true"><Camera size={18} /></span>
+        <div className="room-tile-name">
+          <strong>{room.name}</strong>
+          {room.branch && <small>{room.branch}</small>}
+        </div>
+        <span className="room-state">{ROOM_STATE[room.status] || ROOM_STATE.free}</span>
+      </header>
+      <div className="room-tile-body">
+        {shooting ? (
+          <>
+            <div className="room-clock-row">
+              <span className="room-clock">{clockOf(left)}</span>
+              <small>còn lại</small>
+            </div>
+            {total > 0 && (
+              <div className="room-progress" role="progressbar" aria-label="Thời gian chụp đã dùng"
+                aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(100 - (100 * left) / total)}>
+                <i style={{ width: `${Math.min(100, Math.max(0, 100 - (100 * left) / total))}%` }} />
+              </div>
+            )}
+            <p>#{room.code}{room.customer ? ` · ${room.customer}` : ""}</p>
+          </>
+        ) : room.status === "starting" ? (
+          <p>Khách đang vào phòng · #{room.code}</p>
+        ) : (
+          <p>Sẵn sàng — mời khách tiếp theo</p>
+        )}
+      </div>
+      <footer className={`room-machine is-${machine[0]}`}>{machine[1]}</footer>
+    </article>
+  );
+}
 
 export function Overview({ notify, canSeeMoney, canOperateShift = true, assignedBranch }) {
   const toast = useToast();
@@ -79,49 +127,27 @@ export function Overview({ notify, canSeeMoney, canOperateShift = true, assigned
         <div className="room-board-head">
           <div>
             <h3>Phòng chụp lúc này</h3>
-            <p className="room-board-summary">
-              {live
-                ? `${freeRooms}/${rooms.length} phòng đang trống`
-                : "Đang tải trạng thái phòng…"}
-            </p>
+            {live ? (
+              <div className="room-board-counts">
+                <span className="is-free">{freeRooms} trống</span>
+                <span className="is-shooting">{rooms.filter((r) => r.status === "shooting").length} đang chụp</span>
+                {rooms.some((r) => r.status === "starting") && (
+                  <span className="is-starting">{rooms.filter((r) => r.status === "starting").length} đang vào phòng</span>
+                )}
+              </div>
+            ) : (
+              <p className="room-board-summary">Đang tải trạng thái phòng…</p>
+            )}
           </div>
           <Button onClick={() => setCreating(true)}>
             <Plus size={15} /> Tạo mã chụp
           </Button>
         </div>
         <div className="room-board-grid">
-          {rooms.map((r) => (
-            <div key={r._id} className={`room-tile ${r.status}`}>
-              <div className="room-tile-heading">
-                <strong>{r.name}</strong>
-                <span className="room-state">
-                  {r.status === "shooting"
-                    ? "Đang chụp"
-                    : r.status === "starting"
-                      ? "Đang vào phòng"
-                      : "Đang trống"}
-                </span>
-              </div>
-              {r.status === "shooting" ? (
-                <>
-                  <span className="room-clock">
-                    {clockOf(new Date(r.endsAt) - (Date.now() - live.offset))}
-                  </span>
-                  <small>
-                    Đang chụp · #{r.code} · {r.customer}
-                    {!r.online && " · máy chụp mất tín hiệu"}
-                  </small>
-                </>
-              ) : r.status === "starting" ? (
-                <small>Khách đang vào phòng · #{r.code}</small>
-              ) : (
-                <small>Đang trống — mời khách tiếp theo</small>
-              )}
-            </div>
-          ))}
+          {rooms.map((r) => <RoomTile key={r._id} room={r} offset={live.offset} />)}
           {live && !rooms.length && (
             <p className="muted">
-              Chưa có phòng chụp. Thêm phòng trong mục Phòng & chi nhánh.
+              Chưa có phòng chụp. Thêm phòng trong mục Quản lý máy.
             </p>
           )}
         </div>

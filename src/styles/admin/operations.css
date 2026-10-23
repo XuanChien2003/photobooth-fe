@@ -24,77 +24,195 @@
     color: var(--muted);
     font-size: 13px;
   }
-  .admin-shell .room-board-grid {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
-    gap: 0;
-    border-top: 1px solid var(--line);
-  }
-  .admin-shell .room-tile {
-    align-content: start;
-    gap: 9px;
-    min-height: 118px;
-    padding: 20px 22px 2px 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-  .admin-shell .room-tile + .room-tile {
-    padding-left: 22px;
-    border-left: 1px solid var(--line);
-  }
-  .admin-shell .room-tile:hover {
-    box-shadow: none;
-  }
-  .admin-shell .room-tile-heading {
+  /* ── Phòng chụp lúc này: mỗi phòng một thẻ (trống / đang vào / đang chụp) ── */
+  .admin-shell .room-board-counts {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 7px 12px;
+    gap: 8px;
+    margin-top: 8px;
   }
-  .admin-shell .room-tile strong {
-    color: var(--ink);
-    font-size: 15px;
+  .admin-shell .room-board-counts span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 11px;
+    border-radius: 999px;
+    background: var(--room-soft);
+    color: var(--room-ink);
+    font-size: 12.5px;
     font-weight: 600;
+  }
+  .admin-shell .room-board-counts span::before {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    content: "";
+  }
+  .admin-shell .room-board {
+    --room-ink: #3f7a52;
+    --room-soft: #e8f3eb;
+  }
+  .admin-shell .room-board .is-shooting,
+  .admin-shell .room-board .room-tile.shooting {
+    --room-ink: #9a5b12;
+    --room-soft: #fbefd9;
+  }
+  .admin-shell .room-board .is-starting,
+  .admin-shell .room-board .room-tile.starting {
+    --room-ink: #315e91;
+    --room-soft: #e7eef8;
+  }
+  .admin-shell .room-board-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+    gap: 14px;
+  }
+  .admin-shell .room-board .room-tile {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 14px;
+    min-height: 0;
+    padding: 18px 18px 16px;
+    overflow: hidden;
+    border: 1px solid var(--mellow-line, var(--line));
+    border-radius: 14px;
+    background: var(--mellow-card, #fffdf9);
+    box-shadow: 0 1px 2px rgb(48 40 34 / 6%);
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+  }
+  /* Dải màu trạng thái ở mép trên. */
+  .admin-shell .room-board .room-tile::before {
+    position: absolute;
+    inset: 0 0 auto;
+    height: 4px;
+    background: var(--room-ink);
+    opacity: 0.85;
+    content: "";
+  }
+  .admin-shell .room-board .room-tile:hover {
+    box-shadow: 0 10px 24px rgb(48 40 34 / 10%);
+    transform: translateY(-1px);
+  }
+  .admin-shell .room-tile-heading {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+  }
+  .admin-shell .room-avatar {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: var(--room-soft);
+    color: var(--room-ink);
+  }
+  .admin-shell .room-tile-name {
+    display: grid;
+    min-width: 0;
+  }
+  .admin-shell .room-tile-name strong {
+    overflow: hidden;
+    color: var(--mellow-ink, var(--ink));
+    font-size: 16px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .admin-shell .room-tile-name small {
+    color: var(--muted);
+    font-size: 12px;
   }
   .admin-shell .room-state {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: #386147;
-    font-size: 11px;
-    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--room-soft);
+    color: var(--room-ink);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
   }
   .admin-shell .room-state::before {
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     background: currentColor;
     content: "";
   }
-  .admin-shell .room-tile.shooting .room-state {
-    color: #805413;
+  .admin-shell .room-tile.shooting .room-state::before {
+    animation: room-live 1.4s ease-in-out infinite;
   }
-  .admin-shell .room-tile.starting .room-state {
-    color: #315e91;
+  .admin-shell .room-tile-body {
+    display: grid;
+    align-content: center;
+    gap: 8px;
+  }
+  .admin-shell .room-tile-body p {
+    margin: 0;
+    color: var(--mellow-muted, var(--muted));
+    font-size: 13.5px;
+  }
+  .admin-shell .room-clock-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
   }
   .admin-shell .room-clock {
-    color: var(--ink);
-    font-size: 27px;
-    font-weight: 600;
-    line-height: 1.25;
-    letter-spacing: 0;
+    color: var(--room-ink);
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.1;
     font-variant-numeric: tabular-nums;
   }
-  .admin-shell .room-tile.shooting .room-clock {
-    color: #805413;
-  }
-  .admin-shell .room-tile small {
-    margin-top: auto;
+  .admin-shell .room-clock-row small {
     color: var(--muted);
-    font-size: 12px;
-    line-height: 1.6;
+    font-size: 12.5px;
+  }
+  .admin-shell .room-progress {
+    height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--room-soft);
+  }
+  .admin-shell .room-progress i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--room-ink);
+    transition: width 1s linear;
+  }
+  .admin-shell .room-machine {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding-top: 12px;
+    border-top: 1px solid var(--mellow-line, var(--line));
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+  .admin-shell .room-machine::before {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #b9aca1;
+    content: "";
+  }
+  .admin-shell .room-machine.is-on::before {
+    background: #3f9a5f;
+    box-shadow: 0 0 0 3px rgb(63 154 95 / 18%);
+  }
+  .admin-shell .room-machine.is-warn {
+    color: #a03d43;
+    font-weight: 600;
+  }
+  .admin-shell .room-machine.is-warn::before {
+    background: #a03d43;
   }
   .admin-shell .stats-grid {
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
@@ -254,4 +372,15 @@
   border: 1px solid var(--line, #e7e1dc);
   border-radius: 10px;
   background: var(--paper, #fff);
+}
+
+@keyframes room-live {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell .room-tile.shooting .room-state::before {
+    animation: none;
+  }
 }

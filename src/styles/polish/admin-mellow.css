@@ -206,16 +206,6 @@
     color: var(--mellow-ink);
     font-size: 34px;
   }
-  .admin-content .room-tile {
-    position: relative;
-    border: 1px solid var(--mellow-line);
-    border-radius: 4px;
-    background: #fffdf9;
-  }
-  .admin-content .room-tile.free {
-    border-style: dashed;
-    border-color: #cdb49c;
-  }
   .admin-content .revenue-summary strong {
     font-family: var(--mellow-display);
     font-weight: 700;

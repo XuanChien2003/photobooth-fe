@@ -12,17 +12,12 @@
       padding-right: 24px;
     }
     .admin-shell .dashboard-grid,
-    .admin-shell .stats-grid,
-    .admin-shell .room-board-grid {
+    .admin-shell .stats-grid {
       grid-template-columns: minmax(0, 1fr);
     }
-    .admin-shell .stat-card + .stat-card,
-    .admin-shell .room-tile + .room-tile {
+    .admin-shell .stat-card + .stat-card {
       border-left: 0;
       border-top: 1px solid var(--line);
-    }
-    .admin-shell .room-tile + .room-tile {
-      padding-left: 0;
     }
     .admin-shell .print-day-note {
       grid-template-columns: auto minmax(0, 1fr);
@@ -133,21 +128,6 @@
     }
     .admin-shell .room-board-head > .button {
       width: 100%;
-    }
-    .admin-shell .room-board-grid {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    .admin-shell .room-tile {
-      min-height: 104px;
-      padding: 18px 0;
-    }
-    .admin-shell .room-tile + .room-tile {
-      padding-left: 0;
-      border-left: 0;
-      border-top: 1px solid var(--line);
-    }
-    .admin-shell .room-tile:last-child {
-      padding-bottom: 0;
     }
     .admin-shell .stats-grid {
       grid-template-columns: minmax(0, 1fr);
