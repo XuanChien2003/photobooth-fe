@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { api } from "../src/api.js";
 import { photoUpload } from "../src/photo-upload.js";
-import { createPhotoEngine } from "../src/album/photo-engine.js";
 
 test("phone files and kiosk JPEG blobs reach fetch byte for byte, without base64", async () => {
   const oldFetch = globalThis.fetch;
@@ -38,21 +37,6 @@ test("old offline data URLs keep their JSON transport and idempotency key", asyn
     assert.deepEqual(JSON.parse(sent.body), { image: "data:image/jpeg;base64,/9j/2Q==", clientKey: "old-offline-key" });
     assert.equal(sent.headers["X-Photo-Mirrored"], undefined);
   } finally { globalThis.fetch = oldFetch; }
-});
-
-test("photo pickers share small previews; editing still loads the full original", async () => {
-  const calls = { full: 0, preview: 0 };
-  const engine = createPhotoEngine({
-    loadOriginal: async () => { calls.full++; return { width: 3000 }; },
-    loadThumbnail: async () => { calls.preview++; return { width: 640 }; },
-    isNeutral: () => true,
-    createThumbnail: (source, size) => ({ width: source.width, size }),
-  });
-  const [small, medium] = await Promise.all([engine.thumb("one", 160), engine.thumb("one", 320)]);
-  assert.deepEqual([small.width, medium.width], [640, 640]);
-  assert.deepEqual(calls, { full: 0, preview: 1 });
-  assert.equal((await engine.edited("one", {})).width, 3000);
-  assert.deepEqual(calls, { full: 1, preview: 1 });
 });
 
 test("a booth sends its own preview after the camera bytes in the same request", async () => {

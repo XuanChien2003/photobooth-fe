@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { PiArrowLeftBold, PiArrowRightBold, PiDownloadSimpleBold, PiFileZipBold, PiPlayFill } from "react-icons/pi";
 import { api, getApiUrl } from "../api";
 import { directMediaUrl, storageLink } from "../media-delivery.js";
-import { PhotoThumb } from "./Gallery.jsx";
-import { photoUrl } from "./utils";
+import { PhotoThumb, photoUrl } from "./photo-thumb.jsx";
 
 // Trang link ảnh (khách quét QR ở máy chụp / nhân viên bấm "Link ảnh"), như Snapbox: ảnh lớn ở giữa,
 // dải ảnh nhỏ bên dưới — ảnh đã ghép khung, video tua nhanh rồi tới mọi ảnh gốc. Giữ vào ảnh để lưu

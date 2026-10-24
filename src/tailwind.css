@@ -33,7 +33,6 @@
 @import "./admin-ui.css";
 @import "./styles/polish/catalog-controls.css";
 @import "./styles/polish/package-catalog.css";
-@import "./styles/polish/album-theme-picker.css";
 @import "./styles/polish/brown-experience.css";
 @import "./styles/polish/brand-logo.css";
 @import "./styles/polish/professional-foundation.css";
@@ -44,7 +43,6 @@
 @import "./styles/admin/storage-assistant-overview.css";
 @import "./styles/polish/studio-stars.css";
 @import "./styles/polish/kiosk-steps.css";
-@import "./styles/polish/frame-decor.css";
 @import "./styles/polish/shift-and-kiosk-admin.css";
 /* Giao diện Mellow (Tạp chí × Sổ lưu niệm) — nạp sau cùng để ghi đè các lớp trên. */
 @import "./styles/polish/mellow-theme.css";

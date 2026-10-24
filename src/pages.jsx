@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   PiArrowsClockwiseBold as RefreshCw,
@@ -10,10 +10,10 @@ import { Button, ErrorBox, useToast } from "./studio";
 import { labels, formatDate, formatDateTime } from "./api";
 import { useLiveData } from "./use-live-data";
 import { isConnectivityError } from "./network.js";
-import { AlbumStudio } from "./album-studio";
 import { AlbumViewer } from "./album/AlbumViewer.jsx";
 
-// Trang khách mở bằng mã QR trên máy chụp: chọn, chỉnh, ghép khung, tải và gửi in ảnh.
+// Trang khách mở bằng mã QR trên máy chụp: xem và tải ảnh đã ghép khung, video và ảnh gốc. Chọn ảnh,
+// ghép khung và in đều làm xong ở máy chụp nên album không còn phần chỉnh / ghép ảnh.
 export function AlbumPage() {
   const { token } = useParams();
   return <AlbumSession key={token} token={token} />;
@@ -21,20 +21,8 @@ export function AlbumPage() {
 
 function AlbumSession({ token }) {
   const toast = useToast();
-  const [booking, updateBooking] = useState(null);
-  const revision = useRef(0);
-  const mutation = useRef(false);
-  const [mutating, setMutating] = useState(false);
+  const [booking, setBooking] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const setBooking = useCallback((next) => {
-    revision.current++;
-    updateBooking(next);
-  }, []);
-  const onMutationChange = useCallback((busy) => {
-    mutation.current = busy;
-    revision.current++;
-    setMutating(busy);
-  }, []);
   const [error, setError] = useState("");
   // The free server sleeps when nobody used it for a while and needs about a minute to wake.
   // Until the album first loads, a slow or unanswered request is that wait, not a failure:
@@ -57,7 +45,7 @@ function AlbumSession({ token }) {
         lastStatus.current !== "completed" &&
         b.status === "completed"
       )
-        toast.success("Ảnh của bạn đã sẵn sàng! Chạm ♥ để chọn ảnh đẹp nhất.");
+        toast.success("Ảnh của bạn đã sẵn sàng!");
       lastStatus.current = b.status;
       lastError.current = "";
       setBooking(b);
@@ -75,7 +63,6 @@ function AlbumSession({ token }) {
     },
     10000,
     (b) => b.status === "cancelled" || b.mediaDeleted,
-    { canRefresh: () => !mutation.current, version: () => revision.current },
   );
   const ready = booking?.status === "completed" && !booking.mediaDeleted;
   const expires = formatDateTime(booking?.mediaExpiresAt);
@@ -107,7 +94,7 @@ function AlbumSession({ token }) {
               </span>
               <Button
                 className="outline small studio-album-refresh"
-                disabled={mutating || refreshing}
+                disabled={refreshing}
                 aria-busy={refreshing}
                 onClick={async () => {
                   setRefreshing(true);
@@ -126,13 +113,6 @@ function AlbumSession({ token }) {
               </small>
             )}
           </div>
-          <AlbumStudio
-            booking={booking}
-            setBooking={setBooking}
-            reloadBooking={reload}
-            onMutationChange={onMutationChange}
-            token={token}
-          />
         </>
       )}
       {booking && !ready && (
