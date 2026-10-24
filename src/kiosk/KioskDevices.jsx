@@ -21,9 +21,11 @@ import {
 } from "./shutter.js";
 import { billAcceptor, billSupported, readBillConfig, saveBillConfig } from "./bill-acceptor.js";
 import {
+  bluetoothScanSupported,
   bluetoothSupported,
   forgetBluetoothCamera,
   pairBluetoothCamera,
+  scanBluetoothToken,
   watchBluetoothCamera,
 } from "./camera-bluetooth.js";
 
@@ -37,7 +39,7 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
   const [relayOn, setRelayOn] = useState(relayConnected);
   const [ownPort, setOwnPort] = useState(hasOwnShutterPort);
   const [arduinoOn, setArduinoOn] = useState(arduinoConnected);
-  const [camera, setCamera] = useState({ name: "", saved: false, connected: false, log: [] });
+  const [camera, setCamera] = useState({ name: "", saved: false, pending: false, connected: false, log: [] });
   useEffect(() => watchBluetoothCamera(setCamera), []);
   const pickShutter = (mode) => {
     setShutter(mode);
@@ -122,8 +124,24 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
             ? "Trình duyệt / máy tính này không dùng được Bluetooth cho trang web — dùng Chrome hoặc Edge và bật Bluetooth."
             : camera.saved
               ? `Máy ảnh ${camera.name || ""} đã ghép đôi${camera.connected ? " · đang kết nối" : " · tự kết nối lúc chụp"} — hết đếm ngược máy ảnh tự chụp (flash nổ).`
-              : "Chưa kết nối máy ảnh — hết đếm ngược màn hình sẽ phải mời khách bấm dây. Bấm “Kết nối máy ảnh” bên dưới."}
+              : camera.pending
+                ? `Đã chọn ${camera.name || "máy ảnh"} nhưng chưa bắt tay được (thiếu mã ghép đôi) — làm theo các bước bên dưới rồi bấm “Đọc mã ghép đôi”.`
+                : "Chưa kết nối máy ảnh — hết đếm ngược màn hình sẽ phải mời khách bấm dây. Bấm “Kết nối máy ảnh” bên dưới."}
         </p>
+        {camera.pending && (
+          <ol className="kiosk-device-steps">
+            <li>Mac: Cài đặt hệ thống → Bluetooth → bấm (i) cạnh {camera.name || "X-S10"} → Quên thiết bị này.</li>
+            <li>Điện thoại có app FUJIFILM XApp / Camera Remote: tắt Bluetooth (để điện thoại không giành kết nối máy ảnh).</li>
+            <li>
+              Máy ảnh: Bluetooth SETTINGS → DELETE PAIRING REG. (xoá ghép đôi cũ), rồi chọn PAIRING REGISTRATION —
+              để yên ở màn chờ ghép đôi.
+            </li>
+            <li>
+              Bấm “Đọc mã ghép đôi” → Chrome hỏi quyền quét Bluetooth → Cho phép. Chờ tối đa 30 giây; máy tính / máy ảnh
+              hỏi ghép đôi thì đồng ý.
+            </li>
+          </ol>
+        )}
         <ol className="kiosk-device-steps">
           <li>Máy tính cần có Bluetooth (laptop thường có sẵn; máy bàn cắm USB Bluetooth). Trên Mac: Cài đặt hệ thống → Quyền riêng tư → Bluetooth → cho phép Chrome.</li>
           <li>
@@ -139,11 +157,19 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
               "Đã kết nối máy ảnh qua Bluetooth.")}>
             {camera.saved ? "Kết nối lại máy ảnh" : "Kết nối máy ảnh"}
           </Button>
+          {camera.pending && (
+            <Button type="button" className="small" disabled={!bluetoothScanSupported}
+              title={bluetoothScanSupported ? "" : "Cần bật Experimental Web Platform features trong chrome://flags"}
+              onClick={() => run(async () => { await scanBluetoothToken(); if (!["auto", "bluetooth"].includes(shutter)) pickShutter("auto"); },
+                "Đã kết nối máy ảnh qua Bluetooth.")}>
+              Đọc mã ghép đôi
+            </Button>
+          )}
           <Button type="button" className="outline small"
             onClick={() => run(() => pressShutter(shutter), "Đã bấm thử — máy ảnh phải chụp 1 tấm (flash nổ).")}>
             Bấm thử
           </Button>
-          {camera.saved && (
+          {(camera.saved || camera.pending) && (
             <Button type="button" className="outline small" onClick={() => forgetBluetoothCamera()}>
               Bỏ máy ảnh này
             </Button>

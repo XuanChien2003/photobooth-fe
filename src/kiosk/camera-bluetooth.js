@@ -59,6 +59,7 @@ const RELEASE = Uint8Array.of(0x00, 0x00);
 
 export const bluetoothSupported =
   typeof navigator !== "undefined" && Boolean(navigator.bluetooth?.requestDevice);
+export const bluetoothScanSupported = bluetoothSupported && typeof navigator.bluetooth.requestLEScan === "function";
 const readSaved = () => {
   try {
     return JSON.parse(localStorage.getItem(KEY)) || null;
@@ -82,8 +83,10 @@ const state = () => ({
   name: device?.name || readSaved()?.name || "",
   // Chỉ coi là đã ghép đôi khi bắt tay với máy ảnh xong (bấm máy được).
   saved: Boolean(readSaved()?.paired),
+  // Đã chọn máy ảnh nhưng chưa bắt tay được (thường do thiếu mã ghép đôi).
+  pending: Boolean(readSaved() && !readSaved().paired),
   connected: Boolean(device?.gatt?.connected && shutter),
-  log: trail.slice(-14),
+  log: trail.slice(-20),
 });
 const emit = () => {
   for (const listener of listeners) listener(state());
@@ -103,36 +106,59 @@ function note(text) {
 
 // Mã ghép đôi (kiểu cũ) trong quảng bá của máy ảnh lúc ở màn SEARCHING: [kiểu 0x02, 4 byte mã];
 // kiểu bảo mật phát [kiểu, 5 byte số máy] nên không có mã. Chrome chỉ cho đọc quảng bá khi bật
-// Experimental Web Platform features (chrome://flags) và đã khởi động lại Chrome.
-function readToken(picked) {
-  if (typeof picked.watchAdvertisements !== "function") {
-    note("Chrome chưa cho đọc quảng bá Bluetooth (Experimental Web Platform features chưa bật, hoặc bật rồi nhưng chưa tắt hẳn Chrome để mở lại).");
-    return Promise.resolve(null);
-  }
-  note("Đang nghe quảng bá của máy ảnh để lấy mã ghép đôi…");
+// Experimental Web Platform features (chrome://flags) và đã khởi động lại Chrome. Máy ảnh đang
+// kết nối với máy nào (máy tính này, điện thoại có XApp) thì ngừng phát quảng bá.
+const LISTEN_MS = 30000;
+// start(onAdvert, signal) bắt đầu nghe; accept(event) chọn gói của đúng máy ảnh (khi quét cả vùng).
+function listenForToken(start, accept = () => true) {
+  note(`Đang nghe quảng bá của máy ảnh để lấy mã ghép đôi (tối đa ${LISTEN_MS / 1000} giây)…`);
   const abort = new AbortController();
   let seen = 0;
   return new Promise((resolve) => {
     const done = (token, text) => {
+      if (abort.signal.aborted) return;
       clearTimeout(timer);
       abort.abort();
       if (text) note(text);
       resolve(token);
     };
     const timer = setTimeout(() => done(null, seen
-      ? "Máy ảnh có phát quảng bá nhưng không kèm mã ghép đôi."
-      : "Không nhận được quảng bá của máy ảnh trong 15 giây (máy ảnh cần đang ở màn SEARCHING)."), 15000);
-    picked.addEventListener("advertisementreceived", (event) => {
+      ? "Máy ảnh có phát quảng bá nhưng không kèm mã ghép đôi — máy ảnh chưa ở màn PAIRING REGISTRATION (SEARCHING)."
+      : `Không nhận được quảng bá nào của máy ảnh trong ${LISTEN_MS / 1000} giây — máy ảnh đang kết nối với máy khác (máy tính / điện thoại) hoặc chưa ở màn SEARCHING.`), LISTEN_MS);
+    const onAdvert = (event) => {
       const data = event.manufacturerData?.get(COMPANY_ID);
-      if (!data) return;
-      const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-      if (seen++ < 3) note(`Quảng bá Fujifilm: ${hex(bytes)}`);
+      const bytes = data ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength) : null;
+      const mine = accept(event);
+      if (seen++ < 5)
+        note(`Quảng bá từ ${event.device?.name || event.name || "thiết bị"}${mine ? "" : " (máy khác)"}, ${event.rssi ?? "?"} dBm: ${bytes ? hex(bytes) : "không có dữ liệu Fujifilm"}`);
+      if (!bytes || !mine) return;
       if (bytes.length >= 5 && bytes[0] === 0x02) done(bytes.slice(1, 5), "Đã đọc được mã ghép đôi.");
       else if (bytes.length >= 6) done(null, "Máy ảnh dùng kiểu ghép đôi bảo mật (không cần mã).");
-    }, { signal: abort.signal });
-    picked.watchAdvertisements({ signal: abort.signal }).catch((error) =>
-      done(null, `Không nghe được quảng bá: ${error.message}`));
+    };
+    start(onAdvert, abort.signal).catch((error) => done(null, `Không nghe được quảng bá: ${error.message}`));
   });
+}
+
+// Cách 1: nghe quảng bá của chính máy ảnh vừa chọn trong bảng của Chrome.
+function readToken(picked) {
+  if (typeof picked.watchAdvertisements !== "function") {
+    note("Chrome chưa cho đọc quảng bá Bluetooth (Experimental Web Platform features chưa bật, hoặc bật rồi nhưng chưa tắt hẳn Chrome để mở lại).");
+    return Promise.resolve(null);
+  }
+  return listenForToken((onAdvert, signal) => {
+    picked.addEventListener("advertisementreceived", onAdvert, { signal });
+    return picked.watchAdvertisements({ signal });
+  });
+}
+
+// Ngắt kết nối để máy ảnh phát lại quảng bá (và không bị kẹt ở kết nối bắt tay hỏng).
+function hangUp(text) {
+  shutter = null;
+  if (!device?.gatt?.connected) return;
+  try {
+    device.gatt.disconnect();
+    if (text) note(text);
+  } catch {}
 }
 
 async function subscribe(server, list, required) {
@@ -216,6 +242,9 @@ export async function pairBluetoothCamera() {
     optionalServices: [...new Set([...SERVICES, ...Object.values(DETECT)])],
   });
   note(`Đã chọn ${picked.name || "thiết bị"} trong bảng của Chrome.`);
+  if (device && device !== picked) hangUp();
+  track(picked);
+  hangUp("Đã ngắt kết nối cũ để máy ảnh phát lại quảng bá.");
   const token = await readToken(picked);
   const old = readSaved();
   save({
@@ -224,7 +253,10 @@ export async function pairBluetoothCamera() {
     token: token ? hex(token) : old?.id === picked.id ? old.token : null,
     paired: false,
   });
-  track(picked);
+  return finishPairing();
+}
+
+async function finishPairing() {
   connecting = null;
   try {
     await connect();
@@ -233,6 +265,34 @@ export async function pairBluetoothCamera() {
     throw error;
   }
   return state();
+}
+
+// Cách 2 (khi cách 1 không nhận được gì): quét mọi quảng bá Fujifilm quanh máy tính rồi lấy mã của
+// máy ảnh đã chọn. Phải gọi ngay khi nhân viên bấm nút vì Chrome hỏi quyền quét.
+export async function scanBluetoothToken() {
+  if (typeof navigator.bluetooth?.requestLEScan !== "function")
+    throw new Error("Chrome chưa cho quét Bluetooth: mở chrome://flags, bật “Experimental Web Platform features”, tắt hẳn Chrome (Mac: Cmd + Q) rồi mở lại.");
+  const saved = readSaved();
+  if (!saved?.id) throw new Error("Bấm “Kết nối máy ảnh” và chọn máy ảnh trước.");
+  const scan = await navigator.bluetooth.requestLEScan({
+    filters: [{ manufacturerData: [{ companyIdentifier: COMPANY_ID }] }],
+    keepRepeatedDevices: true,
+  });
+  hangUp("Đã ngắt kết nối cũ để máy ảnh phát lại quảng bá.");
+  note("Đang quét Bluetooth quanh máy tính…");
+  let token;
+  try {
+    token = await listenForToken((onAdvert, signal) => {
+      navigator.bluetooth.addEventListener("advertisementreceived", onAdvert, { signal });
+      return Promise.resolve();
+    }, (event) => event.device?.id === saved.id || (event.device?.name || event.name) === saved.name);
+  } finally {
+    scan.stop();
+  }
+  if (!token) throw new Error("Chưa đọc được mã ghép đôi — xem “Chi tiết kết nối”.");
+  save({ ...readSaved(), token: hex(token), paired: false });
+  if (!device) await restore(saved);
+  return finishPairing();
 }
 
 export function forgetBluetoothCamera() {
@@ -252,16 +312,26 @@ export function connect() {
     if (!device) {
       const saved = readSaved();
       if (!saved?.paired) throw new Error("Chưa kết nối máy ảnh qua Bluetooth (Cài đặt máy chụp → Kết nối máy ảnh).");
-      const known = (await navigator.bluetooth?.getDevices?.().catch(() => [])) || [];
-      const found = known.find((d) => d.id === saved.id);
-      if (!found) throw new Error("Trình duyệt chưa nhớ máy ảnh — bấm “Kết nối máy ảnh” trong Cài đặt máy chụp.");
-      track(found);
+      await restore(saved);
     }
-    await handshake();
+    try {
+      await handshake();
+    } catch (error) {
+      hangUp();
+      throw error;
+    }
   })().finally(() => {
     connecting = null;
+    emit();
   });
   return connecting;
+}
+
+async function restore(saved) {
+  const known = (await navigator.bluetooth?.getDevices?.().catch(() => [])) || [];
+  const found = known.find((d) => d.id === saved.id);
+  if (!found) throw new Error("Trình duyệt chưa nhớ máy ảnh — bấm “Kết nối máy ảnh” trong Cài đặt máy chụp.");
+  track(found);
 }
 
 async function command(param) {
