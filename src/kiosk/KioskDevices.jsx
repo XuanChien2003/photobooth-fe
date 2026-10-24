@@ -95,21 +95,37 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
           }}
         />
         <small>
-          Thanh này chỉ cắt được mép. Khung lấy nét, thông số, lưới… phải tắt trên máy ảnh: MENU →
-          MOVIE SETTING → HDMI OUTPUT INFO DISPLAY = OFF (hình HDMI sạch hoàn toàn; menu chưa có mục này
-          thì vặn bánh xe sang quay phim để chỉnh rồi vặn lại) và SET UP → SCREEN SETTING → IMAGE DISP. =
-          OFF (hình không nhảy sang ảnh vừa chụp). Tắt rồi thì để thanh này 0%.
+          Thanh này chỉ cắt được mép. Khung lấy nét, ô xanh lấy nét, thông số… do máy ảnh vẽ vào hình, phải tắt
+          trên máy ảnh:
         </small>
+        <ol className="kiosk-device-steps">
+          <li>
+            SET UP → SCREEN SET-UP → DISP. CUSTOM SETTING: bỏ chọn hết (FOCUS FRAME, FRAMING GUIDELINE,
+            ELECTRONIC LEVEL, AF/MF DISTANCE INDICATOR, HISTOGRAM…).
+          </li>
+          <li>
+            Lấy nét tay: FOCUS MODE = MF, chỉnh nét một lần vào chỗ khách đứng — không còn ô xanh lấy nét, bấm là
+            chụp ngay.
+          </li>
+          <li>
+            Vặn bánh xe sang quay phim → MENU → MOVIE SETTING → HDMI OUTPUT INFO DISPLAY = OFF, rồi vặn lại chụp ảnh.
+          </li>
+          <li>SET UP → SCREEN SET-UP → IMAGE DISP. = OFF (hình không nhảy sang ảnh vừa chụp). Xong để thanh này 0%.</li>
+        </ol>
       </label>
 
       <fieldset className="kiosk-device-box">
         <legend>Tự chụp khi chọn “Đếm giờ”</legend>
         <label className="checkbox">
+          <input type="radio" name="shutter" checked={shutter === "auto"} onChange={() => pickShutter("auto")} />
+          Tự động — dùng cách đã kết nối trên máy này: Bluetooth máy ảnh, Arduino, rồi relay (khuyên dùng)
+        </label>
+        <label className="checkbox">
           <input type="radio" name="shutter" checked={shutter === "bluetooth"} disabled={!bluetoothSupported}
             onChange={() => pickShutter("bluetooth")} />
-          Bấm máy qua Bluetooth của máy ảnh — không cần mạch, máy ảnh chụp thật, có flash (thử nghiệm)
+          Chỉ Bluetooth của máy ảnh — không cần mạch, máy ảnh chụp thật, có flash (thử nghiệm)
         </label>
-        {shutter === "bluetooth" && (
+        {(shutter === "bluetooth" || shutter === "auto") && (
           <>
             <ol className="kiosk-device-steps">
               <li>Máy tính cần có Bluetooth (laptop thường có sẵn; máy bàn cắm USB Bluetooth).</li>
@@ -122,7 +138,7 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
             </ol>
             <div className="kiosk-device-row">
               <Button type="button" className="outline small" disabled={!bluetoothSupported}
-                onClick={() => run(async () => { await pairBluetoothCamera(); pickShutter("bluetooth"); },
+                onClick={() => run(async () => { await pairBluetoothCamera(); if (shutter !== "auto") pickShutter("bluetooth"); },
                   "Đã kết nối máy ảnh qua Bluetooth.")}>
                 {camera.saved ? "Kết nối lại máy ảnh" : "Kết nối máy ảnh"}
               </Button>
@@ -149,7 +165,7 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
         <label className="checkbox">
           <input type="radio" name="shutter" checked={shutter === "arduino"} disabled={!relaySupported}
             onChange={() => pickShutter("arduino")} />
-          Bấm máy qua Arduino như dây bấm — máy ảnh chụp thật, có flash, ảnh gốc nét nhất (khuyên dùng)
+          Chỉ Arduino như dây bấm — máy ảnh chụp thật, có flash, ảnh gốc nét nhất
         </label>
         {shutter === "arduino" && (
           <>

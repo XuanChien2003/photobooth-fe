@@ -165,7 +165,50 @@
     list-style: none;
   }
   .shoot-thumbs li {
+    position: relative;
     flex: none;
+  }
+  /* Ảnh vừa chụp: trượt vào đầu cột, viền xanh một lúc. */
+  .shoot-thumbs li.is-newest img {
+    border-color: #4caf6e;
+    animation: shoot-thumb-in 0.45s ease-out both;
+  }
+  @keyframes shoot-thumb-in {
+    from {
+      opacity: 0;
+      translate: 0 -14px;
+      scale: 0.92;
+    }
+  }
+  .shoot-thumb-no {
+    position: absolute;
+    top: 7px;
+    left: 7px;
+    min-width: 22px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgb(33 23 19 / 72%);
+    color: #fff;
+    font-size: 12px;
+    text-align: center;
+  }
+  .shoot-thumb-pending {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 6px;
+    aspect-ratio: 3 / 2;
+    border: 2px dashed #c9b3a2;
+    border-radius: 6px;
+    background: #fbf5ef;
+    color: var(--mellow-muted, #7a5a48);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .shoot-thumbs li.is-newest img {
+      animation: none;
+    }
   }
   .shoot-thumbs img,
   .shoot-thumb-empty {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   PiCameraBold,
   PiCheckBold,
@@ -47,6 +47,7 @@ export function KioskShoot({
   quota,
   shots,
   flash,
+  receiving,
   pressPrompt,
   modeLeft,
   ending,
@@ -63,6 +64,11 @@ export function KioskShoot({
           : sessionLeft > 0 && sessionLeft <= 3 ? sessionLeft : null
         : null;
   const timerMode = mode === "timer";
+  // Ảnh mới nhất ở đầu cột: có ảnh mới thì cuộn lên đầu để khách thấy ngay.
+  const rail = useRef(null);
+  useEffect(() => {
+    rail.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [shots.length, receiving]);
   return (
     <section className={`shoot-screen phase-${phase}`}>
       <div className="shoot-stage">
@@ -109,10 +115,17 @@ export function KioskShoot({
               {timerMode && phase === "shoot" ? ` · ${clock(sessionLeft)}` : ""}
             </small>
           </div>
-          <ol className="shoot-thumbs">
-            {shots.map((shot) => (
-              <li key={shot.key}>
+          <ol className="shoot-thumbs" ref={rail} aria-label="Ảnh vừa chụp, mới nhất ở trên">
+            {receiving && (
+              <li className="shoot-thumb-pending" role="status">
+                <span className="spinner" aria-hidden="true" />
+                Đang nhận ảnh…
+              </li>
+            )}
+            {[...shots].reverse().map((shot, i) => (
+              <li key={shot.key} className={i === 0 && !receiving ? "is-newest" : ""}>
                 <Thumb shot={shot} />
+                <b className="shoot-thumb-no">{shots.length - i}</b>
               </li>
             ))}
           </ol>

@@ -210,7 +210,7 @@ export function Kiosk() {
     runKioskPrints();
     runKioskComposites();
     // Bấm máy qua Bluetooth: kết nối sẵn máy ảnh đã ghép đôi (lỗi thì thử lại lúc chụp).
-    if (readShutter() === "bluetooth") connectBluetoothCamera().catch(() => {});
+    if (["auto", "bluetooth"].includes(readShutter())) connectBluetoothCamera().catch(() => {});
     return watchKioskPrint((token, state) => {
       if (token === current.current?.accessToken || token === doneRef.current?.token) setPrint(state);
       if (state.status === "manual")
@@ -1113,9 +1113,9 @@ export function Kiosk() {
     try {
       await pressShutter(shutter);
     } catch (e) {
-      const device = shutter === "bluetooth" ? "Bluetooth máy ảnh" : shutter === "relay" ? "Relay" : "Mạch bấm máy";
+      const device = shutter === "auto" ? "Tự chụp" : shutter === "bluetooth" ? "Bluetooth máy ảnh" : shutter === "relay" ? "Relay" : "Mạch bấm máy";
       notifyOnce("relay", "warning",
-        `${device} chưa sẵn sàng (${e.message}) — mời khách bấm dây để máy ảnh chụp.`, 10000);
+        `${device} chưa sẵn sàng: ${e.message}. Đang mời khách bấm dây để máy ảnh chụp.`, 12000);
       if (stillWaiting()) setPressPrompt(true);
       return;
     }
@@ -1243,6 +1243,7 @@ export function Kiosk() {
           quota={shotQuota}
           shots={shots}
           flash={flash}
+          receiving={reading + detecting > 0}
           pressPrompt={pressPrompt && session.mode === "timer"}
           modeLeft={modeLeft}
           ending={ending}
