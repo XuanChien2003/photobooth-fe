@@ -38,7 +38,19 @@ const UUID = {
   shutterSvc: "6514eb81-4e8f-458d-aa2a-e691336cdfac",
   shutter: "7fcf49c6-4ff0-4777-a03d-1a79166af7a8",
 };
+// Dịch vụ dùng để bấm máy, và các dịch vụ chỉ để nhận biết kiểu máy (ghi vào nhật ký kết nối).
 const SERVICES = [UUID.pairBasic, UUID.pairSecure, UUID.conf, UUID.notx, UUID.shutterSvc];
+const DETECT = {
+  "ghép đôi kiểu cũ": UUID.pairBasic,
+  "ghép đôi bảo mật": UUID.pairSecure,
+  "cấu hình": UUID.conf,
+  "thông báo": UUID.notx,
+  "nút chụp": UUID.shutterSvc,
+  "quảng bá bảo mật": "a9d2b304-e8d6-4902-8336-352b772d7597",
+  "chính (bảo mật)": "731893f9-744e-4899-b7e3-174106ff2b82",
+  "camera remote": "af854c2e-b214-458e-97e2-912c4ecf2cb8",
+  "XApp": "117c4142-edd4-4c77-8696-dd18eebb770a",
+};
 // Lệnh nút chụp: ghi SHUTTER_CMD rồi tham số (nhấn hết / nhấn nửa / nhả).
 const SHUTTER_CMD = Uint8Array.of(0x01, 0x00);
 const PRESS = Uint8Array.of(0x02, 0x00);
@@ -64,10 +76,14 @@ let shutter = null;
 let connecting = null;
 let focusTimer = null;
 const listeners = new Set();
+// Nhật ký kết nối (hiện trong Cài đặt máy chụp → "Chi tiết kết nối") để biết hỏng ở bước nào.
+const trail = [];
 const state = () => ({
   name: device?.name || readSaved()?.name || "",
-  saved: Boolean(readSaved()),
+  // Chỉ coi là đã ghép đôi khi bắt tay với máy ảnh xong (bấm máy được).
+  saved: Boolean(readSaved()?.paired),
   connected: Boolean(device?.gatt?.connected && shutter),
+  log: trail.slice(-14),
 });
 const emit = () => {
   for (const listener of listeners) listener(state());
@@ -78,27 +94,44 @@ export function watchBluetoothCamera(listener) {
   return () => listeners.delete(listener);
 }
 export const bluetoothCameraState = state;
+function note(text) {
+  const time = new Date().toLocaleTimeString("vi-VN", { hour12: false });
+  trail.push(`${time} ${text}`);
+  if (trail.length > 40) trail.shift();
+  emit();
+}
 
-// Mã ghép đôi (kiểu basic) trong quảng bá của máy ảnh: [kiểu 0x02, 4 byte mã]; kiểu secure phát
-// [kiểu, 5 byte số máy] nên không có mã.
+// Mã ghép đôi (kiểu cũ) trong quảng bá của máy ảnh lúc ở màn SEARCHING: [kiểu 0x02, 4 byte mã];
+// kiểu bảo mật phát [kiểu, 5 byte số máy] nên không có mã. Chrome chỉ cho đọc quảng bá khi bật
+// Experimental Web Platform features (chrome://flags) và đã khởi động lại Chrome.
 function readToken(picked) {
-  if (!picked.watchAdvertisements) return Promise.resolve(null);
+  if (typeof picked.watchAdvertisements !== "function") {
+    note("Chrome chưa cho đọc quảng bá Bluetooth (Experimental Web Platform features chưa bật, hoặc bật rồi nhưng chưa tắt hẳn Chrome để mở lại).");
+    return Promise.resolve(null);
+  }
+  note("Đang nghe quảng bá của máy ảnh để lấy mã ghép đôi…");
   const abort = new AbortController();
+  let seen = 0;
   return new Promise((resolve) => {
-    const done = (token) => {
+    const done = (token, text) => {
       clearTimeout(timer);
       abort.abort();
+      if (text) note(text);
       resolve(token);
     };
-    const timer = setTimeout(() => done(null), 8000);
+    const timer = setTimeout(() => done(null, seen
+      ? "Máy ảnh có phát quảng bá nhưng không kèm mã ghép đôi."
+      : "Không nhận được quảng bá của máy ảnh trong 15 giây (máy ảnh cần đang ở màn SEARCHING)."), 15000);
     picked.addEventListener("advertisementreceived", (event) => {
       const data = event.manufacturerData?.get(COMPANY_ID);
       if (!data) return;
-      if (data.byteLength === 5 && data.getUint8(0) === 0x02)
-        done(new Uint8Array(data.buffer, data.byteOffset + 1, 4).slice());
-      else if (data.byteLength >= 6) done(null);
+      const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+      if (seen++ < 3) note(`Quảng bá Fujifilm: ${hex(bytes)}`);
+      if (bytes.length >= 5 && bytes[0] === 0x02) done(bytes.slice(1, 5), "Đã đọc được mã ghép đôi.");
+      else if (bytes.length >= 6) done(null, "Máy ảnh dùng kiểu ghép đôi bảo mật (không cần mã).");
     }, { signal: abort.signal });
-    picked.watchAdvertisements({ signal: abort.signal }).catch(() => done(null));
+    picked.watchAdvertisements({ signal: abort.signal }).catch((error) =>
+      done(null, `Không nghe được quảng bá: ${error.message}`));
   });
 }
 
@@ -114,9 +147,15 @@ async function subscribe(server, list, required) {
 }
 
 async function handshake() {
+  note(`Đang kết nối ${device.name || "máy ảnh"}…`);
   const server = await device.gatt.connect();
+  const found = [];
+  for (const [label, uuid] of Object.entries(DETECT))
+    if (await server.getPrimaryService(uuid).then(() => true, () => false)) found.push(label);
+  note(`Đã kết nối. Dịch vụ của máy ảnh: ${found.join(", ") || "không thấy dịch vụ nào"}.`);
   const secure = await server.getPrimaryService(UUID.pairSecure).catch(() => null);
   if (secure) {
+    note("Máy ảnh dùng ghép đôi bảo mật — đang xác nhận.");
     // Đọc trạng thái (Windows hỏi ghép đôi bảo mật lần đầu) rồi xác nhận lại với bit 0x20.
     const status = await secure.getCharacteristic(UUID.status);
     const value = await status.readValue();
@@ -137,9 +176,12 @@ async function handshake() {
   } else {
     const pair = await server.getPrimaryService(UUID.pairBasic).catch(() => null);
     if (!pair) throw new Error("Thiết bị đã chọn không phải máy ảnh Fujifilm hỗ trợ bấm máy qua Bluetooth.");
+    note("Máy ảnh dùng ghép đôi kiểu cũ — cần mã ghép đôi.");
     const token = readSaved()?.token;
     if (!token)
-      throw new Error("Máy ảnh cần mã ghép đôi: mở chrome://flags, bật “Experimental Web Platform features”, khởi động lại Chrome, để máy ảnh ở PAIRING REGISTRATION rồi bấm “Kết nối máy ảnh” lại.");
+      throw new Error(typeof device.watchAdvertisements === "function"
+        ? "Chưa nhận được mã ghép đôi từ máy ảnh. Trên máy ảnh vào lại PAIRING REGISTRATION (màn SEARCHING) rồi bấm “Kết nối lại máy ảnh” ngay."
+        : "Máy ảnh dùng ghép đôi kiểu cũ, cần mã ghép đôi: mở chrome://flags, bật “Experimental Web Platform features”, tắt hẳn Chrome (Mac: Cmd + Q) rồi mở lại, để máy ảnh ở màn SEARCHING và bấm “Kết nối lại máy ảnh”.");
     await (await pair.getCharacteristic(UUID.pairToken)).writeValueWithResponse(fromHex(token));
     await (await pair.getCharacteristic(UUID.ident)).writeValueWithResponse(new TextEncoder().encode(NAME));
     await subscribe(server, [
@@ -148,7 +190,9 @@ async function handshake() {
     ], true);
   }
   shutter = await (await server.getPrimaryService(UUID.shutterSvc)).getCharacteristic(UUID.shutter);
-  emit();
+  const saved = readSaved();
+  if (saved && !saved.paired) save({ ...saved, paired: true });
+  note("Sẵn sàng: hết đếm ngược máy chụp sẽ bấm máy ảnh.");
 }
 
 function track(picked) {
@@ -169,18 +213,25 @@ export async function pairBluetoothCamera() {
       { manufacturerData: [{ companyIdentifier: COMPANY_ID }] },
       { namePrefix: "X-" }, { namePrefix: "X100" }, { namePrefix: "GFX" },
     ],
-    optionalServices: SERVICES,
+    optionalServices: [...new Set([...SERVICES, ...Object.values(DETECT)])],
   });
+  note(`Đã chọn ${picked.name || "thiết bị"} trong bảng của Chrome.`);
   const token = await readToken(picked);
   const old = readSaved();
   save({
     id: picked.id,
     name: picked.name || "Máy ảnh",
     token: token ? hex(token) : old?.id === picked.id ? old.token : null,
+    paired: false,
   });
   track(picked);
   connecting = null;
-  await connect();
+  try {
+    await connect();
+  } catch (error) {
+    note(`Lỗi: ${error.message}`);
+    throw error;
+  }
   return state();
 }
 
@@ -200,7 +251,7 @@ export function connect() {
   connecting ??= (async () => {
     if (!device) {
       const saved = readSaved();
-      if (!saved) throw new Error("Chưa kết nối máy ảnh qua Bluetooth (Cài đặt máy chụp → Kết nối máy ảnh).");
+      if (!saved?.paired) throw new Error("Chưa kết nối máy ảnh qua Bluetooth (Cài đặt máy chụp → Kết nối máy ảnh).");
       const known = (await navigator.bluetooth?.getDevices?.().catch(() => [])) || [];
       const found = known.find((d) => d.id === saved.id);
       if (!found) throw new Error("Trình duyệt chưa nhớ máy ảnh — bấm “Kết nối máy ảnh” trong Cài đặt máy chụp.");

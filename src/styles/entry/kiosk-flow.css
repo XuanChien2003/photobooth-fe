@@ -762,6 +762,23 @@
     background: #fdf0dd;
     color: #8a5414;
   }
+  .kiosk-shutter-log > summary {
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    opacity: 0.85;
+  }
+  .kiosk-shutter-log pre {
+    margin: 6px 0 0;
+    padding: 10px 12px;
+    overflow-x: auto;
+    border-radius: 8px;
+    background: rgb(33 23 19 / 88%);
+    color: #f3e6da;
+    font-size: 11.5px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+  }
   .kiosk-shutter-advanced {
     display: grid;
     gap: 10px;

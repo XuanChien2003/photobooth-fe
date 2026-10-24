@@ -37,7 +37,7 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
   const [relayOn, setRelayOn] = useState(relayConnected);
   const [ownPort, setOwnPort] = useState(hasOwnShutterPort);
   const [arduinoOn, setArduinoOn] = useState(arduinoConnected);
-  const [camera, setCamera] = useState({ name: "", saved: false, connected: false });
+  const [camera, setCamera] = useState({ name: "", saved: false, connected: false, log: [] });
   useEffect(() => watchBluetoothCamera(setCamera), []);
   const pickShutter = (mode) => {
     setShutter(mode);
@@ -149,6 +149,12 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
             </Button>
           )}
         </div>
+        {camera.log?.length > 0 && (
+          <details className="kiosk-shutter-log" open={!camera.saved}>
+            <summary>Chi tiết kết nối (chụp màn hình gửi kỹ thuật nếu không kết nối được)</summary>
+            <pre>{camera.log.join("\n")}</pre>
+          </details>
+        )}
         <details className="kiosk-shutter-advanced">
           <summary>Cách bấm máy khác (Arduino / relay / HDMI)</summary>
           <label className="checkbox">
