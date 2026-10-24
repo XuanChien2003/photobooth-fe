@@ -11,6 +11,7 @@ import {
   hexBytes,
   pressArduino,
   pressRelay,
+  pressShutter,
   readRelay,
   readShutter,
   RELAY_KEY,
@@ -23,7 +24,6 @@ import {
   bluetoothSupported,
   forgetBluetoothCamera,
   pairBluetoothCamera,
-  pressBluetooth,
   watchBluetoothCamera,
 } from "./camera-bluetooth.js";
 
@@ -116,138 +116,137 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
 
       <fieldset className="kiosk-device-box">
         <legend>Tự chụp khi chọn “Đếm giờ”</legend>
-        <label className="checkbox">
-          <input type="radio" name="shutter" checked={shutter === "auto"} onChange={() => pickShutter("auto")} />
-          Tự động — dùng cách đã kết nối trên máy này: Bluetooth máy ảnh, Arduino, rồi relay (khuyên dùng)
-        </label>
-        <label className="checkbox">
-          <input type="radio" name="shutter" checked={shutter === "bluetooth"} disabled={!bluetoothSupported}
-            onChange={() => pickShutter("bluetooth")} />
-          Chỉ Bluetooth của máy ảnh — không cần mạch, máy ảnh chụp thật, có flash (thử nghiệm)
-        </label>
-        {(shutter === "bluetooth" || shutter === "auto") && (
-          <>
-            <ol className="kiosk-device-steps">
-              <li>Máy tính cần có Bluetooth (laptop thường có sẵn; máy bàn cắm USB Bluetooth).</li>
-              <li>
-                Trên máy ảnh: MENU → SET UP → CONNECTION SETTING → Bluetooth SETTINGS → Bluetooth ON/OFF = ON, rồi
-                chọn PAIRING REGISTRATION (máy ảnh chờ ghép đôi). Nên đặt AUTO POWER OFF = OFF để không mất kết nối.
-              </li>
-              <li>Bấm “Kết nối máy ảnh”, chọn tên máy ảnh (vd. X-S10…) trong bảng Chrome hiện ra; Windows hỏi ghép đôi thì đồng ý.</li>
-              <li>Bấm “Bấm thử”: máy ảnh phải chụp 1 tấm, flash nổ, ảnh về thư mục X Acquire.</li>
-            </ol>
-            <div className="kiosk-device-row">
-              <Button type="button" className="outline small" disabled={!bluetoothSupported}
-                onClick={() => run(async () => { await pairBluetoothCamera(); if (shutter !== "auto") pickShutter("bluetooth"); },
-                  "Đã kết nối máy ảnh qua Bluetooth.")}>
-                {camera.saved ? "Kết nối lại máy ảnh" : "Kết nối máy ảnh"}
-              </Button>
-              <Button type="button" className="outline small" disabled={!camera.saved}
-                onClick={() => run(() => pressBluetooth(), "Đã bấm thử — máy ảnh phải chụp 1 tấm (flash nổ).")}>
-                Bấm thử
-              </Button>
-              {camera.saved && (
-                <Button type="button" className="outline small" onClick={() => forgetBluetoothCamera()}>
-                  Bỏ máy ảnh này
+        {/* Cách chính, không cần mạch: Bluetooth của máy ảnh. Ghép đôi một lần, sau đó tự kết nối. */}
+        <p className={`kiosk-shutter-status ${camera.saved ? "is-ok" : "is-warn"}`} role="status">
+          {!bluetoothSupported
+            ? "Trình duyệt / máy tính này không dùng được Bluetooth cho trang web — dùng Chrome hoặc Edge và bật Bluetooth."
+            : camera.saved
+              ? `Máy ảnh ${camera.name || ""} đã ghép đôi${camera.connected ? " · đang kết nối" : " · tự kết nối lúc chụp"} — hết đếm ngược máy ảnh tự chụp (flash nổ).`
+              : "Chưa kết nối máy ảnh — hết đếm ngược màn hình sẽ phải mời khách bấm dây. Bấm “Kết nối máy ảnh” bên dưới."}
+        </p>
+        <ol className="kiosk-device-steps">
+          <li>Máy tính cần có Bluetooth (laptop thường có sẵn; máy bàn cắm USB Bluetooth). Trên Mac: Cài đặt hệ thống → Quyền riêng tư → Bluetooth → cho phép Chrome.</li>
+          <li>
+            Trên máy ảnh: MENU → SET UP → CONNECTION SETTING → Bluetooth SETTINGS → Bluetooth ON/OFF = ON, rồi chọn
+            PAIRING REGISTRATION (máy ảnh chờ ghép đôi). Nên đặt AUTO POWER OFF = OFF để không mất kết nối.
+          </li>
+          <li>Bấm “Kết nối máy ảnh”, chọn tên máy ảnh (vd. X-S10…) trong bảng Chrome hiện ra; máy tính hỏi ghép đôi thì đồng ý.</li>
+          <li>Bấm “Bấm thử”: máy ảnh phải chụp 1 tấm, flash nổ, ảnh về thư mục X Acquire. Chỉ cần làm một lần.</li>
+        </ol>
+        <div className="kiosk-device-row">
+          <Button type="button" className="small" disabled={!bluetoothSupported}
+            onClick={() => run(async () => { await pairBluetoothCamera(); if (!["auto", "bluetooth"].includes(shutter)) pickShutter("auto"); },
+              "Đã kết nối máy ảnh qua Bluetooth.")}>
+            {camera.saved ? "Kết nối lại máy ảnh" : "Kết nối máy ảnh"}
+          </Button>
+          <Button type="button" className="outline small"
+            onClick={() => run(() => pressShutter(shutter), "Đã bấm thử — máy ảnh phải chụp 1 tấm (flash nổ).")}>
+            Bấm thử
+          </Button>
+          {camera.saved && (
+            <Button type="button" className="outline small" onClick={() => forgetBluetoothCamera()}>
+              Bỏ máy ảnh này
+            </Button>
+          )}
+        </div>
+        <details className="kiosk-shutter-advanced">
+          <summary>Cách bấm máy khác (Arduino / relay / HDMI)</summary>
+          <label className="checkbox">
+            <input type="radio" name="shutter" checked={shutter === "auto"} onChange={() => pickShutter("auto")} />
+            Tự động — Bluetooth máy ảnh, rồi Arduino, rồi relay nếu có (khuyên dùng)
+          </label>
+          <label className="checkbox">
+            <input type="radio" name="shutter" checked={shutter === "bluetooth"} disabled={!bluetoothSupported}
+              onChange={() => pickShutter("bluetooth")} />
+            Ưu tiên Bluetooth của máy ảnh
+          </label>
+          <label className="checkbox">
+            <input type="radio" name="shutter" checked={shutter === "arduino"} disabled={!relaySupported}
+              onChange={() => pickShutter("arduino")} />
+            Ưu tiên Arduino như dây bấm (mạch dùng chung với máy nhận tiền)
+          </label>
+          {shutter === "arduino" && (
+            <>
+              <p className="kiosk-device-note">
+                Dùng chung mạch Pro Micro của máy nhận tiền (nạp mã mới: hardware/bill-acceptor-pulse). D5 → opto lấy
+                nét, D6 → opto chụp, đầu ra opto nối song song với dây bấm (jack chia 1 ra 2). Trên máy ảnh: SHUTTER
+                TYPE = MECHANICAL (màn trập điện tử không nháy flash), RELEASE/FOCUS PRIORITY = RELEASE, MIC/REMOTE
+                RELEASE = REMOTE nếu có. Còn 1 giây máy nhấn nửa để lấy nét, hết giờ chụp ngay (flash rời nổ như
+                khi bấm dây). Mạch chưa kết nối hoặc máy ảnh không chụp thì màn hình mời khách bấm dây.
+              </p>
+              <div className="kiosk-device-row">
+                <Button type="button" className="outline small"
+                  onClick={() => run(async () => { await pressArduino(); setArduinoOn(arduinoConnected()); },
+                    "Đã bấm thử — máy ảnh phải chụp 1 tấm (flash nổ).")}>
+                  Bấm thử
                 </Button>
-              )}
-            </div>
-            <p className="kiosk-device-note" role="status">
-              {!bluetoothSupported
-                ? "Trình duyệt / máy tính này không dùng được Bluetooth cho trang web (dùng Chrome hoặc Edge, bật Bluetooth)."
-                : camera.saved
-                  ? `${camera.name || "Máy ảnh"} · ${camera.connected ? "đã kết nối." : "chưa kết nối (tự kết nối lúc chụp)."}`
-                  : "Chưa ghép đôi máy ảnh."}
-              {" "}Nếu Bluetooth không bấm được, màn hình sẽ mời khách bấm dây.
-            </p>
-          </>
-        )}
-        <label className="checkbox">
-          <input type="radio" name="shutter" checked={shutter === "arduino"} disabled={!relaySupported}
-            onChange={() => pickShutter("arduino")} />
-          Chỉ Arduino như dây bấm — máy ảnh chụp thật, có flash, ảnh gốc nét nhất
-        </label>
-        {shutter === "arduino" && (
-          <>
+                {ownPort ? (
+                  <Button type="button" className="outline small"
+                    onClick={() => { forgetShutterPort(); setOwnPort(false); setArduinoOn(arduinoConnected()); }}>
+                    Dùng chung mạch máy nhận tiền
+                  </Button>
+                ) : (
+                  <Button type="button" className="outline small"
+                    onClick={() => run(async () => {
+                      await chooseShutterPort();
+                      setOwnPort(true);
+                      setArduinoOn(arduinoConnected());
+                    }, "Đã chọn cổng riêng cho mạch bấm máy.")}>
+                    Mạch riêng? Chọn cổng
+                  </Button>
+                )}
+              </div>
+              <p className="kiosk-device-note" role="status">
+                {ownPort ? "Mạch bấm máy riêng" : "Dùng chung mạch máy nhận tiền"} ·{" "}
+                {arduinoOn ? "đã kết nối" : "chưa kết nối (bấm thử để mở cổng)"}
+              </p>
+            </>
+          )}
+          <label className="checkbox">
+            <input type="radio" name="shutter" checked={shutter === "relay"} disabled={!relaySupported}
+              onChange={() => pickShutter("relay")} />
+            Ưu tiên relay USB nối song song dây bấm
+          </label>
+          {shutter === "relay" && (
             <p className="kiosk-device-note">
-              Dùng chung mạch Pro Micro của máy nhận tiền (nạp mã mới: hardware/bill-acceptor-pulse). D5 → opto lấy
-              nét, D6 → opto chụp, đầu ra opto nối song song với dây bấm (jack chia 1 ra 2). Trên máy ảnh: SHUTTER
-              TYPE = MECHANICAL (màn trập điện tử không nháy flash), RELEASE/FOCUS PRIORITY = RELEASE, MIC/REMOTE
-              RELEASE = REMOTE nếu có. Còn 1 giây máy nhấn nửa để lấy nét, hết giờ chụp ngay (flash rời nổ như
-              khi bấm dây). Mạch chưa kết nối hoặc máy ảnh không chụp thì màn hình mời khách bấm dây.
+              Relay 1 kênh: nối chung đầu (TIP) và vòng (RING) của jack dây bấm vào một chân relay, thân (SLEEVE)
+              vào chân còn lại — relay đóng là nhấn hết như dây bấm. Máy ảnh nên để lấy nét tay (MF) hoặc
+              RELEASE/FOCUS PRIORITY = RELEASE để chụp ngay.
             </p>
+          )}
+          {shutter === "relay" && (
             <div className="kiosk-device-row">
               <Button type="button" className="outline small"
-                onClick={() => run(async () => { await pressArduino(); setArduinoOn(arduinoConnected()); },
-                  "Đã bấm thử — máy ảnh phải chụp 1 tấm (flash nổ).")}>
+                onClick={() => run(async () => { await connectRelay(true); setRelayOn(relayConnected()); }, "Đã kết nối relay.")}>
+                {relayOn ? "Đổi cổng relay" : "Kết nối relay"}
+              </Button>
+              <Button type="button" className="outline small" disabled={!relayOn}
+                onClick={() => run(() => pressRelay(relay), "Đã bấm thử — máy ảnh phải chụp 1 tấm.")}>
                 Bấm thử
               </Button>
-              {ownPort ? (
-                <Button type="button" className="outline small"
-                  onClick={() => { forgetShutterPort(); setOwnPort(false); setArduinoOn(arduinoConnected()); }}>
-                  Dùng chung mạch máy nhận tiền
-                </Button>
-              ) : (
-                <Button type="button" className="outline small"
-                  onClick={() => run(async () => {
-                    await chooseShutterPort();
-                    setOwnPort(true);
-                    setArduinoOn(arduinoConnected());
-                  }, "Đã chọn cổng riêng cho mạch bấm máy.")}>
-                  Mạch riêng? Chọn cổng
-                </Button>
-              )}
+              <label>
+                Lệnh bật
+                <input value={relay.on} onChange={(e) => saveRelay({ ...relay, on: e.target.value })}
+                  onBlur={() => run(() => hexBytes(relay.on))} />
+              </label>
+              <label>
+                Lệnh tắt
+                <input value={relay.off} onChange={(e) => saveRelay({ ...relay, off: e.target.value })}
+                  onBlur={() => run(() => hexBytes(relay.off))} />
+              </label>
+              <label>
+                Giữ (ms)
+                <input type="number" min="50" max="2000" value={relay.ms}
+                  onChange={(e) => saveRelay({ ...relay, ms: Number(e.target.value) || DEFAULT_RELAY.ms })} />
+              </label>
             </div>
-            <p className="kiosk-device-note" role="status">
-              {ownPort ? "Mạch bấm máy riêng" : "Dùng chung mạch máy nhận tiền"} ·{" "}
-              {arduinoOn ? "đã kết nối" : "chưa kết nối (bấm thử để mở cổng)"}
-            </p>
-          </>
-        )}
-        <label className="checkbox">
-          <input type="radio" name="shutter" checked={shutter === "relay"} disabled={!relaySupported}
-            onChange={() => pickShutter("relay")} />
-          Bấm máy ảnh bằng relay USB nối song song dây bấm (ảnh gốc máy ảnh, có flash)
-        </label>
-        {shutter === "relay" && (
-          <p className="kiosk-device-note">
-            Relay 1 kênh: nối chung đầu (TIP) và vòng (RING) của jack dây bấm vào một chân relay, thân (SLEEVE)
-            vào chân còn lại — relay đóng là nhấn hết như dây bấm. Máy ảnh nên để lấy nét tay (MF) hoặc
-            RELEASE/FOCUS PRIORITY = RELEASE để chụp ngay.
-          </p>
-        )}
-        {shutter === "relay" && (
-          <div className="kiosk-device-row">
-            <Button type="button" className="outline small"
-              onClick={() => run(async () => { await connectRelay(true); setRelayOn(relayConnected()); }, "Đã kết nối relay.")}>
-              {relayOn ? "Đổi cổng relay" : "Kết nối relay"}
-            </Button>
-            <Button type="button" className="outline small" disabled={!relayOn}
-              onClick={() => run(() => pressRelay(relay), "Đã bấm thử — máy ảnh phải chụp 1 tấm.")}>
-              Bấm thử
-            </Button>
-            <label>
-              Lệnh bật
-              <input value={relay.on} onChange={(e) => saveRelay({ ...relay, on: e.target.value })}
-                onBlur={() => run(() => hexBytes(relay.on))} />
-            </label>
-            <label>
-              Lệnh tắt
-              <input value={relay.off} onChange={(e) => saveRelay({ ...relay, off: e.target.value })}
-                onBlur={() => run(() => hexBytes(relay.off))} />
-            </label>
-            <label>
-              Giữ (ms)
-              <input type="number" min="50" max="2000" value={relay.ms}
-                onChange={(e) => saveRelay({ ...relay, ms: Number(e.target.value) || DEFAULT_RELAY.ms })} />
-            </label>
-          </div>
-        )}
-        <label className="checkbox">
-          <input type="radio" name="shutter" checked={shutter === "hdmi"} onChange={() => pickShutter("hdmi")} />
-          Lấy khung hình từ hình trực tiếp HDMI (không cần thêm thiết bị, ảnh 1080p, KHÔNG có flash — không
-          dùng khi tiệm dùng flash)
-        </label>
+          )}
+          <label className="checkbox">
+            <input type="radio" name="shutter" checked={shutter === "hdmi"} onChange={() => pickShutter("hdmi")} />
+            Lấy khung hình từ hình trực tiếp HDMI (không cần thêm thiết bị, ảnh 1080p, KHÔNG có flash — không
+            dùng khi tiệm dùng flash)
+          </label>
+        </details>
       </fieldset>
 
       <fieldset className="kiosk-device-box">

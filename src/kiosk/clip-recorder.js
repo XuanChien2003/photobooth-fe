@@ -6,6 +6,17 @@ import { visibleRegion } from "./live-preview-layout.js";
 // thành một video gửi lên album.
 const SEGMENT_MS = 8000;
 const MIN_CLIP_MS = 4000;
+// H.264 trước (máy tính mã hóa bằng phần cứng: nhẹ máy, nét hơn VP8 cùng bitrate), rồi VP9 / VP8.
+const RECORD_TYPES = [
+  "video/mp4;codecs=avc1.640028",
+  "video/mp4;codecs=avc1",
+  "video/webm;codecs=h264",
+  "video/webm;codecs=vp9",
+  "video/webm;codecs=vp8",
+  "video/webm",
+];
+// Video gửi lên album tối đa 60 MB: chừa khoảng an toàn.
+const MAX_VIDEO_BYTES = 48 * 1024 * 1024;
 
 const pickType = (types) =>
   typeof MediaRecorder !== "undefined"
@@ -35,8 +46,9 @@ export function createClipRecorder() {
     if (!stream?.active) return;
     try {
       chunks = [];
-      const type = pickType(["video/webm;codecs=vp8", "video/webm"]);
-      recorder = new MediaRecorder(stream, { ...(type && { mimeType: type }), videoBitsPerSecond: 3_000_000 });
+      const type = pickType(RECORD_TYPES);
+      // Bản quay gốc 1080p bitrate cao: video tua nhanh ghép từ đây nên càng nét càng tốt.
+      recorder = new MediaRecorder(stream, { ...(type && { mimeType: type }), videoBitsPerSecond: 12_000_000 });
       const own = chunks;
       recorder.ondataavailable = (event) => event.data.size && own.push(event.data);
       recorder.start(1000);
@@ -61,7 +73,10 @@ export function createClipRecorder() {
       if (!recorder) return;
       clearTimeout(restart);
       const current = await stopCurrent();
-      const parts = [current?.ms < MIN_CLIP_MS && previous, current].filter(Boolean).map((c) => c.blob);
+      const used = [current?.ms < MIN_CLIP_MS && previous, current].filter(Boolean);
+      const parts = used.map((c) => c.blob);
+      // Thời lượng clip: video ghép chọn bitrate vừa giới hạn tải lên.
+      parts.ms = used.reduce((sum, c) => sum + (c.ms || 0), 0);
       if (parts.length) clips.push(parts);
       previous = null;
       begin();
@@ -77,25 +92,32 @@ export function createClipRecorder() {
   };
 }
 
-// Ghép các clip thành một video tua nhanh (mặc định ×4), lật gương như màn hình xem trước và cắt
-// bỏ mép có thông số máy ảnh. Chạy trong lúc khách chọn ảnh: mất khoảng ¼ thời lượng các clip.
-export async function buildTimelapse(clips, { zoom = 0, speed = 4, width = 960, height = 720, mirror = true } = {}) {
+// Ghép các clip thành một video tua nhanh (mặc định ×4), Full HD 16:9, lật gương như màn hình xem
+// trước và cắt bỏ mép có thông số máy ảnh. Chạy trong lúc khách chọn ảnh: mất khoảng ¼ thời lượng
+// các clip. Bitrate cao nhất (8 Mbps) mà video vẫn dưới giới hạn tải lên.
+export async function buildTimelapse(clips, { zoom = 0, speed = 4, width = 1920, height = 1080, mirror = true } = {}) {
   const segments = clips.flat();
   if (!segments.length || typeof MediaRecorder === "undefined") return null;
+  const seconds = Math.max(1, clips.reduce((sum, clip) => sum + (clip.ms || SEGMENT_MS), 0) / 1000 / speed);
+  const bitrate = Math.round(Math.max(2_000_000, Math.min(8_000_000, (MAX_VIDEO_BYTES * 8) / seconds)));
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingQuality = "high";
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
+  // MP4 (H.264) trước: điện thoại nào cũng xem / lưu được.
   const type = pickType([
+    "video/mp4;codecs=avc1.640028",
     "video/mp4;codecs=avc1.42E01E",
     "video/mp4",
+    "video/webm;codecs=vp9",
     "video/webm;codecs=vp8",
     "video/webm",
   ]);
   const output = canvas.captureStream(30);
-  const recorder = new MediaRecorder(output, { ...(type && { mimeType: type }), videoBitsPerSecond: 2_500_000 });
+  const recorder = new MediaRecorder(output, { ...(type && { mimeType: type }), videoBitsPerSecond: bitrate });
   const chunks = [];
   recorder.ondataavailable = (event) => event.data.size && chunks.push(event.data);
   const finished = new Promise((resolve) => (recorder.onstop = resolve));
@@ -166,5 +188,5 @@ export async function buildTimelapse(clips, { zoom = 0, speed = 4, width = 960, 
   canvas.width = canvas.height = 0;
   if (!chunks.length) return null;
   const blob = new Blob(chunks, { type: recorder.mimeType || type || "video/webm" });
-  return blob.size > 1000 ? blob : null;
+  return blob.size > 1000 && blob.size <= 60 * 1024 * 1024 ? blob : null;
 }

@@ -136,6 +136,27 @@ export function slotScale(image, rect, t = DEFAULT_TRANSFORM) {
 }
 
 // Vẽ ảnh vào ô theo phóng to (zoom), kéo (x, y — tỉ lệ theo kích thước ô) và xoay 90°.
+// Làm nét nhẹ (unsharp 3 × 3) một vùng ảnh của bản in: ảnh gốc 26 MP thu vào ô vài trăm px dễ hơi
+// mềm; mức nhẹ (amount ≈ 0,4) cho ảnh rõ nét mà không viền gắt.
+export function sharpenRect(ctx, rect, amount = 0.4) {
+  const x = Math.max(0, Math.floor(rect.x)), y = Math.max(0, Math.floor(rect.y));
+  const w = Math.min(ctx.canvas.width - x, Math.ceil(rect.w)), h = Math.min(ctx.canvas.height - y, Math.ceil(rect.h));
+  if (w < 3 || h < 3 || amount <= 0) return;
+  const image = ctx.getImageData(x, y, w, h);
+  const src = image.data;
+  const out = new Uint8ClampedArray(src);
+  const row = w * 4, center = 1 + 4 * amount;
+  for (let j = 1; j < h - 1; j++)
+    for (let i = 1; i < w - 1; i++) {
+      const p = j * row + i * 4;
+      for (let c = 0; c < 3; c++)
+        out[p + c] = center * src[p + c] -
+          amount * (src[p + c - 4] + src[p + c + 4] + src[p + c - row] + src[p + c + row]);
+    }
+  image.data.set(out);
+  ctx.putImageData(image, x, y);
+}
+
 export function drawSlot(ctx, image, rect, t = DEFAULT_TRANSFORM) {
   const angle = ((t.rotate || 0) * Math.PI) / 180;
   const cos = Math.cos(angle),

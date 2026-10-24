@@ -125,12 +125,15 @@ export function availableShutters() {
 }
 const press = (mode) =>
   mode === "bluetooth" ? pressBluetooth() : mode === "relay" ? pressRelay() : pressArduino();
-// Bấm máy theo chế độ đã chọn; "auto" thử lần lượt các cách đã cài; "hdmi" không bấm máy.
+// Thứ tự thử: cách đã chọn (nếu có) rồi mọi cách khác đã kết nối trên máy này — chọn nhầm "relay"
+// mà chỉ có Bluetooth vẫn tự chụp được.
+const shutterOrder = (mode) =>
+  [...new Set([...(["bluetooth", "arduino", "relay"].includes(mode) ? [mode] : []), ...availableShutters()])];
+// Bấm máy (máy ảnh chụp thật, flash nổ); "hdmi" không bấm máy.
 export async function pressShutter(mode = readShutter()) {
-  if (mode !== "auto") return press(mode);
-  const list = availableShutters();
+  const list = shutterOrder(mode);
   if (!list.length)
-    throw new Error("Chưa kết nối máy ảnh để tự chụp — Cài đặt máy chụp → Tự chụp → Kết nối máy ảnh (Bluetooth)");
+    throw new Error("Chưa kết nối máy ảnh để tự chụp — nhân viên vào Cài đặt máy chụp → Kết nối máy ảnh");
   let failure;
   for (const each of list) {
     try {
@@ -143,7 +146,7 @@ export async function pressShutter(mode = readShutter()) {
 }
 // Nhấn nửa lấy nét trước lúc chụp (relay một kênh không nhấn nửa được).
 export function focusShutter(mode = readShutter()) {
-  const target = mode === "auto" ? availableShutters().find((m) => m !== "relay") : mode;
+  const target = shutterOrder(mode).find((m) => m !== "relay");
   return target === "bluetooth" ? focusBluetooth() : target === "arduino" ? focusArduino() : Promise.resolve();
 }
 

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { PiFolderOpenDuotone } from "react-icons/pi";
 import { ChevronDown, Maximize2, Settings2 } from "lucide-react";
 import { Button } from "../studio";
@@ -14,6 +15,8 @@ import {
 import { canPickFolder, isMac, PHOTO_FOLDER_EXAMPLE } from "./folder.js";
 import { FolderCheck } from "./FolderCheck.jsx";
 import { KioskDevices } from "./KioskDevices.jsx";
+import { availableShutters, readShutter } from "./shutter.js";
+import { watchBluetoothCamera } from "./camera-bluetooth.js";
 
 export function KioskSettings({
   folder,
@@ -31,6 +34,9 @@ export function KioskSettings({
   roomInfo,
   toast,
 }) {
+  // Chưa có cách nào bấm máy ảnh: báo ngay trên dòng tiêu đề (đếm giờ sẽ phải mời khách bấm dây).
+  const [shutterReady, setShutterReady] = useState(() => availableShutters().length > 0);
+  useEffect(() => watchBluetoothCamera(() => setShutterReady(availableShutters().length > 0)), []);
   return (
     <details className="kiosk-settings">
       <summary>
@@ -38,6 +44,9 @@ export function KioskSettings({
           <Settings2 size={18} aria-hidden="true" /> Cài đặt máy chụp (nhân
           viên)
         </span>
+        {!shutterReady && readShutter() !== "hdmi" && (
+          <em className="kiosk-settings-warn">Chưa kết nối máy ảnh</em>
+        )}
         <ChevronDown
           size={18}
           className="kiosk-settings-chevron"

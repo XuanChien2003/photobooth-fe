@@ -6,6 +6,7 @@ import {
   drawMarks,
   drawSlot,
   frameCapacity,
+  sharpenRect,
   frameOutputSize,
   loadFrameImage,
   packPrintSheets,
@@ -146,6 +147,9 @@ export async function renderPrintFrame(frame, shots, token, qrUrl = "") {
       for (const copy of layout.copies)
         if (copy.of === index) drawSlot(ctx, source, slotRect(copy.slot, canvas.width, canvas.height));
     }
+    // Làm nét nhẹ các ô ảnh (bản in 300 dpi), trước khi vẽ mã QR / ngày in.
+    for (const slot of [...layout.slots, ...layout.copies.map((c) => c.slot)])
+      sharpenRect(ctx, slotRect(slot, canvas.width, canvas.height));
     if (layout.marks.length) {
       const qr = layout.marks.some((m) => m.kind === "qr") && qrUrl
         ? await qrImage(qrUrl).catch(() => null) : null;
@@ -322,5 +326,5 @@ export const compositeJpeg = (canvas) =>
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error("Không tạo được ảnh ghép."))),
       "image/jpeg",
-      0.92,
+      0.95,
     ));
