@@ -195,7 +195,7 @@ export function watchKioskPrint(listener) {
 }
 export const kioskPrintState = (token) => states.get(token);
 
-// Trạng thái máy in thật của lệnh in (print-agent ở quầy nhận lệnh → hàng in Windows của DNP).
+// Trạng thái máy in thật của lệnh in (print-agent ở quầy nhận lệnh → hàng in DNP của Windows / Mac).
 function spoolState(job) {
   switch (job?.spoolStatus) {
     case "idle": return { status: "manual" }; // máy chủ chưa bật in tự động

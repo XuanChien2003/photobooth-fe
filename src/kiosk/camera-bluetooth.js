@@ -8,6 +8,8 @@
 // - "secure" (firmware từ khoảng 07/2025): ghép đôi bảo mật của hệ điều hành (Windows hỏi đồng ý).
 // Trình duyệt chỉ chọn thiết bị khi nhân viên bấm nút (requestDevice); sau đó tự kết nối lại.
 
+import { isMac } from "./folder.js";
+
 const COMPANY_ID = 0x04d8;
 const NAME = "Photobooth";
 const KEY = "kiosk-camera-bluetooth";
@@ -59,6 +61,11 @@ const RELEASE = Uint8Array.of(0x00, 0x00);
 
 export const bluetoothSupported =
   typeof navigator !== "undefined" && Boolean(navigator.bluetooth?.requestDevice);
+// Hướng dẫn theo hệ điều hành của máy chụp (Windows / macOS).
+export const FORGET_CAMERA_HINT = isMac
+  ? "Mac: Cài đặt hệ thống → Bluetooth → bấm (i) cạnh máy ảnh → Quên thiết bị này"
+  : "Windows: Cài đặt → Bluetooth & thiết bị → Thiết bị → ⋯ cạnh máy ảnh → Xoá thiết bị";
+const RESTART_CHROME = isMac ? "tắt hẳn Chrome (Cmd + Q)" : "đóng hết cửa sổ Chrome";
 export const bluetoothScanSupported = bluetoothSupported && typeof navigator.bluetooth.requestLEScan === "function";
 const readSaved = () => {
   try {
@@ -179,6 +186,8 @@ async function handshake() {
   for (const [label, uuid] of Object.entries(DETECT))
     if (await server.getPrimaryService(uuid).then(() => true, () => false)) found.push(label);
   note(`Đã kết nối. Dịch vụ của máy ảnh: ${found.join(", ") || "không thấy dịch vụ nào"}.`);
+  if (!found.length)
+    throw new Error(`Máy ảnh không trả dịch vụ nào (máy ảnh vừa thoát màn ghép đôi hoặc ngắt kết nối). Trên máy ảnh bấm OK (CONTINUE) để chờ ghép đôi lại; ${FORGET_CAMERA_HINT} (nếu có). Rồi bấm “Kết nối lại máy ảnh”.`);
   const secure = await server.getPrimaryService(UUID.pairSecure).catch(() => null);
   if (secure) {
     note("Máy ảnh dùng ghép đôi bảo mật — đang xác nhận.");
@@ -207,7 +216,7 @@ async function handshake() {
     if (!token)
       throw new Error(typeof device.watchAdvertisements === "function"
         ? "Chưa nhận được mã ghép đôi từ máy ảnh. Trên máy ảnh vào lại PAIRING REGISTRATION (màn SEARCHING) rồi bấm “Kết nối lại máy ảnh” ngay."
-        : "Máy ảnh dùng ghép đôi kiểu cũ, cần mã ghép đôi: mở chrome://flags, bật “Experimental Web Platform features”, tắt hẳn Chrome (Mac: Cmd + Q) rồi mở lại, để máy ảnh ở màn SEARCHING và bấm “Kết nối lại máy ảnh”.");
+        : `Máy ảnh dùng ghép đôi kiểu cũ, cần mã ghép đôi: mở chrome://flags, bật “Experimental Web Platform features”, ${RESTART_CHROME} rồi mở lại, để máy ảnh ở màn SEARCHING và bấm “Kết nối lại máy ảnh”.`);
     await (await pair.getCharacteristic(UUID.pairToken)).writeValueWithResponse(fromHex(token));
     await (await pair.getCharacteristic(UUID.ident)).writeValueWithResponse(new TextEncoder().encode(NAME));
     await subscribe(server, [
@@ -240,6 +249,8 @@ export async function pairBluetoothCamera() {
       { namePrefix: "X-" }, { namePrefix: "X100" }, { namePrefix: "GFX" },
     ],
     optionalServices: [...new Set([...SERVICES, ...Object.values(DETECT)])],
+    // Không xin thì Chrome giấu dữ liệu Fujifilm (mã ghép đôi) khỏi các gói quảng bá.
+    optionalManufacturerData: [COMPANY_ID],
   });
   note(`Đã chọn ${picked.name || "thiết bị"} trong bảng của Chrome.`);
   if (device && device !== picked) hangUp();
@@ -271,7 +282,7 @@ async function finishPairing() {
 // máy ảnh đã chọn. Phải gọi ngay khi nhân viên bấm nút vì Chrome hỏi quyền quét.
 export async function scanBluetoothToken() {
   if (typeof navigator.bluetooth?.requestLEScan !== "function")
-    throw new Error("Chrome chưa cho quét Bluetooth: mở chrome://flags, bật “Experimental Web Platform features”, tắt hẳn Chrome (Mac: Cmd + Q) rồi mở lại.");
+    throw new Error(`Chrome chưa cho quét Bluetooth: mở chrome://flags, bật “Experimental Web Platform features”, ${RESTART_CHROME} rồi mở lại.`);
   const saved = readSaved();
   if (!saved?.id) throw new Error("Bấm “Kết nối máy ảnh” và chọn máy ảnh trước.");
   const scan = await navigator.bluetooth.requestLEScan({

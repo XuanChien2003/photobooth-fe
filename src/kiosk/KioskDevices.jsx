@@ -20,7 +20,9 @@ import {
   SHUTTER_KEY,
 } from "./shutter.js";
 import { billAcceptor, billSupported, readBillConfig, saveBillConfig } from "./bill-acceptor.js";
+import { isMac } from "./folder.js";
 import {
+  FORGET_CAMERA_HINT,
   bluetoothScanSupported,
   bluetoothSupported,
   forgetBluetoothCamera,
@@ -125,25 +127,30 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
             : camera.saved
               ? `Máy ảnh ${camera.name || ""} đã ghép đôi${camera.connected ? " · đang kết nối" : " · tự kết nối lúc chụp"} — hết đếm ngược máy ảnh tự chụp (flash nổ).`
               : camera.pending
-                ? `Đã chọn ${camera.name || "máy ảnh"} nhưng chưa bắt tay được (thiếu mã ghép đôi) — làm theo các bước bên dưới rồi bấm “Đọc mã ghép đôi”.`
+                ? `Đã chọn ${camera.name || "máy ảnh"} nhưng chưa bắt tay được (thiếu mã ghép đôi) — làm theo các bước bên dưới.`
                 : "Chưa kết nối máy ảnh — hết đếm ngược màn hình sẽ phải mời khách bấm dây. Bấm “Kết nối máy ảnh” bên dưới."}
         </p>
         {camera.pending && (
           <ol className="kiosk-device-steps">
-            <li>Mac: Cài đặt hệ thống → Bluetooth → bấm (i) cạnh {camera.name || "X-S10"} → Quên thiết bị này.</li>
+            <li>Nếu máy tính đã có {camera.name || "máy ảnh"} trong danh sách Bluetooth — {FORGET_CAMERA_HINT}.</li>
             <li>Điện thoại có app FUJIFILM XApp / Camera Remote: tắt Bluetooth (để điện thoại không giành kết nối máy ảnh).</li>
             <li>
               Máy ảnh: Bluetooth SETTINGS → DELETE PAIRING REG. (xoá ghép đôi cũ), rồi chọn PAIRING REGISTRATION —
-              để yên ở màn chờ ghép đôi.
+              để yên ở màn chờ ghép đôi (hiện CHECK THE DEVICE SETTINGS thì bấm OK để chờ tiếp).
             </li>
             <li>
-              Bấm “Đọc mã ghép đôi” → Chrome hỏi quyền quét Bluetooth → Cho phép. Chờ tối đa 30 giây; máy tính / máy ảnh
-              hỏi ghép đôi thì đồng ý.
+              Bấm ngay “Kết nối lại máy ảnh”, chọn máy ảnh; máy tính / máy ảnh hỏi ghép đôi thì đồng ý.
+              {bluetoothScanSupported && " Vẫn không được thì bấm “Đọc mã ghép đôi” → Chrome hỏi quyền quét → Cho phép."}
             </li>
           </ol>
         )}
         <ol className="kiosk-device-steps">
-          <li>Máy tính cần có Bluetooth (laptop thường có sẵn; máy bàn cắm USB Bluetooth). Trên Mac: Cài đặt hệ thống → Quyền riêng tư → Bluetooth → cho phép Chrome.</li>
+          <li>
+            Máy tính cần có Bluetooth (laptop thường có sẵn; máy bàn cắm USB Bluetooth).{" "}
+            {isMac
+              ? "Mac: Cài đặt hệ thống → Quyền riêng tư & Bảo mật → Bluetooth → cho phép Chrome."
+              : "Windows: Cài đặt → Bluetooth & thiết bị → bật Bluetooth."}
+          </li>
           <li>
             Trên máy ảnh: MENU → SET UP → CONNECTION SETTING → Bluetooth SETTINGS → Bluetooth ON/OFF = ON, rồi chọn
             PAIRING REGISTRATION (máy ảnh chờ ghép đôi). Nên đặt AUTO POWER OFF = OFF để không mất kết nối.
@@ -157,9 +164,9 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
               "Đã kết nối máy ảnh qua Bluetooth.")}>
             {camera.saved ? "Kết nối lại máy ảnh" : "Kết nối máy ảnh"}
           </Button>
-          {camera.pending && (
-            <Button type="button" className="small" disabled={!bluetoothScanSupported}
-              title={bluetoothScanSupported ? "" : "Cần bật Experimental Web Platform features trong chrome://flags"}
+          {/* Chrome chỉ quét cả vùng được trên Mac / Android (Windows không có). */}
+          {camera.pending && bluetoothScanSupported && (
+            <Button type="button" className="small"
               onClick={() => run(async () => { await scanBluetoothToken(); if (!["auto", "bluetooth"].includes(shutter)) pickShutter("auto"); },
                 "Đã kết nối máy ảnh qua Bluetooth.")}>
               Đọc mã ghép đôi
