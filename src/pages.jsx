@@ -7,68 +7,11 @@ import {
 } from "react-icons/pi";
 import { QRCodeSVG } from "qrcode.react";
 import { Button, ErrorBox, useToast } from "./studio";
-import { api, getApiUrl, labels, formatDate, formatDateTime } from "./api";
+import { labels, formatDate, formatDateTime } from "./api";
 import { useLiveData } from "./use-live-data";
 import { isConnectivityError } from "./network.js";
 import { AlbumStudio } from "./album-studio";
-import { PhotoThumb } from "./album/Gallery.jsx";
-
-// Phần đầu album (khách mở bằng mã QR trên máy chụp): ảnh đã ghép khung, video tua nhanh và ảnh
-// gốc chưa ghép — xem và tải về ngay.
-function AlbumKeepsakes({ token, booking }) {
-  const [job, setJob] = useState(null);
-  const composite = booking.composite ? getApiUrl(`/api/albums/${token}/composite`) : "";
-  // Album cũ (trước khi máy chụp lưu ảnh ghép): ảnh ghép lấy từ lệnh in.
-  useEffect(() => {
-    if (composite) return;
-    api(`/albums/${token}/print`, { allowNull: true }).then(setJob, () => {});
-  }, [token, booking.printSheets, composite]);
-  const sheet = !composite && job?._id ? getApiUrl(`/api/albums/${token}/prints/${job._id}`) : "";
-  const video = booking.video ? getApiUrl(`/api/albums/${token}/video`) : "";
-  const originals = booking.photos.filter((p) => p.kind === "original");
-  if (!composite && !sheet && !video && !originals.length) return null;
-  return (
-    <section className="album-keepsakes" aria-label="Ảnh đã ghép, video và ảnh gốc">
-      {(composite || sheet) && (
-        <figure>
-          <a href={composite || sheet} target="_blank" rel="noreferrer" className="keepsake-media">
-            <img src={`${composite || sheet}?size=thumbnail`} alt="Ảnh đã ghép khung" loading="lazy" />
-          </a>
-          <figcaption>
-            Ảnh đã ghép khung
-            <a className="button outline small" href={composite ? `${composite}?download=1` : sheet}
-              download={`anh-ghep-${booking.code}.jpg`}>Tải ảnh</a>
-          </figcaption>
-        </figure>
-      )}
-      {video && (
-        <figure>
-          <video className="keepsake-media" src={video} controls playsInline loop muted preload="metadata" />
-          <figcaption>
-            Video tua nhanh
-            <a className="button outline small" href={`${video}?download=1`}>Tải video</a>
-          </figcaption>
-        </figure>
-      )}
-      {originals.length > 0 && (
-        <figure>
-          <div className={`keepsake-media keepsake-originals count-${Math.min(4, originals.length)}`}>
-            {originals.slice(0, 4).map((photo, i) => (
-              <span key={photo.id}>
-                <PhotoThumb photo={photo} token={token} alt={`Ảnh gốc ${i + 1}`} loading="lazy" decoding="async" />
-                {i === 3 && originals.length > 4 && <b>+{originals.length - 4}</b>}
-              </span>
-            ))}
-          </div>
-          <figcaption>
-            Ảnh gốc chưa ghép · {originals.length} ảnh
-            <a className="button outline small" href={getApiUrl(`/api/albums/${token}/download`)}>Tải tất cả (ZIP)</a>
-          </figcaption>
-        </figure>
-      )}
-    </section>
-  );
-}
+import { AlbumViewer } from "./album/AlbumViewer.jsx";
 
 // Trang khách mở bằng mã QR trên máy chụp: chọn, chỉnh, ghép khung, tải và gửi in ảnh.
 export function AlbumPage() {
@@ -152,6 +95,7 @@ function AlbumSession({ token }) {
       )}
       {ready && (
         <>
+          <AlbumViewer token={token} booking={booking} />
           <div className="studio-meta">
             <div className="studio-meta-heading">
               <span className="studio-album-ticket">
@@ -182,7 +126,6 @@ function AlbumSession({ token }) {
               </small>
             )}
           </div>
-          <AlbumKeepsakes token={token} booking={booking} />
           <AlbumStudio
             booking={booking}
             setBooking={setBooking}

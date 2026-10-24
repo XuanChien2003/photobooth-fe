@@ -65,17 +65,16 @@ import { KioskDone } from "./KioskDone.jsx";
 import { KioskEntry } from "./KioskEntry.jsx";
 import { KioskSettings } from "./KioskSettings.jsx";
 import { KioskShoot } from "./KioskShoot.jsx";
-import { KioskFrame, KioskSelect, useShotBitmaps } from "./KioskSelect.jsx";
+import { KioskSelect, useShotBitmaps } from "./KioskSelect.jsx";
 import { KioskPackages, KioskPayment } from "./KioskSale.jsx";
 
 // Các chỗ báo lỗi mạng ở màn chụp: mỗi lần mất kết nối chỉ báo một lần, có mạng lại thì xoá.
 const NET_SLOTS = ["poll", "sync", "start", "finish"];
 const PING_MS = 60_000;
-// Thời gian của từng bước sau khi chọn gói: chọn cách chụp, chuẩn bị, chọn ảnh, chọn khung.
+// Thời gian của từng bước sau khi chọn gói: chọn cách chụp, chuẩn bị, chọn ảnh & khung (cùng một màn).
 const MODE_SECONDS = 30;
 const READY_SECONDS = 3;
-const SELECT_SECONDS = 60;
-const FRAME_SECONDS = 60;
+const SELECT_SECONDS = 90;
 // Đã bấm máy mà ảnh từ máy ảnh chưa về sau khoảng này (mạch / dây bấm lỏng, máy không lấy được
 // nét…): bấm lại một lần, vẫn không có thì mời khách bấm dây. Không lấy hình HDMI thay: hình đó
 // không có flash (tiệm dùng flash rời).
@@ -213,7 +212,13 @@ export function Kiosk() {
     // Bấm máy qua Bluetooth: kết nối sẵn máy ảnh đã ghép đôi (lỗi thì thử lại lúc chụp).
     if (readShutter() === "bluetooth") connectBluetoothCamera().catch(() => {});
     return watchKioskPrint((token, state) => {
-      if (token === current.current?.accessToken) setPrint(state);
+      if (token === current.current?.accessToken || token === doneRef.current?.token) setPrint(state);
+      if (state.status === "manual")
+        notifyOnce("print-manual", "warning", "Máy chủ chưa bật in tự động (PRINT_AGENT_TOKEN trên Render) — in ảnh thủ công từ trang Đơn hàng.", 15000);
+      if (state.status === "stalled")
+        notifyOnce("print-stalled", "warning", "Máy in ở quầy chưa nhận lệnh in — kiểm tra chương trình in tự động (print-agent) đang chạy và máy in DNP đã bật.", 15000);
+      if (state.status === "failed" && state.message)
+        notifyOnce("print-failed", "error", `Máy in báo lỗi: ${state.message}`, 15000);
     });
   }, []);
   // Gửi kèm khi báo trạng thái lên máy chủ: quản trị xem được vì sao ảnh máy ảnh không về.
@@ -814,7 +819,7 @@ export function Kiosk() {
       setEnding(false);
     }
   }
-  // Ảnh chưa gửi lên được giữ trên máy và tự gửi tiếp trong lúc khách chọn ảnh / khung.
+  // Ảnh chưa gửi lên được giữ trên máy và tự gửi tiếp trong lúc khách chọn ảnh & khung.
   useEffect(() => {
     if (!["select", "frame"].includes(phase)) return;
     sync();
@@ -848,28 +853,25 @@ export function Kiosk() {
         : list.length < need ? [...list, shotKey] : list,
     });
   };
-  // Hết giờ chọn: tự thêm các tấm đầu tiên chưa chọn cho đủ số ảnh.
-  const toFrames = () => {
-    const s = current.current;
-    const list = [...(s.selected || [])];
-    for (const shot of shotsOf(s)) if (list.length < need && !list.includes(shot.key)) list.push(shot.key);
-    patch({ selected: list, phase: "frame", frameIndex: 0, frameEndsAt: Date.now() + FRAME_SECONDS * 1000 });
-  };
-  const selectLeft = secondsUntil(session?.selectEndsAt);
-  const frameLeft = secondsUntil(session?.frameEndsAt);
+  // Chọn ảnh và khung trên cùng một màn ("frame" là bước cũ — lượt dở dang trước khi cập nhật).
+  const choosing = phase === "select" || phase === "frame";
+  const selectLeft = secondsUntil(session?.selectEndsAt || session?.frameEndsAt);
+  // Hết giờ: tự chọn các tấm đầu cho đủ rồi in.
   useEffect(() => {
-    if (phase === "select" && session.selectEndsAt && !selectLeft) toFrames();
-    if (phase === "frame" && session.frameEndsAt && !frameLeft && !composing) confirmFrame();
-  }, [phase, selectLeft, frameLeft]);
+    if (choosing && (session.selectEndsAt || session.frameEndsAt) && !selectLeft && !composing) confirmFrame();
+  }, [phase, selectLeft]);
   const frameIndex = Math.min(session?.frameIndex || 0, Math.max(0, frames.length - 1));
-  const chosenShots = selected.map((k) => shots.find((s) => s.key === k)).filter(Boolean);
-  const chosenReady = chosenShots.filter((s) => bitmaps.has(s.key));
-  // Chọn khung: hiện màn QR ngay với ảnh ghép xem trước; bản in chất lượng cao ghép và gửi máy in
+  // Bấm "In ảnh": hiện màn QR ngay với ảnh ghép xem trước; bản in chất lượng cao ghép và gửi máy in
   // ở phía sau.
   async function confirmFrame() {
     const s = current.current;
-    const frame = frames[frameIndex];
-    if (!s || composing || phaseOf(s) !== "frame") return;
+    if (!s || composing || !["select", "frame"].includes(phaseOf(s))) return;
+    // Chưa chọn đủ (hết giờ): thêm các tấm đầu tiên chưa chọn.
+    const all = shotsOf(s);
+    const keys = [...(s.selected || [])];
+    for (const shot of all) if (keys.length < need && !keys.includes(shot.key)) keys.push(shot.key);
+    const chosenShots = keys.map((k) => all.find((x) => x.key === k)).filter(Boolean);
+    const frame = frames[Math.min(s.frameIndex || 0, Math.max(0, frames.length - 1))];
     setComposing(true);
     try {
       let composite = "";
@@ -1206,7 +1208,7 @@ export function Kiosk() {
         nextGuest={nextGuest}
       />
     );
-  if (session && phase === "select")
+  if (session && choosing)
     return (
       <KioskSelect
         shots={shots}
@@ -1215,22 +1217,12 @@ export function Kiosk() {
         selected={selected}
         onToggle={toggleShot}
         secondsLeft={selectLeft}
-        frame={frames[0]}
-        onNext={toFrames}
-        qrUrl={`${window.location.origin}/album/${session.accessToken}`}
-      />
-    );
-  if (session && phase === "frame")
-    return (
-      <KioskFrame
         frames={frames}
         index={frameIndex}
         setIndex={(i) => patch({ frameIndex: i })}
-        images={chosenReady.map((s) => bitmaps.get(s.key))}
-        imageKey={chosenReady.map((s) => s.key).join()}
-        secondsLeft={frameLeft}
         onConfirm={confirmFrame}
         busy={composing}
+        prints={Number(session.booking.prints) || 0}
         qrUrl={`${window.location.origin}/album/${session.accessToken}`}
       />
     );

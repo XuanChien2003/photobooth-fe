@@ -424,7 +424,7 @@
 
   .select-layout {
     display: grid;
-    grid-template-columns: minmax(0, 0.8fr) auto minmax(0, 1.4fr);
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.25fr);
     gap: clamp(16px, 2.4vw, 32px);
     align-items: center;
     min-height: 0;
@@ -433,7 +433,42 @@
   .select-preview {
     display: grid;
     place-items: center;
+    gap: 10px;
     min-height: 0;
+  }
+  /* Khung xem trước + nút ‹ › đổi khung ngay trên màn chọn ảnh. */
+  .select-frame-stage {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: clamp(8px, 1.4vw, 18px);
+    width: 100%;
+    min-height: 0;
+  }
+  .select-frame-stage .frame-preview {
+    justify-self: center;
+    max-height: 62dvh;
+  }
+  .select-frame-stage .frame-arrow {
+    width: clamp(46px, 4.6vw, 64px);
+    height: clamp(46px, 4.6vw, 64px);
+    font-size: clamp(20px, 2.2vw, 28px);
+  }
+  .select-frame-name {
+    margin: 0;
+    color: var(--mellow-muted, #7a5a48);
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .select-hint {
+    color: var(--mellow-muted, #7a5a48);
+    font-size: 13px;
+  }
+  .select-screen .flow-foot {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
   }
   .frame-preview {
     display: block;
@@ -694,84 +729,164 @@
   }
 
   /* ── Album: ảnh đã ghép & video tua nhanh ── */
-  .album-keepsakes {
+  /* Trang link ảnh (như Snapbox): ảnh lớn, dải ảnh nhỏ bên dưới, giữ vào ảnh để tải. */
+  .album-viewer {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-    gap: 14px;
-    margin: 0 0 16px;
-  }
-  .album-keepsakes figure {
-    display: grid;
-    grid-template-rows: auto 1fr;
-    gap: 10px;
-    margin: 0;
-    padding: 12px;
+    gap: 12px;
+    margin: 0 0 18px;
+    padding: 0 0 14px;
+    overflow: hidden;
     border: 1px solid var(--line, #e5d9cf);
-    border-radius: 14px;
-    background: #fffaf3;
+    border-radius: 16px;
+    background: #fff;
   }
-  /* Ảnh ghép, video và lưới ảnh gốc cùng một chiều cao để 3 ô thẳng hàng. */
-  .album-keepsakes .keepsake-media {
-    display: block;
-    width: 100%;
-    height: clamp(220px, 34vw, 360px);
-    border-radius: 8px;
-    background: #f3e8de;
-    overflow: hidden;
-  }
-  .album-keepsakes .keepsake-media img,
-  .album-keepsakes video.keepsake-media {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-  .album-keepsakes .keepsake-originals {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: 1fr;
-    gap: 4px;
-    padding: 4px;
-  }
-  .album-keepsakes .keepsake-originals.count-1 {
-    grid-template-columns: 1fr;
-  }
-  .album-keepsakes .keepsake-originals.count-3 > span:first-child {
-    grid-row: span 2;
-  }
-  .album-keepsakes .keepsake-originals > span {
+  .album-viewer-hint {
     position: relative;
-    min-height: 0;
-    overflow: hidden;
-    border-radius: 6px;
-  }
-  .album-keepsakes .keepsake-originals img {
-    object-fit: cover;
-  }
-  .album-keepsakes .keepsake-originals b {
-    position: absolute;
-    inset: 0;
     display: grid;
     place-items: center;
-    background: rgb(47 30 23 / 55%);
+    min-height: 34px;
+    padding: 6px 56px;
+    background: #fdf3f4;
+    color: #d35d7a;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-align: center;
+  }
+  .album-viewer-hint b {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    padding: 2px 8px;
+    translate: 0 -50%;
+    border-radius: 6px;
+    background: #5f5a57;
     color: #fff;
-    font-size: 22px;
+    font-size: 11px;
+    letter-spacing: 0;
   }
-  @media (max-width: 560px) {
-    .album-keepsakes .keepsake-media {
-      height: auto;
-      max-height: 70vh;
-      aspect-ratio: 4 / 5;
-    }
-    .album-keepsakes video.keepsake-media {
-      aspect-ratio: auto;
-    }
+  .album-viewer-stage {
+    position: relative;
+    display: grid;
+    /* Hàng / cột có kích thước xác định để ảnh không tràn xuống dải ảnh nhỏ. */
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+    place-items: center;
+    /* Chừa chỗ cho dòng nhắc, nút tải, dải ảnh nhỏ và thanh công cụ dưới cùng của album. */
+    height: clamp(340px, calc(100dvh - 330px), 760px);
+    padding: 0 64px;
+    overflow: hidden;
+    touch-action: pan-y;
   }
-  .album-keepsakes figcaption {
+  .album-viewer-stage img,
+  .album-viewer-stage video {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    box-shadow: 0 6px 22px rgb(47 30 23 / 14%);
+    -webkit-touch-callout: default;
+  }
+  .album-viewer-stage video {
+    width: 100%;
+    background: #000;
+  }
+  .album-viewer-arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    translate: 0 -50%;
+    border: 1px solid var(--line, #e5d9cf);
+    border-radius: 50%;
+    background: rgb(255 255 255 / 92%);
+    color: var(--mellow-cocoa, #4b332a);
+    font-size: 20px;
+    box-shadow: 0 4px 14px rgb(47 30 23 / 14%);
+    cursor: pointer;
+  }
+  .album-viewer-arrow.is-prev {
+    left: 12px;
+  }
+  .album-viewer-arrow.is-next {
+    right: 12px;
+  }
+  .album-viewer-actions {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     gap: 8px;
-    font-weight: 600;
+    padding: 0 14px;
+  }
+  .album-viewer-actions .button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .album-viewer-rail {
+    display: flex;
+    gap: 8px;
+    padding: 4px 14px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+  }
+  .album-viewer-rail::before,
+  .album-viewer-rail::after {
+    flex: 1 0 0;
+    content: "";
+  }
+  .album-viewer-rail button {
+    flex: 0 0 auto;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    overflow: hidden;
+    border: 2px solid transparent;
+    border-radius: 9px;
+    background: #f3ece6;
+    cursor: pointer;
+    scroll-snap-align: center;
+  }
+  .album-viewer-rail button.is-active {
+    border-color: var(--mellow-cocoa, #4b332a);
+  }
+  .album-viewer-rail img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .album-viewer-play {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    color: var(--mellow-cocoa, #4b332a);
+    font-size: 22px;
+  }
+  @media (max-width: 600px) {
+    .album-viewer-stage {
+      height: clamp(300px, calc(100dvh - 300px), 620px);
+      padding: 0 8px;
+    }
+    .album-viewer-arrow {
+      width: 36px;
+      height: 36px;
+      font-size: 16px;
+    }
+    .album-viewer-arrow.is-prev {
+      left: 4px;
+    }
+    .album-viewer-arrow.is-next {
+      right: 4px;
+    }
+    .album-viewer-rail button {
+      width: 48px;
+      height: 48px;
+    }
   }
 }

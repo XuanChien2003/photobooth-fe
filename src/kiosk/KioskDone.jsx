@@ -9,9 +9,14 @@ import { Brand, Button } from "../studio";
 const PRINT_TEXT = {
   sending: "Đang gửi ảnh tới máy in…",
   waiting: "Đang chờ tải ảnh lên để in…",
-  sent: "Ảnh đang được in — lấy ảnh tại khay ảnh",
+  sent: "Đang chờ máy in nhận lệnh…",
+  stalled: "Máy in chưa nhận lệnh — nhờ nhân viên kiểm tra giúp bạn",
+  printing: "Máy in đang in — lấy ảnh tại khay ảnh",
+  printed: "Ảnh đang được in — lấy ảnh tại khay ảnh",
+  manual: "Nhờ nhân viên in ảnh giúp bạn",
   failed: "Chưa in được — nhờ nhân viên in lại giúp bạn",
 };
+const PRINT_WARN = new Set(["stalled", "manual", "failed"]);
 
 // Màn cuối: ảnh đã ghép khung (trái), mã QR tải ảnh & video (giữa), video tua nhanh (phải).
 export function KioskDone({ done, pending, left, nextGuest }) {
@@ -48,8 +53,8 @@ export function KioskDone({ done, pending, left, nextGuest }) {
         </figure>
       </div>
       <h1 className="done-title">Quét QR để tải ảnh & video. Lấy ảnh tại khay ảnh.</h1>
-      <p className={`done-print ${print === "failed" ? "is-warn" : ""}`} role="status">
-        {print === "failed" ? <PiWarningCircleDuotone aria-hidden="true" /> : <PiPrinterDuotone aria-hidden="true" />}
+      <p className={`done-print ${PRINT_WARN.has(print) ? "is-warn" : ""}`} role="status">
+        {PRINT_WARN.has(print) ? <PiWarningCircleDuotone aria-hidden="true" /> : <PiPrinterDuotone aria-hidden="true" />}
         {!done.prints
           ? "Gói của bạn không kèm tờ in — tải ảnh bằng mã QR."
           : framed

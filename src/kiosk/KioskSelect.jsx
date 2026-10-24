@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { PiArrowLeftBold, PiArrowRightBold, PiCheckBold } from "react-icons/pi";
+import { PiArrowLeftBold, PiArrowRightBold, PiCheckBold, PiPrinterBold } from "react-icons/pi";
 import { Button } from "../studio";
 import { composePreview, previewBitmap } from "./compose.js";
 import { useObjectUrl } from "./KioskShoot.jsx";
@@ -44,12 +44,13 @@ export function useShotBitmaps(shots, token) {
 
 // Khung ghép xem trước (ảnh trong khung đổi theo ảnh đang chọn).
 // imageKey: các tấm đang đặt vào khung (đổi thì ghép lại), images: ảnh tương ứng.
-export function FramePreview({ frame, images, imageKey, width = 900, className = "", qrUrl = "" }) {
+// placeholders: ô chưa có ảnh hiện số thứ tự (lúc đang chọn), không lặp lại ảnh đã chọn.
+export function FramePreview({ frame, images, imageKey, width = 900, className = "", qrUrl = "", placeholders = false }) {
   const [src, setSrc] = useState("");
   useEffect(() => {
     let alive = true, url = "";
     if (!frame) return;
-    composePreview(frame, images, width, qrUrl)
+    composePreview(frame, images, width, qrUrl, { placeholders })
       .then((canvas) => new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9)))
       .then((blob) => {
         if (!alive || !blob) return;
@@ -81,11 +82,26 @@ function Pick({ shot, order, onToggle, disabled }) {
   );
 }
 
-// Chụp xong: chọn ảnh yêu thích để ghép (vd. gói 70k chọn 4 tấm), có giới hạn thời gian.
-export function KioskSelect({ shots, bitmaps, count, selected, onToggle, secondsLeft, frame, onNext, qrUrl }) {
+// Chụp xong: bên trái khung ghép xem trước (nút ‹ › đổi khung, ảnh đã chọn ghép ngay vào khung đang
+// xem), bên phải mọi tấm vừa chụp. Chọn đủ số ảnh của gói (vd. gói 70k chọn 4 tấm) rồi bấm "In ảnh":
+// ghép bản in và gửi máy in luôn. Hết giờ thì tự chọn các tấm đầu và in.
+export function KioskSelect({
+  shots, bitmaps, count, selected, onToggle, secondsLeft,
+  frames, index, setIndex, onConfirm, busy, prints, qrUrl,
+}) {
+  const frame = frames[index];
   const ready = selected.filter((key) => bitmaps.has(key));
   const images = ready.map((key) => bitmaps.get(key));
   const full = selected.length >= count;
+  const move = (by) => frames.length > 1 && setIndex((index + by + frames.length) % frames.length);
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key === "ArrowLeft") move(-1);
+      if (event.key === "ArrowRight") move(1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
   return (
     <section className="kiosk-flow select-screen">
       <header className="flow-head">
@@ -96,7 +112,26 @@ export function KioskSelect({ shots, bitmaps, count, selected, onToggle, seconds
       </header>
       <div className="select-layout">
         <div className="select-preview">
-          <FramePreview frame={frame} images={images} imageKey={ready.join()} width={700} qrUrl={qrUrl} />
+          {frame ? (
+            <div className="select-frame-stage">
+              <button type="button" className="frame-arrow" aria-label="Khung trước" onClick={() => move(-1)} disabled={frames.length < 2}>
+                <PiArrowLeftBold />
+              </button>
+              <FramePreview key={frame._id} frame={frame} images={images} imageKey={`${ready.join()}|${count}`}
+                width={700} qrUrl={qrUrl} placeholders />
+              <button type="button" className="frame-arrow" aria-label="Khung sau" onClick={() => move(1)} disabled={frames.length < 2}>
+                <PiArrowRightBold />
+              </button>
+            </div>
+          ) : (
+            <p className="frame-none" role="status">Tiệm chưa có khung ảnh — chọn ảnh rồi bấm “Nhận ảnh”.</p>
+          )}
+          {frame && (
+            <p className="select-frame-name">
+              {frame.themeName?.trim() || frame.name}
+              {frames.length > 1 && <> · khung {index + 1}/{frames.length}</>}
+            </p>
+          )}
         </div>
         <i className="select-divider" aria-hidden="true" />
         <div className="select-grid" role="group" aria-label="Ảnh đã chụp">
@@ -112,54 +147,16 @@ export function KioskSelect({ shots, bitmaps, count, selected, onToggle, seconds
         </div>
       </div>
       <footer className="flow-foot">
-        <Button className="kiosk-next" disabled={!selected.length} onClick={onNext}>
-          {full ? <PiCheckBold aria-hidden="true" /> : null} Tiếp tục chọn khung <PiArrowRightBold aria-hidden="true" />
+        <Button className="kiosk-next" disabled={busy || !full} onClick={onConfirm}>
+          {busy ? (
+            "Đang ghép ảnh…"
+          ) : frame && prints ? (
+            <><PiPrinterBold aria-hidden="true" /> In ảnh</>
+          ) : (
+            <><PiCheckBold aria-hidden="true" /> Nhận ảnh</>
+          )}
         </Button>
-      </footer>
-    </section>
-  );
-}
-
-// Chọn khung: mũi tên trái / phải để lướt khung, xem ngay ảnh vừa chọn nằm trong khung.
-export function KioskFrame({ frames, index, setIndex, images, imageKey, secondsLeft, onConfirm, busy, qrUrl }) {
-  const frame = frames[index];
-  const move = (by) => setIndex((index + by + frames.length) % frames.length);
-  useEffect(() => {
-    const onKey = (event) => {
-      if (event.key === "ArrowLeft") move(-1);
-      if (event.key === "ArrowRight") move(1);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  });
-  return (
-    <section className="kiosk-flow frame-screen">
-      <header className="flow-head">
-        <h1>Chọn khung ảnh</h1>
-        <p>
-          {frame ? `${frame.themeName?.trim() || frame.name} · khung ${index + 1}/${frames.length} · ` : ""}còn <u>{secondsLeft}s</u>
-        </p>
-      </header>
-      {!frames.length ? (
-        <p className="frame-none" role="status">Tiệm chưa có khung ảnh — bấm “Nhận ảnh &amp; mã QR” để tải ảnh của bạn.</p>
-      ) : (
-        <div className="frame-stage">
-          <button type="button" className="frame-arrow" aria-label="Khung trước" onClick={() => move(-1)} disabled={frames.length < 2}>
-            <PiArrowLeftBold />
-          </button>
-          <FramePreview key={frame?._id} frame={frame} images={images} imageKey={imageKey} width={900} className="frame-main" qrUrl={qrUrl} />
-          <button type="button" className="frame-arrow" aria-label="Khung sau" onClick={() => move(1)} disabled={frames.length < 2}>
-            <PiArrowRightBold />
-          </button>
-        </div>
-      )}
-      <div className="frame-dots" aria-hidden="true">
-        {frames.slice(0, 24).map((f, i) => <i key={f._id} className={i === index ? "on" : ""} />)}
-      </div>
-      <footer className="flow-foot">
-        <Button className="kiosk-next" disabled={busy || (!frame && frames.length > 0)} onClick={onConfirm}>
-          {busy ? "Đang ghép ảnh…" : frames.length ? "Chọn khung này" : "Nhận ảnh & mã QR"} <PiCheckBold aria-hidden="true" />
-        </Button>
+        {!full && <small className="select-hint">Chọn thêm {count - selected.length} tấm để {frame && prints ? "in ảnh" : "tiếp tục"}</small>}
       </footer>
     </section>
   );

@@ -82,8 +82,9 @@ export function frameCandidates(frames, { count, printSize, themeOrder = [] }) {
 }
 
 // Ghép nhanh để xem trên màn hình (ảnh 1600 px), ảnh lặp lại khi khung nhiều số ảnh hơn số ảnh đã
-// chọn. qrUrl: link album của khách (vùng QR trên khung).
-export async function composePreview(frame, images, width = 900, qrUrl = "") {
+// chọn. qrUrl: link album của khách (vùng QR trên khung). placeholders: đang chọn ảnh — ô chưa có ảnh
+// để trống, hiện số thứ tự (không lặp ảnh).
+export async function composePreview(frame, images, width = 900, qrUrl = "", { placeholders = false } = {}) {
   const layout = photoLayout(frame);
   const [background, qr] = await Promise.all([
     loadFrameImage(frame.image),
@@ -92,15 +93,27 @@ export async function composePreview(frame, images, width = 900, qrUrl = "") {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = Math.round((width * background.naturalHeight) / background.naturalWidth);
-  composeLayout(
-    canvas,
-    background,
-    layout.slots,
-    layout.slots.map((_, i) => (images.length ? images[i % images.length] : null)),
-    [],
-    [],
-    { frame: layout, qr },
-  );
+  const filled = layout.slots.map((_, i) =>
+    placeholders ? images[i] || null : images.length ? images[i % images.length] : null);
+  composeLayout(canvas, background, layout.slots, filled, [], [], { frame: layout, qr });
+  if (placeholders) {
+    const ctx = canvas.getContext("2d");
+    const empty = (slot, number) => {
+      const r = slotRect(slot, canvas.width, canvas.height);
+      ctx.fillStyle = "#f6e9ec";
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+      ctx.fillStyle = "#b9939a";
+      ctx.font = `700 ${Math.round(Math.min(r.w, r.h) * 0.42)}px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(number), r.x + r.w / 2, r.y + r.h / 2);
+    };
+    layout.slots.forEach((slot, i) => {
+      if (filled[i]) return;
+      empty(slot, i + 1);
+      for (const copy of layout.copies) if (copy.of === i) empty(copy.slot, i + 1);
+    });
+  }
   return canvas;
 }
 
@@ -178,6 +191,30 @@ export function watchKioskPrint(listener) {
 }
 export const kioskPrintState = (token) => states.get(token);
 
+// Trạng thái máy in thật của lệnh in (print-agent ở quầy nhận lệnh → hàng in Windows của DNP).
+function spoolState(job) {
+  switch (job?.spoolStatus) {
+    case "idle": return { status: "manual" }; // máy chủ chưa bật in tự động
+    case "sending": return { status: "printing" };
+    case "sent": return { status: "printed" };
+    case "failed": return { status: "failed", message: job.spoolMessage };
+    default: return { status: "sent" }; // chờ máy in ở quầy nhận lệnh
+  }
+}
+// Theo dõi tới khi máy in nhận lệnh (tối đa 3 phút); quá 20 giây chưa nhận thì báo nhân viên.
+async function watchSpool(token, requestKey) {
+  const started = Date.now();
+  while (Date.now() - started < 3 * 60000) {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    const job = await api(`/albums/${token}/print?requestKey=${requestKey}`, { allowNull: true }).catch(() => undefined);
+    if (job === undefined) continue;
+    const state = spoolState(job);
+    if (state.status === "sent" && Date.now() - started > 20000) state.status = "stalled";
+    notify(token, state);
+    if (["printed", "failed", "manual"].includes(state.status)) return;
+  }
+}
+
 export async function queueKioskPrint({ token, images, frameName }) {
   if (!images.length) return;
   const queue = (await readSetting(QUEUE_KEY).catch(() => null)) || [];
@@ -197,10 +234,11 @@ export function runKioskPrints() {
         const left = [];
         for (const job of queue) {
           try {
-            await api(`/albums/${job.token}/print-pack`, printPackUpload({
+            const printed = await api(`/albums/${job.token}/print-pack`, printPackUpload({
               images: job.images, frameName: job.frameName, requestKey: job.requestKey,
             }));
-            notify(job.token, { status: "sent" });
+            notify(job.token, spoolState(printed));
+            watchSpool(job.token, job.requestKey);
           } catch (error) {
             // Vé đã in hết số tờ / album không còn: không thử lại nữa.
             const tooLate = Date.now() - job.queuedAt > 45 * 60000;
