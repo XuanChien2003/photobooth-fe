@@ -101,7 +101,7 @@ export function KioskEntry({
         {!device && (
           <p className="soft-note">
             Máy chụp chưa được gán phòng. Mở liên kết Cài máy chụp trong Quản trị →
-            Phòng & chi nhánh.
+            Quản lý máy.
           </p>
         )}
         <label className="code-slots">

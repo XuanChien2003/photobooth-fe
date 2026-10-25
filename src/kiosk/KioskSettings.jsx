@@ -66,7 +66,7 @@ export function KioskSettings({
             "Bấm “Thử nhận ảnh từ máy ảnh” rồi chụp 1 tấm: hiện “Đã nhận DSCF….JPG” là xong.",
             "“Hình trực tiếp từ máy ảnh”: để Tự động hoặc chọn thẻ ghi hình (USB Video), không chọn webcam máy tính.",
           ]}
-          note="Muốn bật máy tính là tự mở máy chụp: Quản trị → Phòng & chi nhánh → Cài máy chụp → tải file cài."
+          note="Muốn bật máy tính là tự mở máy chụp: Quản trị → Quản lý máy → Cài máy chụp → tải file cài."
         />
         <div className="kiosk-folder">
           <p>
