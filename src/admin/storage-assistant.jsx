@@ -34,7 +34,7 @@ const groups = [
   ["other", "File khác", Layers],
 ];
 
-export function StorageAssistant({ canManageStorage = false, onShowPrinted }) {
+export function StorageAssistant({ canManageStorage = false }) {
   const toast = useToast();
   const { summary, loadError, load, publishSummary } = useStorageMonitor();
   const [actionError, setActionError] = useState("");
@@ -189,7 +189,6 @@ export function StorageAssistant({ canManageStorage = false, onShowPrinted }) {
                 busy={busy}
                 canManageStorage={canManageStorage}
                 onCleanup={cleanup}
-                onShowPrinted={onShowPrinted}
               />
             </div>
             <MongoStorage />

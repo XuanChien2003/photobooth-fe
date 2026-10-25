@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { LogOut, KeyRound } from "lucide-react";
-import { PrintAlerts } from "./print-queue";
+import { PrintAlerts } from "./print-alerts";
 import { Brand, ErrorBox } from "./studio";
 import { transition } from "./transitions";
 import { NAV_TREE, nav, definitions, HIDDEN_PAGES, NAV_DESCRIPTIONS, STAFF_PAGES, can } from "./admin/config";

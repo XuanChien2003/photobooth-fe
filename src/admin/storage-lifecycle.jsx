@@ -17,7 +17,6 @@ export function StorageLifecycle({
   busy,
   canManageStorage,
   onCleanup,
-  onShowPrinted,
 }) {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
@@ -103,15 +102,6 @@ export function StorageLifecycle({
           >
             <Trash2 size={16} aria-hidden="true" />{" "}
             {busy === "cleanup" ? "Đang dọn…" : "Dọn ảnh đã hết hạn"}
-          </Button>
-        )}
-        {onShowPrinted && (
-          <Button
-            className="outline small"
-            onClick={onShowPrinted}
-            disabled={!!busy}
-          >
-            <Printer size={16} aria-hidden="true" /> Xem lệnh đã in
           </Button>
         )}
       </div>

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { after, before, test } from "node:test";
 import { build } from "vite";
-import { chromium } from "../../Photo_BE/node_modules/playwright/index.mjs";
+import { chromium } from "../../photobooth-be/node_modules/playwright/index.mjs";
 
 const fixture = `
   import React, { useState } from 'react';
@@ -14,7 +14,7 @@ const fixture = `
   import { useAdminSession } from '/src/admin/use-admin-session.js';
   import { StudioContext, ToastProvider } from '/src/studio.jsx';
   import { AlbumPage } from '/src/pages.jsx';
-  import { PrintAlerts, PrintQueue } from '/src/print-queue.jsx';
+  import { PrintAlerts } from '/src/print-alerts.jsx';
   import { StorageMonitorProvider } from '/src/admin/storage-monitor.jsx';
   import { ServerStatus } from '/src/server-status.jsx';
   import { useKeepServerAwake } from '/src/use-connectivity.js';
@@ -52,12 +52,10 @@ const fixture = `
     return React.createElement(Routes, null,
       React.createElement(Route, { path: '/album/:token', element: React.createElement(AlbumPage) }));
   }
+  // The admin shell mounts one storage monitor and the print alerts side by side.
   function PrintHarness() {
-    const [count, setCount] = useState(-1);
     return React.createElement(StorageMonitorProvider, null,
-      React.createElement('output', { id: 'count' }, count),
-      React.createElement(PrintAlerts, { onCount: setCount }),
-      React.createElement(PrintQueue));
+      React.createElement(PrintAlerts));
   }
   window.mount = (mode, options = {}) => {
     window.values = []; window.failures = []; window.revision = 0; window.mutating = false;
@@ -351,27 +349,6 @@ test("an unknown album says so once, in the page, without a repeating toast", as
   } finally { await f.context.close(); }
 });
 
-test("print list and badge share startup and refresh once after marking a job printed", async () => {
-  let jobs = [{ _id: 'print-fixture', code: '123456', name: 'Fixture', status: 'pending', image: '/fixture-print.jpg', copies: 1, sheetCount: 1, createdAt: new Date().toISOString() }];
-  const f = await setup(async (item) => {
-    if (item.path === '/api/admin/storage') return respond(item, { ttlHours: 24 });
-    if (item.path === '/api/admin/print-jobs' && item.method === 'GET') return respond(item, jobs);
-    if (item.method === 'PATCH') { jobs = []; return respond(item, { ok: true }); }
-  });
-  try {
-    await f.page.evaluate(() => window.mount('prints'));
-    await f.page.locator('#count').filter({ hasText: '1' }).waitFor();
-    const markPrinted = f.page.getByRole('article').getByRole('button', { name: 'Đã in', exact: true });
-    await markPrinted.waitFor();
-    assert.equal(f.requests.filter(item => item.path === '/api/admin/print-jobs' && item.method === 'GET').length, 1);
-    await markPrinted.click();
-    await f.page.waitForFunction(() => document.querySelector('#count').textContent === '0');
-    assert.equal(await markPrinted.count(), 0);
-    assert.equal(f.requests.filter(item => item.path === '/api/admin/print-jobs' && item.method === 'GET').length, 2);
-    assert.deepEqual(f.errors, []);
-  } finally { await f.context.close(); }
-});
-
 test("a lost connection shows one notice, panels stay quiet, and a health probe restores everything", async () => {
   let down = false;
   const f = await setup((item) => down
@@ -428,10 +405,9 @@ test("brief window switches do not reload every panel, a long absence does", asy
   } finally { await f.context.close(); }
 });
 
-test("a print stream closed by a server restart reconnects and reloads jobs it may have missed", async () => {
+test("a print stream closed by a server restart reconnects and refreshes figures it may have missed", async () => {
   const f = await setup(async (item) => {
     if (item.path === '/api/admin/storage') return respond(item, { ttlHours: 24 });
-    if (item.path === '/api/admin/print-jobs') return respond(item, []);
   });
   try {
     await f.page.evaluate(() => {
@@ -444,18 +420,20 @@ test("a print stream closed by a server restart reconnects and reloads jobs it m
       };
       window.mount('prints');
     });
-    await f.page.locator('#count').filter({ hasText: '0' }).waitFor();
+    await f.page.waitForFunction(() => window.sources.length > 0);
     // StrictMode opens and closes a first stream; count from the live one.
     const opened = await f.page.evaluate(() => window.sources.length);
     await f.page.evaluate(() => { const s = window.sources.at(-1); s.readyState = 1; s.emit('open'); });
-    const lists = () => f.requests.filter((item) => item.path === '/api/admin/print-jobs').length;
-    const before = lists();
+    // The storage monitor listens for "nxc:print": it is how a reconnect makes the page look again.
+    const storageReads = () => f.requests.filter((item) => item.path === '/api/admin/storage').length;
+    await until(() => storageReads() >= 1);
+    const before = storageReads();
     // The proxy answered 502: the browser closes the stream for good.
     await f.page.evaluate(() => { const s = window.sources.at(-1); s.readyState = 2; s.emit('error'); });
     await f.page.waitForFunction((n) => window.sources.length === n + 1, opened, { timeout: 4000 });
     assert.equal(await f.page.evaluate((n) => window.sources[n - 1].closed, opened), true);
     await f.page.evaluate(() => { const s = window.sources.at(-1); s.readyState = 1; s.emit('open'); });
-    await until(() => lists() > before);
+    await until(() => storageReads() > before);
     // A temporary drop the browser retries by itself does not open a second stream.
     await f.page.evaluate(() => { const s = window.sources.at(-1); s.readyState = 0; s.emit('error'); });
     await f.page.waitForTimeout(2500);
