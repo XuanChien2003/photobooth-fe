@@ -77,6 +77,9 @@
   }
   .admin-shell .frames-grid > li {
     display: grid;
+    /* Cột đúng bằng thẻ: không để chữ không xuống dòng (kích thước, chủ đề) làm cột rộng hơn thẻ
+       rồi cắt ảnh khung ở màn hình hẹp. */
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto 1fr auto;
     overflow: hidden;
     border: 1px solid var(--mellow-line, var(--line));
@@ -583,14 +586,19 @@
     .admin-shell .frames-grid dd {
       text-align: left;
     }
+    /* Năm nút luôn nằm trọn trong thẻ (điện thoại 320 px chỉ rộng ~140 px mỗi thẻ): chia đều cột,
+       nút co ngang chứ không bị thẻ cắt mất nút Xóa. */
     .admin-shell .frames-card-actions {
-      padding: 6px 8px 10px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 3px;
+      padding: 6px 6px 10px;
     }
     .admin-shell .frames-card-actions button {
-      width: 30px;
-      min-width: 30px;
-      height: 30px;
-      min-height: 30px;
+      width: auto;
+      min-width: 0;
+      height: 32px;
+      min-height: 32px;
     }
     .admin-shell .frame-board-wrap {
       padding: 40px 8px 16px;

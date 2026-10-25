@@ -56,6 +56,8 @@
   /* ── Bộ lọc khoảng ngày dùng chung ─────────────────────────── */
   .admin-shell .range-filter {
     display: grid;
+    /* Cột đúng bằng khung chứa: không để ô chọn ngày rộng làm cột (và hàng nút mốc) tràn ngang. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 10px;
     margin: 12px 0 16px;
   }

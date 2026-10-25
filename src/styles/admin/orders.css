@@ -395,12 +395,21 @@
   @media (max-width: 600px) {
     .admin-shell .order-toolbar > *,
     .admin-shell .order-actions-bar > * { width: 100%; max-width: none; }
-    .admin-shell .order-date-range { justify-content: space-between; }
-    .admin-shell .order-date-range input { width: 118px; }
+    .admin-shell .order-date-range { justify-content: space-between; gap: 6px; padding: 0 8px; }
+    /* Hai ô ngày chia đều chỗ còn lại thay vì cố định 118 px (điện thoại 320 px không đủ chỗ). */
+    .admin-shell .order-date-range input { flex: 1 1 0; width: auto; min-width: 0; }
     .admin-shell .order-card { grid-template-columns: minmax(0, 1fr); }
     .admin-shell .order-card > * + * { border-left: 0; border-top: 1px solid var(--line); }
     .admin-shell .order-more-actions { position: static; padding: 0 16px 14px; }
     .admin-shell .order-print-body { grid-template-columns: 90px minmax(0, 1fr); }
     .admin-shell .order-print-body > img { width: 90px; height: 130px; }
+  }
+  @media (max-width: 400px) {
+    /* Điện thoại hẹp: hai ô ngày (chữ 16 px để iOS không tự phóng to) xếp dọc, mỗi ô đủ rộng để hiện
+       trọn "dd/mm/yyyy" cùng nút chọn lịch. */
+    .admin-shell .order-date-range { flex-wrap: wrap; padding: 4px 10px; }
+    .admin-shell .order-date-range > svg,
+    .admin-shell .order-date-range > span { display: none; }
+    .admin-shell .order-date-range input { flex: 1 1 100%; }
   }
 }
