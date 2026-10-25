@@ -9,7 +9,7 @@ import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
 import tailwindcss from "@tailwindcss/vite";
-import { chromium } from "../../Photo_BE/node_modules/playwright/index.mjs";
+import { chromium } from "../../photobooth-be/node_modules/playwright/index.mjs";
 
 const fixture = `
   import React from 'react';
@@ -48,6 +48,8 @@ const roomFixtures = [
   },
 ];
 const deviceToken = "fixture-device.token_01-keep";
+const defaultStaffPermissions = ["orders:export", "print:operate", "shift:operate", "rooms:setup"];
+let staffPermissions = defaultStaffPermissions;
 let server;
 let browser;
 let page;
@@ -55,8 +57,9 @@ let role = "staff";
 let rooms;
 let devices;
 let requests = [];
+let unexpected = [];
 let pageErrors = [];
-const screenshots = join(tmpdir(), "nxc-staff-kiosk-review");
+const screenshots = join(tmpdir(), "photobooth-fe-staff-kiosk-review");
 
 async function readJson(request) {
   let text = "";
@@ -136,6 +139,8 @@ before(async () => {
           name: role === "staff" ? "Lễ tân thử nghiệm" : "Quản trị thử nghiệm",
           email: "fixture@local.test",
           role,
+          // Quyền mặc định của lễ tân (không có xem doanh thu / hủy đơn).
+          permissions: role === "staff" ? staffPermissions : undefined,
         });
         return;
       }
@@ -164,6 +169,20 @@ before(async () => {
       }
       if (path === "/api/admin/rooms/live") {
         send({ now: Date.now(), rooms: [] });
+        return;
+      }
+      // Trang mở đầu (Tổng hợp) cũng đọc ca trực và số liệu tổng hợp.
+      if (path === "/api/admin/shifts") {
+        send({ current: null, recent: [] });
+        return;
+      }
+      if (path === "/api/admin/stats/summary") {
+        send({
+          revenue: 0, previousRevenue: 0, revenueGrowth: null,
+          orders: 0, previousOrders: 0, ordersGrowth: null,
+          transfer: 0, cash: 0, sheets: 0, extraSheets: 0,
+          themes: [], packages: [], rooms: [],
+        });
         return;
       }
       if (path === "/api/admin/print-jobs/stream") {
@@ -203,6 +222,7 @@ before(async () => {
         send(rooms.find((room) => room._id === roomMatch[1]));
         return;
       }
+      unexpected.push(`${entry.method} ${path}`);
       send(
         { message: `Unexpected fixture request: ${entry.method} ${path}` },
         404,
@@ -243,11 +263,13 @@ after(async () => {
   if (server) await new Promise((resolve) => server.close(resolve));
 });
 
-async function mount(nextRole = "staff", width = 1440) {
+async function mount(nextRole = "staff", width = 1440, permissions = defaultStaffPermissions) {
   role = nextRole;
+  staffPermissions = permissions;
   rooms = structuredClone(roomFixtures);
   devices = new Map([["room-1", { token: deviceToken, name: "Phòng 01" }]]);
   requests = [];
+  unexpected = [];
   pageErrors = [];
   await page.setViewportSize({ width, height: width < 600 ? 844 : 1000 });
   await page.goto(`http://127.0.0.1:${server.address().port}/admin`);
@@ -260,10 +282,16 @@ async function mount(nextRole = "staff", width = 1440) {
       .click();
 }
 
+// Không lỗi script và không có yêu cầu API nào ngoài dữ liệu giả (nếu có, trang sẽ hiện toast lỗi).
+function assertClean() {
+  assert.deepEqual(pageErrors, []);
+  assert.deepEqual(unexpected, []);
+}
+
 async function openRooms() {
   await page
     .getByRole("navigation", { name: "Quản lý studio" })
-    .getByRole("button", { name: "Phòng & chi nhánh", exact: true })
+    .getByRole("button", { name: "Quản lý máy", exact: true })
     .click();
   await page.getByRole("row").filter({ hasText: "Phòng 01" }).waitFor();
 }
@@ -277,12 +305,16 @@ const deviceRequests = () =>
 test("staff can access active rooms and branches without room administration controls", async () => {
   await mount();
   const nav = page.getByRole("navigation", { name: "Quản lý studio" });
+  // Lễ tân không có quyền xem doanh thu: không có Thống kê doanh thu, Thiết lập hay Tài khoản.
   assert.deepEqual(await nav.getByRole("button").allTextContents(), [
-    "Tổng quan",
-    "Mã chụp & khách tại quầy",
-    "Hàng chờ in",
-    "Phòng & chi nhánh",
+    "Tổng hợp",
+    "Đơn hàng",
+    "Quản lý máy",
+    "Đối soát",
   ]);
+  assert.equal(await nav.getByRole("group").count(), 1);
+  assert.equal(await nav.getByRole("group", { name: "Tổng quan" }).count(), 1);
+  assert.equal(await nav.getByText("Thiết lập", { exact: true }).count(), 0);
   await openRooms();
   assert.equal(await page.getByRole("row").count(), 3);
   assert.equal(
@@ -315,7 +347,27 @@ test("staff can access active rooms and branches without room administration con
     path: join(screenshots, "rooms-staff-1440.png"),
     fullPage: true,
   });
-  assert.deepEqual(pageErrors, []);
+  assertClean();
+});
+
+test("a receptionist's menu and room buttons follow the permissions the server grants", async () => {
+  await mount("staff", 1440, ["revenue:view", "orders:export"]);
+  const nav = page.getByRole("navigation", { name: "Quản lý studio" });
+  assert.deepEqual(await nav.getByRole("button").allTextContents(), [
+    "Tổng hợp",
+    "Thống kê doanh thu",
+    "Đơn hàng",
+    "Quản lý máy",
+    "Đối soát",
+  ]);
+  await openRooms();
+  // Không có quyền cài máy chụp (rooms:setup): vẫn thấy danh sách máy nhưng không có nút cài.
+  assert.equal(await page.getByRole("row").count(), 3);
+  assert.equal(
+    await page.getByRole("button", { name: /^Cài máy chụp cho / }).count(),
+    0,
+  );
+  assertClean();
 });
 
 test("opening a configured kiosk uses the returned device token and displays QR and installers", async () => {
@@ -356,7 +408,7 @@ test("opening a configured kiosk uses the returned device token and displays QR 
     deviceRequests().map((entry) => entry.method),
     ["POST", "POST"],
   );
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("staff can create a kiosk link for a room that has never been configured", async () => {
@@ -381,7 +433,7 @@ test("staff can create a kiosk link for a room that has never been configured", 
       .map((entry) => entry.path),
     ["/api/admin/rooms/room-2/device"],
   );
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("downloaded Windows and Mac installers open the same room kiosk", async () => {
@@ -451,7 +503,7 @@ test("downloaded Windows and Mac installers open the same room kiosk", async () 
       );
     }
   }
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("staff mobile navigation closes after opening rooms and kiosk dialog fits the screen", async () => {
@@ -499,7 +551,7 @@ test("staff mobile navigation closes after opening rooms and kiosk dialog fits t
     path: join(screenshots, "kiosk-staff-390.png"),
     fullPage: true,
   });
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("admin keeps inactive rooms, create/edit/deactivate controls, and room editing", async () => {
@@ -530,7 +582,7 @@ test("admin keeps inactive rooms, create/edit/deactivate controls, and room edit
     exact: true,
   });
   await dialog
-    .getByLabel("Tên phòng", { exact: true })
+    .getByLabel("Tên máy / phòng", { exact: true })
     .fill("Phòng 01 cập nhật");
   await dialog
     .getByRole("button", { name: "Lưu thay đổi", exact: true })
@@ -546,5 +598,5 @@ test("admin keeps inactive rooms, create/edit/deactivate controls, and room edit
     path: join(screenshots, "rooms-admin-1440.png"),
     fullPage: true,
   });
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });

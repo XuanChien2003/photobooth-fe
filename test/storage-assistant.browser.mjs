@@ -8,7 +8,7 @@ import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
 import tailwindcss from "@tailwindcss/vite";
-import { chromium } from "../../Photo_BE/node_modules/playwright/index.mjs";
+import { chromium } from "../../photobooth-be/node_modules/playwright/index.mjs";
 
 const MB = 1048576;
 const fixture = `
@@ -18,24 +18,18 @@ const fixture = `
   import { Admin } from '/src/admin.jsx';
   import { StorageAssistant } from '/src/admin/storage-assistant.jsx';
   import { StorageMonitorProvider } from '/src/admin/storage-monitor.jsx';
-  import { PrintQueue } from '/src/print-queue.jsx';
   import { ToastProvider } from '/src/studio.jsx';
   import '/src/tailwind.css';
   const root = createRoot(document.getElementById('root'));
   let run = 0;
-  window.mountStorage = (canManageStorage = true, queue = false) => {
-    window.testState = { showPrinted: 0 };
+  window.mountStorage = (canManageStorage = true) => {
     root.render(React.createElement(ToastProvider, { key: ++run },
       React.createElement(StorageMonitorProvider, null,
       React.createElement('div', { className: 'admin-shell' },
         React.createElement('aside', { className: 'admin-sidebar' }),
         React.createElement('main', { className: 'admin-main' },
           React.createElement('div', { className: 'admin-content' },
-            queue ? React.createElement(PrintQueue, { canManageStorage })
-              : React.createElement(StorageAssistant, {
-                canManageStorage,
-                onShowPrinted: () => { window.testState.showPrinted++; },
-              })))))));
+            React.createElement(StorageAssistant, { canManageStorage })))))));
   };
   window.mountAdmin = () => {
     root.render(React.createElement(ToastProvider, { key: ++run },
@@ -110,18 +104,62 @@ function summary(limitMB = null, expiredFiles = 3) {
   };
 }
 
+// Empty answers of the admin API, by path. The real shell mounts whichever page a test opens.
+function adminPage(path) {
+  switch (path) {
+    case "/api/admin/stats":
+      return { todayRevenue: 0, today: 0, printQueue: 0, occupancy: [] };
+    case "/api/admin/stats/summary":
+      return {
+        revenue: 0, previousRevenue: 0, revenueGrowth: null,
+        orders: 0, previousOrders: 0, ordersGrowth: null,
+        transfer: 0, cash: 0, sheets: 0, extraSheets: 0,
+        themes: [], packages: [], rooms: [],
+      };
+    case "/api/admin/stats/chart":
+      return { unit: "day", points: [] };
+    case "/api/admin/rooms/live":
+      return { now: Date.now(), rooms: [] };
+    case "/api/admin/shifts":
+      return { current: null, recent: [] };
+    case "/api/admin/shifts/report":
+      return {
+        branches: [],
+        totals: { tickets: 0, extraSheets: 0, cash: 0, transfer: 0, total: 0 },
+        shifts: [],
+      };
+    case "/api/admin/settings":
+      return { enabledFilters: [], customFilters: [] };
+    case "/api/admin/bookings":
+    case "/api/admin/rooms":
+    case "/api/admin/packages":
+    case "/api/admin/frames":
+    case "/api/admin/themes":
+    case "/api/admin/stickers":
+    case "/api/admin/users":
+      return [];
+    case "/api/admin/screens":
+      return [
+        {
+          _id: "screen-default", isDefault: true, name: "Cấu hình chung", rooms: [],
+          title: "", subtitle: "", interval: 5, active: true, images: [],
+        },
+      ];
+  }
+}
+
 let server;
 let browser;
 let page;
 let currentSummary;
 let storageError;
-let currentPrintJobs = [];
 let authRole = "admin";
 let authError = false;
 let mutationSummary = null;
 let holdStorageReads = false;
 let heldStorageResponses = [];
 let requests = [];
+let unexpected = [];
 let pageErrors = [];
 
 async function readJson(request) {
@@ -238,38 +276,11 @@ before(async () => {
         response.write(": fixture connected\n\n");
         return;
       }
-      if (path === "/api/admin/print-jobs" && entry.method === "GET") {
-        const status =
-          new URL(request.url, "http://fixture").searchParams.get("status") ??
-          "pending";
-        response.end(
-          JSON.stringify(
-            currentPrintJobs.filter((job) => job.status === status),
-          ),
-        );
+      if (entry.method === "GET" && adminPage(path) !== undefined) {
+        response.end(JSON.stringify(adminPage(path)));
         return;
       }
-      if (path === "/api/admin/stats") {
-        response.end(JSON.stringify({ todayRevenue: 0, today: 0, printQueue: 0, occupancy: [] }));
-        return;
-      }
-      if (path === "/api/admin/stats/revenue") {
-        const month = new URL(request.url, "http://fixture").searchParams.get("month");
-        response.end(JSON.stringify({ month, days: [], tickets: 0, revenue: 0 }));
-        return;
-      }
-      if (path === "/api/admin/rooms/live") {
-        response.end(JSON.stringify({ now: Date.now(), rooms: [] }));
-        return;
-      }
-      if (
-        ["bookings", "rooms", "packages", "frames", "users"].some(
-          (resource) => path === `/api/admin/${resource}`,
-        )
-      ) {
-        response.end("[]");
-        return;
-      }
+      unexpected.push(`${entry.method} ${path}`);
       response.statusCode = 404;
       response.end(JSON.stringify({ message: "Unexpected API request" }));
       return;
@@ -332,7 +343,6 @@ async function mount({
   limitMB = null,
   expiredFiles = 3,
   canManage = true,
-  queue = false,
   error = null,
   data = null,
 } = {}) {
@@ -340,17 +350,11 @@ async function mount({
   storageError = error;
   mutationSummary = null;
   requests = [];
+  unexpected = [];
   pageErrors = [];
   await page.goto(`http://127.0.0.1:${server.address().port}/storage-test`);
   await page.waitForFunction(() => typeof window.mountStorage === "function");
-  await page.evaluate(
-    ({ canManage, queue }) => window.mountStorage(canManage, queue),
-    { canManage, queue },
-  );
-  if (queue)
-    await page
-      .getByRole("button", { name: "Trợ lí Minh Dâm", exact: true })
-      .click();
+  await page.evaluate((canManage) => window.mountStorage(canManage), canManage);
   await page.getByRole("heading", { name: "Trợ lí Minh Dâm" }).waitFor();
   if (error) await page.getByText(error, { exact: false }).first().waitFor();
   else {
@@ -363,6 +367,11 @@ async function mount({
 
 const mutations = () =>
   requests.filter((request) => !["GET", "HEAD"].includes(request.method));
+// No script errors and no request the fixture did not expect (the page would show an error toast).
+function assertClean() {
+  assert.deepEqual(pageErrors, []);
+  assert.deepEqual(unexpected, []);
+}
 const storageReads = () =>
   requests.filter((request) => request.path === "/api/admin/storage");
 async function assertReadOnlyLimits() {
@@ -416,7 +425,7 @@ test("unknown storage quota remains unknown without editable limits or fabricate
   await refresh();
   assert.deepEqual(mutations(), []);
   assert.equal(currentSummary.quota.limitMB, null);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("cluster quota uses the backend remaining bytes and warning level, independent of photo file size", async () => {
@@ -437,7 +446,7 @@ test("cluster quota uses the backend remaining bytes and warning level, independ
     /Mức theo dõi: 60 MB/,
   );
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("failed initial loads show an error and failed refreshes retain explicitly stale measurements", async () => {
@@ -597,7 +606,7 @@ test("live Atlas usage includes other databases and updates the captured 512 MB 
     "25,49%",
   );
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("denied or invalid Atlas statistics cannot substitute app database usage for cluster remaining quota", async () => {
@@ -636,7 +645,7 @@ test("denied or invalid Atlas statistics cannot substitute app database usage fo
       "Chưa đo được MongoDB",
     );
     assert.deepEqual(mutations(), []);
-    assert.deepEqual(pageErrors, []);
+    assertClean();
   }
 });
 
@@ -666,10 +675,10 @@ test("valid Atlas statistics still show cluster remaining quota when app databas
     1,
   );
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
-test("staff can read storage and open printed jobs but cannot alter limits or clean files", async () => {
+test("staff can read storage but cannot alter limits or clean files", async () => {
   await mount({ canManage: false });
   await assertReadOnlyLimits();
   assert.equal(
@@ -692,12 +701,14 @@ test("staff can read storage and open printed jobs but cannot alter limits or cl
       .count(),
     0,
   );
-  await page
-    .getByRole("button", { name: "Xem lệnh đã in", exact: true })
-    .click();
-  assert.equal(await page.evaluate(() => window.testState.showPrinted), 1);
+  assert.equal(
+    await page.getByRole("button", { name: "Xem lệnh đã in", includeHidden: true }).count(),
+    0,
+    "the print queue page is gone, so the assistant no longer links to it",
+  );
   await refresh();
   assert.deepEqual(mutations(), []);
+  assertClean();
 });
 
 test("expired cleanup requires confirmation and posts only the expiry cleanup endpoint", async () => {
@@ -731,7 +742,7 @@ test("expired cleanup requires confirmation and posts only the expiry cleanup en
       )?.disabled,
   );
   assert.match(await page.locator(".storage-assistant").innerText(), /838/);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("no expired files disables cleanup while refreshes retain the configured limit", async () => {
@@ -757,25 +768,6 @@ test("no expired files disables cleanup while refreshes retain the configured li
   await page.waitForTimeout(100);
   assert.match(await mongo.innerText(), /Mức theo dõi: 60 MB/);
   await assertReadOnlyLimits();
-  assert.deepEqual(mutations(), []);
-});
-
-test("print queue tab changes and assistant navigation only read data", async () => {
-  await mount({ queue: true });
-  await page.getByRole("button", { name: "Đã in", exact: true }).click();
-  await page.getByRole("button", { name: "Chờ in", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Trợ lí Minh Dâm", exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "Xem lệnh đã in", exact: true })
-    .click();
-  await page.getByText("Hôm nay chưa in ảnh nào.", { exact: true }).waitFor();
-  await page
-    .getByRole("button", { name: "Trợ lí Minh Dâm", exact: true })
-    .click();
-  await page.locator(".storage-mongo").waitFor();
-  await refresh();
   assert.deepEqual(mutations(), []);
 });
 
@@ -809,7 +801,7 @@ test("storage assistant fits narrow phones and desktop widths with the productio
     }
   }
   await page.setViewportSize({ width: 1280, height: 900 });
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 function clusterSummary(usedMB, limitMB = 512) {
@@ -838,17 +830,16 @@ async function mountAdmin({
   role = "admin",
   signedIn = true,
   clock = false,
-  printJobs = [],
 } = {}) {
   releaseStorageReads();
   await createPage({ clock });
   currentSummary = data;
-  currentPrintJobs = printJobs;
   storageError = error;
   authRole = role;
   authError = !signedIn;
   mutationSummary = null;
   requests = [];
+  unexpected = [];
   pageErrors = [];
   await page.goto(`http://127.0.0.1:${server.address().port}/admin-test`);
   await page.waitForFunction(() => typeof window.mountAdmin === "function");
@@ -878,6 +869,20 @@ const navButton = (name) =>
   page
     .getByRole("navigation", { name: "Quản lý studio" })
     .getByRole("button", { name, exact: true });
+const ADMIN_PAGES = [
+  "Thống kê doanh thu",
+  "Đơn hàng",
+  "Quản lý máy",
+  "Màn hình chờ",
+  "Chủ đề",
+  "Khung ảnh",
+  "Bảng giá",
+  "Nhãn dán",
+  "Quản lý filter",
+  "Tài khoản",
+  "Đối soát",
+  "Tổng hợp",
+];
 
 async function pollOnce({ failing = false } = {}) {
   const previous = storageReads().length;
@@ -920,7 +925,7 @@ test("real admin warns at 80%, becomes critical at 90%, and reports full capacit
     }
     assert.equal(storageReads().length, 1);
     assert.deepEqual(mutations(), []);
-    assert.deepEqual(pageErrors, []);
+    assertClean();
   }
 });
 
@@ -932,15 +937,7 @@ test("warning persists across every admin page and its action opens the controll
     await warning().innerText(),
     /460,8 \/ 512 MB \(90%\).*Còn 51,2 MB/s,
   );
-  for (const name of [
-    "Mã chụp & khách tại quầy",
-    "Hàng chờ in",
-    "Phòng & chi nhánh",
-    "Gói chụp",
-    "Khung ảnh",
-    "Nhân viên",
-    "Tổng quan",
-  ]) {
+  for (const name of ADMIN_PAGES) {
     await navButton(name).click();
     await page.locator(".admin-header h2").filter({ hasText: name }).waitFor();
     assert.equal(await warning().count(), 1, `warning disappeared on ${name}`);
@@ -950,15 +947,10 @@ test("warning persists across every admin page and its action opens the controll
   await page
     .getByRole("heading", { name: "Trợ lí Minh Dâm", exact: true })
     .waitFor();
+  // The assistant is a hidden page: it has no menu entry, only this button.
   assert.equal(
     await page.locator(".admin-header h2").innerText(),
-    "Hàng chờ in",
-  );
-  assert.equal(
-    await page
-      .getByRole("button", { name: "Trợ lí Minh Dâm", exact: true })
-      .getAttribute("aria-pressed"),
-    "true",
+    "Dung lượng lưu trữ",
   );
   assert.equal(await warning().count(), 1);
   assert.equal(
@@ -966,10 +958,12 @@ test("warning persists across every admin page and its action opens the controll
     initialReads,
     "assistant must reuse the global monitor result",
   );
-  await page
-    .getByRole("button", { name: "Xem lệnh đã in", exact: true })
-    .click();
-  await page.getByText("Hôm nay chưa in ảnh nào.", { exact: true }).waitFor();
+  await navButton("Đơn hàng").click();
+  await page.locator(".admin-header h2").filter({ hasText: "Đơn hàng" }).waitFor();
+  assert.equal(
+    await page.getByRole("heading", { name: "Trợ lí Minh Dâm" }).count(),
+    0,
+  );
   assert.equal(await warning().count(), 1);
   await assistantCTA().click();
   await page
@@ -982,7 +976,7 @@ test("warning persists across every admin page and its action opens the controll
     "admin navigation must never request the removed activity log",
   );
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("global monitoring automatically shows and clears warnings every 30 seconds while ordinary admin pages remain open", async () => {
@@ -994,7 +988,7 @@ test("global monitoring automatically shows and clears warnings every 30 seconds
   await page.locator(".storage-warning-warning[role=alert]").waitFor();
   assert.match(await warning().innerText(), /Còn 92 MB/);
   assert.equal(storageReads().length, 2);
-  await navButton("Mã chụp & khách tại quầy").click();
+  await navButton("Đơn hàng").click();
   currentSummary = clusterSummary(480);
   await pollOnce();
   await page.locator(".storage-warning-critical[role=alert]").waitFor();
@@ -1005,7 +999,7 @@ test("global monitoring automatically shows and clears warnings every 30 seconds
   await warning().waitFor({ state: "hidden" });
   assert.equal(storageReads().length, 4);
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("hidden pages stop storage polling and becoming visible immediately refreshes the global warning", async () => {
@@ -1031,7 +1025,7 @@ test("hidden pages stop storage polling and becoming visible immediately refresh
   await page.locator(".storage-warning-critical[role=alert]").waitFor();
   assert.match(await warning().innerText(), /Còn 12 MB/);
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("unavailable or malformed Atlas measurements produce an unknown state without invented remaining capacity", async () => {
@@ -1063,7 +1057,7 @@ test("unavailable or malformed Atlas measurements produce an unknown state witho
     assert.doesNotMatch(await warning().innerText(), /Còn .* MB/);
     assert.equal(await page.locator(".storage-warning[role=alert]").count(), 0);
     assert.deepEqual(mutations(), []);
-    assert.deepEqual(pageErrors, []);
+    assertClean();
   }
   await mountAdmin({ data: summary(null) });
   assert.equal(
@@ -1096,7 +1090,7 @@ test("failed global refresh retains the prior warning with a stale label and rec
   await pollOnce();
   await warning().waitFor({ state: "hidden" });
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("an initial monitor failure is visible on the admin homepage and never claims storage is healthy", async () => {
@@ -1112,10 +1106,15 @@ test("an initial monitor failure is visible on the admin homepage and never clai
     .getByRole("heading", { name: "Trợ lí Minh Dâm", exact: true })
     .waitFor();
   await page.getByText(storageError, { exact: false }).first().waitFor();
+  assert.equal(
+    await page.locator(".storage-expiry").count(),
+    0,
+    "without a measurement there is no image expiry to show",
+  );
   // The first read and its one automatic retry; nothing else.
   assert.equal(storageReads().length, 2);
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("expired cleanup publishes updated warnings immediately even while subsequent refresh requests are pending", async () => {
@@ -1151,7 +1150,7 @@ test("expired cleanup publishes updated warnings immediately even while subseque
   await page
     .getByRole("button", { name: "Dọn ảnh đã hết hạn", exact: true })
     .waitFor();
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("staff also receive the global warning while unauthenticated visitors never start storage monitoring", async () => {
@@ -1170,26 +1169,48 @@ test("staff also receive the global warning while unauthenticated visitors never
   );
   assert.equal(storageReads().length, 1);
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
   await mountAdmin({ signedIn: false });
   assert.equal(await warning().count(), 0);
   assert.equal(storageReads().length, 0);
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
+});
+
+test("every admin page fits a 320 px phone while the storage warning is showing", async () => {
+  await mountAdmin({ data: clusterSummary(460.8) });
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.locator(".storage-warning-critical[role=alert]").waitFor();
+  const overflowing = [];
+  for (const name of ADMIN_PAGES) {
+    // On a phone the menu is folded away: open it, then pick the page.
+    await page.getByRole("button", { name: "Menu quản lý", exact: true }).click();
+    await navButton(name).click();
+    await page.locator(".admin-header h2").filter({ hasText: name }).waitFor();
+    await page.waitForTimeout(50);
+    const layout = await page.evaluate(() => {
+      const viewport = document.documentElement.clientWidth;
+      return {
+        document: document.documentElement.scrollWidth,
+        viewport,
+        wide: [...document.querySelectorAll(".admin-main *")]
+          .filter((element) => element.getBoundingClientRect().right > viewport + 1)
+          .slice(0, 6)
+          .map((element) => `${element.tagName.toLowerCase()}.${element.className}`),
+      };
+    });
+    if (layout.document > layout.viewport + 1) overflowing.push({ page: name, ...layout });
+  }
+  assert.deepEqual(overflowing, []);
+  assert.deepEqual(mutations(), []);
+  assertClean();
 });
 
 test("global warning and its action fit narrow mobile and desktop layouts", async () => {
   await mountAdmin({ data: clusterSummary(480) });
   await page.locator(".storage-warning-critical[role=alert]").waitFor();
-  await page.evaluate(() => {
-    const spacer = document.createElement("div");
-    spacer.setAttribute("aria-hidden", "true");
-    spacer.style.height = "1800px";
-    document.querySelector(".admin-content").append(spacer);
-  });
   for (const width of [320, 390, 1280]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.evaluate(() => window.scrollTo(0, 600));
     await page.waitForTimeout(50);
     const layout = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
@@ -1200,9 +1221,16 @@ test("global warning and its action fit narrow mobile and desktop layouts", asyn
       warningTop: document
         .querySelector(".storage-warning")
         .getBoundingClientRect().top,
+      contentTop: document
+        .querySelector(".admin-content")
+        .getBoundingClientRect().top,
       action: document
         .querySelector(".storage-warning button")
         .getBoundingClientRect().right,
+      wide: [...document.querySelectorAll(".admin-shell *")]
+        .filter((element) => element.getBoundingClientRect().right > document.documentElement.clientWidth + 1)
+        .slice(0, 6)
+        .map((element) => `${element.tagName.toLowerCase()}.${element.className}`),
     }));
     assert.ok(
       layout.document <= layout.viewport + 1,
@@ -1210,9 +1238,10 @@ test("global warning and its action fit narrow mobile and desktop layouts", asyn
     );
     assert.ok(layout.warning <= layout.viewport + 1);
     assert.ok(layout.action <= layout.viewport + 1);
+    // The warning is a note at the top of every page (the Mellow theme does not pin it while scrolling).
     assert.ok(
-      Math.abs(layout.warningTop - 12) <= 1,
-      `warning did not remain visible while scrolling at ${width}px: ${JSON.stringify(layout)}`,
+      layout.warningTop >= layout.contentTop - 1 && layout.warningTop < 400,
+      `warning is not at the top of the page at ${width}px: ${JSON.stringify(layout)}`,
     );
     if (process.env.STORAGE_SCREENSHOTS) {
       await page.screenshot({
@@ -1222,12 +1251,25 @@ test("global warning and its action fit narrow mobile and desktop layouts", asyn
     }
   }
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 const retentionClock = Date.parse("2026-10-07T05:00:00Z");
+// The nearest stored image deadline is in the assistant's expiry panel.
 const nearestImage = () =>
-  page.getByLabel("Ảnh sắp xoá gần nhất", { exact: true });
+  page
+    .locator(".storage-lifecycle")
+    .getByLabel("Ảnh sắp xoá gần nhất", { exact: true });
+const expiryLabel = () => nearestImage().locator("strong");
+
+// The assistant has no menu entry: it opens from the storage warning, so the summaries in these
+// tests are near the limit.
+async function openAssistant() {
+  await assistantCTA().click();
+  await page
+    .getByRole("heading", { name: "Trợ lí Minh Dâm", exact: true })
+    .waitFor();
+}
 
 async function assertRetentionFits() {
   for (const width of [320, 390, 1280]) {
@@ -1236,7 +1278,7 @@ async function assertRetentionFits() {
       viewport: document.documentElement.clientWidth,
       document: document.documentElement.scrollWidth,
       countdown: document
-        .querySelector(".print-day-countdown")
+        .querySelector(".storage-expiry")
         .getBoundingClientRect().right,
     }));
     assert.ok(
@@ -1251,7 +1293,7 @@ async function assertRetentionFits() {
 }
 
 function imageRetentionSummary(minutes) {
-  const data = atlasSummary();
+  const data = clusterSummary(460.8);
   data.retention = {
     nextImageExpiresAt:
       minutes === null
@@ -1261,70 +1303,40 @@ function imageRetentionSummary(minutes) {
   return data;
 }
 
-function printJob(status, hoursRemaining) {
-  return {
-    _id: `fixture-${status}`,
-    code: status === "pending" ? "123456" : "654321",
-    name: `Fixture ${status}`,
-    roomName: "Room 01",
-    frameName: "Fixture frame",
-    image: "/fixture-print.jpg",
-    sheetCount: 1,
-    copies: 1,
-    status,
-    createdAt: new Date(
-      retentionClock - (24 - hoursRemaining) * 3600000,
-    ).toISOString(),
-    expiresAt: new Date(
-      retentionClock + hoursRemaining * 3600000,
-    ).toISOString(),
-    printedAt:
-      status === "printed"
-        ? new Date(retentionClock - 3600000).toISOString()
-        : null,
-    printedBy: "Fixture admin",
-  };
-}
-
-test("nearest stored image deadline comes from shared storage data and remains consistent across pending and printed tabs", async () => {
-  await mountAdmin({
-    data: imageRetentionSummary(120),
-    clock: true,
-    printJobs: [printJob("pending", 18), printJob("printed", 22)],
-  });
-  await page
-    .getByRole("navigation", { name: "Quản lý studio" })
-    .getByRole("button", { name: /^Hàng chờ in/ })
-    .click();
+test("nearest stored image deadline comes from shared storage data and counts down with the clock", async () => {
+  const data = imageRetentionSummary(120);
+  data.checkedAt = new Date(retentionClock).toISOString();
+  await mountAdmin({ data, clock: true });
+  await openAssistant();
   await nearestImage().waitFor();
-  assert.equal(await nearestImage().locator("b").innerText(), "2 giờ 00 phút");
-  assert.equal(
-    await page.getByText("Lệnh sắp xóa nhất", { exact: true }).count(),
-    0,
+  assert.equal(await expiryLabel().innerText(), "2 giờ 00 phút");
+  assert.match(await nearestImage().innerText(), /Hết hạn lúc 14:00 07\/10\/2026/);
+  assert.match(
+    await page.locator(".storage-heading .storage-updated").innerText(),
+    /12:00 07\/10\/2026/,
   );
-  await page.getByText("#123456 · Fixture pending", { exact: true }).waitFor();
   await assertRetentionFits();
-  await page
-    .locator(".print-view-tabs")
-    .getByRole("button", { name: "Đã in", exact: true })
-    .click();
-  await page.getByText("#654321 · Fixture printed", { exact: true }).waitFor();
-  assert.equal(await nearestImage().locator("b").innerText(), "2 giờ 00 phút");
+  assert.equal(storageReads().length, 1, "the assistant reuses the storage monitor");
+  await page.clock.fastForward(15000);
   assert.equal(
     storageReads().length,
     1,
-    "print statuses must reuse the storage monitor",
+    "the local expiry countdown cannot introduce a storage poll",
   );
-  await page.clock.fastForward(60000);
+  await page.clock.fastForward(45000);
   await page.waitForFunction(
     () =>
-      document.querySelector(".print-day-countdown b")?.textContent ===
+      document.querySelector(".storage-expiry strong")?.textContent ===
       "1 giờ 59 phút",
   );
-  await page.getByRole("button", { name: "Chờ in", exact: true }).click();
-  assert.equal(await nearestImage().locator("b").innerText(), "1 giờ 59 phút");
+  assert.equal(
+    storageReads().length,
+    2,
+    "the assistant reuses the provider's 30-second monitor",
+  );
+  assert.match(await nearestImage().innerText(), /Hết hạn lúc 14:00 07\/10\/2026/);
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("nearest image countdown distinguishes overdue files, no stored images, and unavailable deadline measurements", async () => {
@@ -1339,28 +1351,28 @@ test("nearest image countdown distinguishes overdue files, no stored images, and
     [invalid, "Chưa lấy được hạn xoá ảnh"],
   ]) {
     await mountAdmin({ data, clock: true });
-    await navButton("Hàng chờ in").click();
+    await openAssistant();
     await nearestImage().waitFor();
-    assert.equal(await nearestImage().locator("b").innerText(), expected);
+    assert.equal(await expiryLabel().innerText(), expected);
     await assertRetentionFits();
     assert.equal(storageReads().length, 1);
     assert.deepEqual(mutations(), []);
-    assert.deepEqual(pageErrors, []);
+    assertClean();
   }
 });
 
 test("failed retention refresh keeps the measured deadline labeled stale and recovers with a new deadline", async () => {
   await mountAdmin({ data: imageRetentionSummary(120), clock: true });
-  await navButton("Hàng chờ in").click();
+  await openAssistant();
   await nearestImage().waitFor();
   storageError = "Fixture retention measurement temporarily unavailable.";
   await pollOnce({ failing: true });
-  await nearestImage().getByText("Số liệu cũ", { exact: true }).waitFor();
-  assert.equal(await nearestImage().locator("b").innerText(), "2 giờ 00 phút");
+  await nearestImage().getByText(/Số liệu cũ/).waitFor();
+  assert.equal(await expiryLabel().innerText(), "2 giờ 00 phút");
   await pollOnce({ failing: true });
   await page.waitForFunction(
     () =>
-      document.querySelector(".print-day-countdown b")?.textContent ===
+      document.querySelector(".storage-expiry strong")?.textContent ===
       "1 giờ 59 phút",
   );
   storageError = null;
@@ -1368,48 +1380,12 @@ test("failed retention refresh keeps the measured deadline labeled stale and rec
   await pollOnce();
   await page.waitForFunction(
     () =>
-      document.querySelector(".print-day-countdown b")?.textContent ===
+      document.querySelector(".storage-expiry strong")?.textContent ===
       "3 giờ 59 phút",
   );
-  assert.equal(
-    await nearestImage().getByText("Số liệu cũ", { exact: true }).count(),
-    0,
-  );
+  assert.equal(await nearestImage().getByText(/Số liệu cũ/).count(), 0);
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
-});
-
-test("initial retention error and pending storage reads do not invent an image expiry deadline", async () => {
-  await mountAdmin({ error: "Fixture cannot read stored images." });
-  await navButton("Hàng chờ in").click();
-  await nearestImage().waitFor();
-  // The error appears once the automatic retry has also failed.
-  await nearestImage()
-    .locator("b", { hasText: "Chưa lấy được hạn xoá ảnh" })
-    .waitFor();
-  assert.equal(storageReads().length, 2, "the first read and its one automatic retry");
-  // Hold the provider's first response to verify the loading state on the real queue.
-  await createPage();
-  currentSummary = imageRetentionSummary(120);
-  storageError = null;
-  requests = [];
-  pageErrors = [];
-  holdStorageReads = true;
-  await page.goto(`http://127.0.0.1:${server.address().port}/admin-test`);
-  await page.waitForFunction(() => typeof window.mountAdmin === "function");
-  await page.evaluate(() => window.mountAdmin());
-  await navButton("Hàng chờ in").click();
-  await nearestImage().waitFor();
-  assert.equal(await nearestImage().locator("b").innerText(), "Đang kiểm tra…");
-  releaseStorageReads();
-  await page.waitForFunction(
-    () =>
-      document.querySelector(".print-day-countdown b")?.textContent !==
-      "Đang kiểm tra…",
-  );
-  assert.equal(storageReads().length, 1);
-  assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 function r2Summary(usedGB = 1, limitGB = 10) {
@@ -1477,7 +1453,7 @@ test("R2 warnings use their own budget at 80/90 percent while MongoDB remains be
         1,
       );
     }
-    assert.deepEqual(pageErrors, []);
+    assertClean();
     assert.deepEqual(mutations(), []);
   }
 });
@@ -1513,7 +1489,7 @@ test("admins see the configured R2 and MongoDB limits without adjustment control
   assert.equal(currentSummary.r2.quota.limitGB, 10);
   assert.equal(currentSummary.quota.limitMB, 512);
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("R2 outages show unknown storage and expiry without inventing empty data or allowing cleanup", async () => {
@@ -1545,14 +1521,9 @@ test("R2 outages show unknown storage and expiry without inventing empty data or
       .count(),
     0,
   );
-  await navButton("Hàng chờ in").click();
-  await page.getByRole("button", { name: "Chờ in", exact: true }).click();
-  assert.equal(
-    await nearestImage().locator("b").innerText(),
-    "Chưa lấy được hạn xoá ảnh",
-  );
+  assert.equal(await expiryLabel().innerText(), "Chưa lấy được hạn xoá ảnh");
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("R2 storage fits phones and staff cannot edit budgets", async () => {
@@ -1569,7 +1540,7 @@ test("R2 storage fits phones and staff cannot edit budgets", async () => {
       "R2 storage overflow at " + width + "px",
     );
   }
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("active R2 leads the photo area while MongoDB capacity and collapsed file totals stay separate", async () => {
@@ -1650,7 +1621,7 @@ test("active R2 leads the photo area while MongoDB capacity and collapsed file t
   await assertReadOnlyLimits();
   assert.equal(storageReads().length, 1);
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("native file details expand and collapse by keyboard without extra storage requests", async () => {
@@ -1671,7 +1642,7 @@ test("native file details expand and collapse by keyboard without extra storage 
   assert.equal(await breakdown.locator("dl").isVisible(), false);
   assert.equal(storageReads().length, 1);
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("available flags with missing or invalid usage never invent zero R2 or MongoDB usage", async () => {
@@ -1698,7 +1669,7 @@ test("available flags with missing or invalid usage never invent zero R2 or Mong
     assert.doesNotMatch(await page.locator(".storage-r2").innerText(), /NaN/);
     assert.equal(storageReads().length, 1);
     assert.deepEqual(mutations(), []);
-    assert.deepEqual(pageErrors, []);
+    assertClean();
   }
 });
 
@@ -1707,7 +1678,7 @@ test("small R2 usage keeps its actual MB measurement visible", async () => {
   assert.equal(await page.locator(".storage-r2-used strong").innerText(), "1 MB");
   assert.doesNotMatch(await page.locator(".storage-r2-used").innerText(), /(?:^|\s)0 GB/);
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("missing R2 file counts leave combined totals incomplete and block expired cleanup", async () => {
@@ -1721,53 +1692,24 @@ test("missing R2 file counts leave combined totals incomplete and block expired 
     assert.equal(await page.locator(".storage-cleanup-reason").innerText(), "Chưa đo đủ kho ảnh. Chờ kết nối lại rồi mới dọn.");
     assert.equal(storageReads().length, 1);
     assert.deepEqual(mutations(), []);
-    assert.deepEqual(pageErrors, []);
+    assertClean();
   }
 });
 
-test("assistant shows the nearest actual image expiry date and advances its countdown with the shared monitor", async () => {
-  const data = r2Summary();
-  data.retention = imageRetentionSummary(120).retention;
-  data.checkedAt = new Date(retentionClock).toISOString();
+test("unavailable retention with a valid date stays unknown in the assistant", async () => {
+  const data = r2Summary(9);
+  data.retention = {
+    available: false,
+    nextImageExpiresAt: new Date(retentionClock + 120 * 60000).toISOString(),
+  };
   await mountAdmin({ data, clock: true });
-  await navButton("Hàng chờ in").click();
-  await page.getByRole("button", { name: "Trợ lí Minh Dâm", exact: true }).click();
-  const expiry = page.locator(".storage-lifecycle").getByLabel("Ảnh sắp xoá gần nhất", { exact: true });
-  await expiry.waitFor();
-  assert.equal(await expiry.locator("strong").innerText(), "2 giờ 00 phút");
-  assert.match(await expiry.innerText(), /Hết hạn lúc 14:00 07\/10\/2026/);
-  assert.match(await page.locator(".storage-heading .storage-updated").innerText(), /12:00 07\/10\/2026/);
-  assert.equal(storageReads().length, 1);
-  await page.clock.fastForward(15000);
-  assert.equal(storageReads().length, 1, "the local expiry countdown cannot introduce a storage poll");
-  await page.clock.fastForward(45000);
-  await page.waitForFunction(() => document.querySelector(".storage-expiry strong")?.textContent === "1 giờ 59 phút");
-  assert.equal(storageReads().length, 2, "the assistant reuses the provider's 30-second monitor");
-  assert.match(await expiry.innerText(), /Hết hạn lúc 14:00 07\/10\/2026/);
-  await page.getByRole("button", { name: "Xem lệnh đã in", exact: true }).click();
+  await openAssistant();
   await nearestImage().waitFor();
-  assert.equal(await nearestImage().locator("b").innerText(), "1 giờ 59 phút");
-  assert.equal(storageReads().length, 2);
-  assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
-});
-
-test("unavailable retention with a valid date stays unknown in both the assistant and print queue", async () => {
-  const data = r2Summary();
-  data.retention = { available: false, nextImageExpiresAt: new Date(retentionClock + 120 * 60000).toISOString() };
-  await mountAdmin({ data, clock: true });
-  await navButton("Hàng chờ in").click();
-  await nearestImage().waitFor();
-  assert.equal(await nearestImage().locator("b").innerText(), "Chưa lấy được hạn xoá ảnh");
-  assert.equal(await nearestImage().getAttribute("title"), null);
-  await page.getByRole("button", { name: "Trợ lí Minh Dâm", exact: true }).click();
-  const expiry = page.locator(".storage-lifecycle").getByLabel("Ảnh sắp xoá gần nhất", { exact: true });
-  await expiry.waitFor();
-  assert.equal(await expiry.locator("strong").innerText(), "Chưa lấy được hạn xoá ảnh");
-  assert.doesNotMatch(await expiry.innerText(), /Hết hạn lúc|14:00|2 giờ/);
+  assert.equal(await expiryLabel().innerText(), "Chưa lấy được hạn xoá ảnh");
+  assert.doesNotMatch(await nearestImage().innerText(), /Hết hạn lúc|14:00|2 giờ/);
   assert.equal(storageReads().length, 1);
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("refreshes reflect backend MongoDB limits without changing the independent R2 budget", async () => {
@@ -1802,19 +1744,17 @@ test("refreshes reflect backend MongoDB limits without changing the independent 
   assert.equal(currentSummary.quota.limitMB, 768);
   await assertReadOnlyLimits();
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("active R2 admin assistant keeps readable limits at all target widths with file details expanded", async () => {
+  // The assistant only opens from a storage warning, so both states are near the R2 budget.
   for (const [state, usedGB] of [
-    ["normal", 1],
+    ["warning", 8.5],
     ["critical", 9],
   ]) {
     await mountAdmin({ data: r2Summary(usedGB) });
-    await navButton("Hàng chờ in").click();
-    await page
-      .getByRole("button", { name: "Trợ lí Minh Dâm", exact: true })
-      .click();
+    await openAssistant();
     await page.locator(".storage-photo-area").waitFor();
     assert.equal(
       await page.locator(".toast-error").count(),
@@ -1906,6 +1846,6 @@ test("active R2 admin assistant keeps readable limits at all target widths with 
       "expanding file details and resizing reuse the monitor",
     );
     assert.deepEqual(mutations(), []);
-    assert.deepEqual(pageErrors, []);
+    assertClean();
   }
 });

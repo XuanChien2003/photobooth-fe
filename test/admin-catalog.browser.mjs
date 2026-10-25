@@ -9,38 +9,49 @@ import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
 import tailwindcss from "@tailwindcss/vite";
-import { chromium } from "../../Photo_BE/node_modules/playwright/index.mjs";
+import { chromium } from "../../photobooth-be/node_modules/playwright/index.mjs";
 
+// Packages ("Bảng giá") are the generic ResourceManager; frames ("Khung ảnh") have their own page.
 const fixture = `
   import React from 'react';
   import { createRoot } from 'react-dom/client';
   import { ResourceManager } from '/src/admin/resources.jsx';
-  import { ToastProvider } from '/src/studio.jsx';
+  import { FramesManager } from '/src/admin/frames.jsx';
+  import { StudioContext, ToastProvider } from '/src/studio.jsx';
   import '/src/tailwind.css';
   const root = createRoot(document.getElementById('root'));
   let run = 0;
+  const studio = {
+    settings: { themes: [{ name: 'Hoa' }, { name: 'Mùa hè' }] },
+    rooms: [{ branch: 'Chi nhánh A' }, { branch: 'Chi nhánh B' }],
+    // The public catalog is reloaded after every change so kiosks see it.
+    reload: () => { window.catalogReloads++; },
+  };
   window.mountCatalog = (resource) => {
     window.notifications = [];
-    const title = resource === 'packages' ? 'Gói chụp' : 'Khung ảnh';
-    root.render(React.createElement(ToastProvider, { key: ++run },
-      React.createElement('div', { className: 'admin-shell' },
-        React.createElement('aside', { className: 'admin-sidebar' },
-          React.createElement('div', { className: 'sidebar-brand' }, 'NXC / STUDIO'),
-          React.createElement('p', { className: 'sidebar-label' }, 'QUẢN LÝ'),
-          React.createElement('nav', null,
-            React.createElement('button', { className: resource === 'packages' ? 'active' : '' }, 'Gói chụp'),
-            React.createElement('button', { className: resource === 'frames' ? 'active' : '' }, 'Khung ảnh'))),
-        React.createElement('main', { className: 'admin-main' },
-          React.createElement('header', { className: 'admin-header' },
-            React.createElement('div', null,
-              React.createElement('p', { className: 'eyebrow' }, 'NXC / QUẢN LÝ'),
-              React.createElement('h2', null, title))),
-          React.createElement('div', { className: 'admin-content' },
-            React.createElement(ResourceManager, {
-              resource,
-              notify: (message) => window.notifications.push(message),
-              me: { _id: 'fixture-admin', email: 'admin@fixture.local', role: 'admin' },
-            }))))));
+    window.catalogReloads = 0;
+    const notify = (message) => window.notifications.push(message);
+    const title = resource === 'packages' ? 'Bảng giá' : 'Khung ảnh';
+    const content = resource === 'packages'
+      ? React.createElement(ResourceManager, {
+          resource,
+          notify,
+          me: { _id: 'fixture-admin', email: 'admin@fixture.local', role: 'admin' },
+        })
+      : React.createElement(FramesManager, { notify });
+    root.render(React.createElement(StudioContext.Provider, { key: ++run, value: studio },
+      React.createElement(ToastProvider, null,
+        React.createElement('div', { className: 'admin-shell' },
+          React.createElement('aside', { className: 'admin-sidebar' },
+            React.createElement('div', { className: 'sidebar-brand' }, 'NXC / STUDIO'),
+            React.createElement('nav', null,
+              React.createElement('button', { className: resource === 'packages' ? 'active' : '' }, 'Bảng giá'),
+              React.createElement('button', { className: resource === 'frames' ? 'active' : '' }, 'Khung ảnh'))),
+          React.createElement('main', { className: 'admin-main' },
+            React.createElement('header', { className: 'admin-header' },
+              React.createElement('div', null,
+                React.createElement('h2', null, title))),
+            React.createElement('div', { className: 'admin-content' }, content))))));
   };
 `;
 
@@ -49,6 +60,14 @@ function frameImage(color, motif) {
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
 }
 
+// What the API returns for a package: every field the form needs and validates.
+const packageDefaults = {
+  shots: 12,
+  selectCount: 4,
+  countdownSeconds: 10,
+  printSize: "full",
+  branches: [],
+};
 const packageFixtures = [
   {
     _id: "package-1",
@@ -58,6 +77,7 @@ const packageFixtures = [
     duration: 10,
     prints: 1,
     active: true,
+    ...packageDefaults,
   },
   {
     _id: "package-2",
@@ -67,6 +87,7 @@ const packageFixtures = [
     duration: 20,
     prints: 2,
     active: true,
+    ...packageDefaults,
   },
   {
     _id: "package-3",
@@ -76,8 +97,10 @@ const packageFixtures = [
     duration: 30,
     prints: 3,
     active: false,
+    ...packageDefaults,
   },
 ];
+const themeFixtures = [{ name: "Hoa" }, { name: "Mùa hè" }];
 const frameFixtures = [
   {
     _id: "frame-1",
@@ -123,14 +146,17 @@ const frameFixtures = [
     active: true,
   },
 ];
+// The editor sends only these fields back (the server owns the rest).
+const frameBody = ({ _id, ...editable }) => editable;
 
 let server;
 let browser;
 let page;
 let data;
 let requests = [];
+let unexpected = [];
 let pageErrors = [];
-const screenshotDirectory = join(tmpdir(), "nxc-admin-catalog-review");
+const screenshotDirectory = join(tmpdir(), "photobooth-fe-admin-catalog-review");
 
 async function readJson(request) {
   let body = "";
@@ -190,6 +216,14 @@ before(async () => {
       };
       requests.push(entry);
       response.setHeader("Content-Type", "application/json; charset=utf-8");
+      const send = (value, status = 200) => {
+        response.statusCode = status;
+        response.end(JSON.stringify(value));
+      };
+      if (path === "/api/admin/themes" && entry.method === "GET") {
+        send(data.themes);
+        return;
+      }
       const move = path.match(/^\/api\/admin\/frames\/([^/]+)\/move$/);
       if (move && entry.method === "POST") {
         const frame = data.frames.find((item) => item._id === move[1]);
@@ -198,10 +232,7 @@ before(async () => {
           .sort((a, b) => a.order - b.order || a._id.localeCompare(b._id));
         const ids = group.map((item) => item._id);
         if (ids.join() !== entry.body.expectedIds.join()) {
-          response.statusCode = 409;
-          response.end(
-            JSON.stringify({ message: "Danh sách khung vừa thay đổi." }),
-          );
+          send({ message: "Danh sách khung vừa thay đổi." }, 409);
           return;
         }
         const index = ids.indexOf(frame._id);
@@ -210,30 +241,31 @@ before(async () => {
         group.forEach((item, i) => {
           item.order = i + 1;
         });
-        response.end(JSON.stringify(data.frames));
+        send(data.frames);
         return;
       }
       const match = path.match(
         /^\/api\/admin\/(packages|frames)(?:\/([^/]+))?$/,
       );
       if (!match) {
-        response.statusCode = 404;
-        response.end(JSON.stringify({ message: "Unexpected fixture request" }));
+        unexpected.push(`${entry.method} ${path}`);
+        send({ message: "Unexpected fixture request" }, 404);
         return;
       }
       const [, resource, id] = match;
-      if (entry.method === "GET") response.end(JSON.stringify(data[resource]));
+      if (entry.method === "GET")
+        send(
+          id ? data[resource].find((item) => item._id === id) : data[resource],
+        );
       else if (entry.method === "PUT") {
         data[resource] = data[resource].map((item) =>
           item._id === id ? { ...item, ...entry.body } : item,
         );
-        response.end(
-          JSON.stringify(data[resource].find((item) => item._id === id)),
-        );
+        send(data[resource].find((item) => item._id === id));
       } else if (entry.method === "POST") {
         const item = { ...entry.body, _id: `${resource}-new` };
         data[resource].push(item);
-        response.end(JSON.stringify(item));
+        send(item);
       } else if (entry.method === "DELETE") {
         if (resource === "frames")
           data.frames = data.frames.filter((item) => item._id !== id);
@@ -241,10 +273,10 @@ before(async () => {
           data.packages = data.packages.map((item) =>
             item._id === id ? { ...item, active: false } : item,
           );
-        response.end(JSON.stringify({ ok: true }));
+        send({ ok: true });
       } else {
-        response.statusCode = 405;
-        response.end(JSON.stringify({ message: "Unexpected fixture method" }));
+        unexpected.push(`${entry.method} ${path}`);
+        send({ message: "Unexpected fixture method" }, 405);
       }
       return;
     }
@@ -281,37 +313,47 @@ after(async () => {
   if (server) await new Promise((resolve) => server.close(resolve));
 });
 
+const CARDS = { packages: ".package-card", frames: ".frames-grid > li" };
+
 async function mount(resource, overrides = {}) {
   data = {
     packages: structuredClone(packageFixtures),
     frames: structuredClone(frameFixtures),
+    themes: structuredClone(themeFixtures),
     ...overrides,
   };
   requests = [];
+  unexpected = [];
   pageErrors = [];
   await page.goto(`http://127.0.0.1:${server.address().port}/catalog`);
   await page.waitForFunction(() => typeof window.mountCatalog === "function");
   await page.evaluate((resource) => window.mountCatalog(resource), resource);
-  await page
-    .locator(resource === "packages" ? ".package-card" : ".frame-card")
-    .first()
-    .waitFor();
+  await page.locator(CARDS[resource]).first().waitFor();
 }
 
 const mutations = () => requests.filter((request) => request.method !== "GET");
-const cards = (resource) =>
-  page.locator(resource === "packages" ? ".package-card" : ".frame-card");
+const cards = (resource) => page.locator(CARDS[resource]);
+const notifications = () => page.evaluate(() => window.notifications);
+const catalogReloads = () => page.evaluate(() => window.catalogReloads);
 
 async function expectCount(resource, expected) {
   await page.waitForFunction(
-    ({ resource, expected }) =>
-      document.querySelectorAll(
-        resource === "packages" ? ".package-card" : ".frame-card",
-      ).length === expected,
-    { resource, expected },
+    ({ selector, expected }) =>
+      document.querySelectorAll(selector).length === expected,
+    { selector: CARDS[resource], expected },
   );
   assert.equal(await cards(resource).count(), expected);
 }
+
+// Names of the frames in list order (grouped by theme, then by position inside the theme).
+const frameNames = () =>
+  page
+    .locator(".frames-grid > li .frames-card-image")
+    .evaluateAll((buttons) =>
+      buttons.map((button) =>
+        button.getAttribute("aria-label").replace(/^Sửa khung /, ""),
+      ),
+    );
 
 async function noOverflow() {
   assert.equal(
@@ -322,6 +364,17 @@ async function noOverflow() {
     "Catalog must fit the viewport",
   );
 }
+
+// No script errors and no request the fixture did not expect (the page would show an error toast).
+function assertClean() {
+  assert.deepEqual(pageErrors, []);
+  assert.deepEqual(unexpected, []);
+}
+
+const themeSelect = () =>
+  page.getByRole("combobox", { name: /^Chủ đề/ });
+const sizeSelect = () =>
+  page.getByRole("combobox", { name: /^Kích thước/ });
 
 test("package search and status filters combine without changing stored data", async () => {
   await mount("packages");
@@ -337,7 +390,7 @@ test("package search and status filters combine without changing stored data", a
   await expectCount("packages", 1);
   assert.match(await cards("packages").innerText(), /Hội bạn/);
   assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
 test("editing a package preserves included prints and other fields in the API payload", async () => {
@@ -363,13 +416,15 @@ test("editing a package preserves included prints and other fields in the API pa
     await cards("packages").filter({ hasText: "Cặp đôi" }).innerText(),
     /135/,
   );
-  assert.deepEqual(pageErrors, []);
+  assert.deepEqual(await notifications(), ["Đã cập nhật gói chụp “Cặp đôi”."]);
+  assertClean();
 });
 
 test("adding a package validates required fields and sends numeric values", async () => {
   await mount("packages");
   await page
     .getByRole("button", { name: /Thêm gói chụp|Thêm gói|Thêm mới/ })
+    .first()
     .click();
   const dialog = page.getByRole("dialog");
   await dialog
@@ -401,53 +456,142 @@ test("adding a package validates required fields and sends numeric values", asyn
         price: 150000,
         duration: 25,
         prints: 3,
+        // Defaults of a new package: 12 shots, pick 4, 10 s countdown, full 10 × 15 sheet, every branch.
+        shots: 12,
+        selectCount: 4,
+        countdownSeconds: 10,
+        printSize: "full",
+        branches: [],
         active: true,
       },
     },
   ]);
   await expectCount("packages", 4);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
-test("frame search, status, and theme filters combine without dropping the source data", async () => {
-  await mount("frames");
-  await expectCount("frames", 4);
-  await page
-    .getByRole("combobox", { name: "Lọc chủ đề", exact: true })
-    .selectOption({ label: "Hoa" });
-  await expectCount("frames", 2);
-  await page
-    .getByRole("combobox", { name: "Lọc trạng thái", exact: true })
-    .selectOption("active");
-  await expectCount("frames", 1);
-  await page.getByLabel("Tìm khung ảnh", { exact: true }).fill("dem hoa");
-  await expectCount("frames", 1);
-  await page.getByLabel("Tìm khung ảnh", { exact: true }).fill("Nắng xanh");
-  await expectCount("frames", 0);
-  assert.deepEqual(mutations(), []);
-  assert.deepEqual(pageErrors, []);
-});
-
-test("editing a frame preserves its image and detected photo slots", async () => {
-  await mount("frames");
-  await page.getByRole("button", { name: "Sửa Đêm hoa", exact: true }).click();
+test("a package can be limited to chosen branches", async () => {
+  await mount("packages");
+  const card = () => cards("packages").filter({ hasText: "Cặp đôi" });
+  assert.match(await card().innerText(), /Cấu hình chung · mọi chi nhánh/);
+  await card().getByRole("button", { name: /Chỉnh sửa/ }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.locator('input[name="name"]').fill("Đêm hoa mới");
+  const everyBranch = dialog.getByLabel("Tất cả chi nhánh (cấu hình chung)");
+  assert.equal(await everyBranch.isChecked(), true);
+  await dialog.getByLabel("Chi nhánh A", { exact: true }).check();
+  assert.equal(await everyBranch.isChecked(), false);
   await dialog
     .getByRole("button", { name: "Lưu thay đổi", exact: true })
     .click();
   await dialog.waitFor({ state: "hidden" });
+  assert.deepEqual(mutations().map((m) => [m.method, m.body.branches]), [
+    ["PUT", ["Chi nhánh A"]],
+  ]);
+  assert.match(await card().innerText(), /Cấu hình riêng: Chi nhánh A/);
+  assertClean();
+});
+
+test("frame theme and size filters combine without changing stored data", async () => {
+  await mount("frames");
+  await expectCount("frames", 4);
+  assert.equal(await page.locator(".frames-count").innerText(), "4 khung");
+  // Grouped by the theme order in the studio settings, then by position inside the theme.
+  assert.deepEqual(await frameNames(), [
+    "Đêm hoa",
+    "Vườn hồng",
+    "Nắng xanh",
+    "Kỷ niệm",
+  ]);
+  await themeSelect().selectOption({ label: "Hoa" });
+  await expectCount("frames", 2);
+  await sizeSelect().selectOption({ label: "Size nhỏ" });
+  await expectCount("frames", 1);
+  assert.deepEqual(await frameNames(), ["Vườn hồng"]);
+  assert.equal(await page.locator(".frames-count").innerText(), "1 khung");
+  await sizeSelect().selectOption({ label: "Size lớn" });
+  assert.deepEqual(await frameNames(), ["Đêm hoa"]);
+  await sizeSelect().selectOption({ label: "Tất cả" });
+  await themeSelect().selectOption({ label: "Khung lẻ" });
+  assert.deepEqual(await frameNames(), ["Kỷ niệm"]);
+  await themeSelect().selectOption({ label: "Mùa hè" });
+  await sizeSelect().selectOption({ label: "Size nhỏ" });
+  await expectCount("frames", 0);
+  await page
+    .getByRole("heading", { name: "Không có khung phù hợp bộ lọc" })
+    .waitFor();
+  assert.deepEqual(mutations(), []);
+  assertClean();
+});
+
+test("editing a frame loads the full frame and sends back only the editable fields", async () => {
+  await mount("frames");
+  await page.getByRole("button", { name: "Sửa Đêm hoa", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Cập nhật frame size lớn", exact: true })
+    .waitFor();
+  assert.equal(
+    await page.getByLabel("Tên khung", { exact: true }).inputValue(),
+    "Đêm hoa",
+  );
+  // Two photo regions in the fixture: the editor reports the capacity it detected.
+  assert.match(await page.locator(".frame-capacity").innerText(), /2/);
+  await page.getByLabel("Tên khung", { exact: true }).fill("Đêm hoa mới");
+  await page.getByRole("button", { name: "Hoàn thành", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Sửa Đêm hoa mới", exact: true })
+    .waitFor();
   assert.deepEqual(mutations(), [
     {
       method: "PUT",
       path: "/api/admin/frames/frame-1",
-      body: { ...frameFixtures[0], name: "Đêm hoa mới" },
+      body: { ...frameBody(frameFixtures[0]), name: "Đêm hoa mới" },
     },
   ]);
-  await page
-    .getByRole("button", { name: "Sửa Đêm hoa mới", exact: true })
-    .waitFor();
-  assert.deepEqual(pageErrors, []);
+  assert.deepEqual(await notifications(), ["Đã cập nhật khung “Đêm hoa mới”."]);
+  assert.ok((await catalogReloads()) > 0, "the public catalog is reloaded");
+  assertClean();
+});
+
+test("a frame cannot be saved without a photo region and the editor can be left without saving", async () => {
+  await mount("frames");
+  await page.getByRole("button", { name: "Sửa Đêm hoa", exact: true }).click();
+  await page.getByRole("heading", { name: /Cập nhật frame/ }).waitFor();
+  await page.getByRole("button", { name: "Hủy", exact: true }).click();
+  await cards("frames").first().waitFor();
+  assert.deepEqual(mutations(), []);
+  await page.getByRole("button", { name: /Thêm mới frame/ }).click();
+  await page.getByRole("menuitem", { name: /Size lớn/ }).click();
+  await page.getByRole("heading", { name: "Thêm mới frame size lớn", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Hoàn thành", exact: true }).click();
+  await page.getByText("Vui lòng tải ảnh khung lên.").waitFor();
+  assert.deepEqual(mutations(), [], "an empty frame must not reach the API");
+  await page.getByRole("button", { name: "Quay lại danh sách khung" }).click();
+  await expectCount("frames", 4);
+  assertClean();
+});
+
+test("turning a frame off keeps all its data and only flips active", async () => {
+  await mount("frames");
+  await page.getByRole("button", { name: "Tắt Đêm hoa", exact: true }).click();
+  await page.getByRole("button", { name: "Bật Đêm hoa", exact: true }).waitFor();
+  assert.deepEqual(mutations(), [
+    {
+      method: "PUT",
+      path: "/api/admin/frames/frame-1",
+      body: { ...frameBody(frameFixtures[0]), active: false },
+    },
+  ]);
+  assert.deepEqual(await notifications(), [
+    "Đã tắt khung — khách không thấy khung này.",
+  ]);
+  // The inactive frame stays in the list and is marked off.
+  assert.match(
+    await cards("frames")
+      .filter({ has: page.getByRole("button", { name: "Bật Đêm hoa", exact: true }) })
+      .innerText(),
+    /Đã tắt/,
+  );
+  assertClean();
 });
 
 test("frame deletion honors cancellation and deletes only the confirmed frame", async () => {
@@ -466,41 +610,40 @@ test("frame deletion honors cancellation and deletes only the confirmed frame", 
     "frame-3",
     "frame-4",
   ]);
-  assert.deepEqual(pageErrors, []);
+  assert.deepEqual(await notifications(), ["Đã xóa khung."]);
+  assertClean();
 });
 
-test("deleting the last frame in the selected theme resets the stale theme filter", async () => {
+test("deleting the last frame of a theme keeps the theme and explains the empty list", async () => {
   await mount("frames");
-  const theme = page.getByRole("combobox", {
-    name: "Lọc chủ đề",
-    exact: true,
-  });
-  await theme.selectOption({ label: "Mùa hè" });
+  await themeSelect().selectOption({ label: "Mùa hè" });
   await expectCount("frames", 1);
   page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Xóa Nắng xanh", exact: true }).click();
+  await expectCount("frames", 0);
+  // Themes belong to the studio, not to its frames: the theme stays selectable.
+  assert.equal(await themeSelect().inputValue(), "Mùa hè");
   await page
-    .getByRole("button", { name: "Xóa Nắng xanh", exact: true })
-    .click();
+    .getByRole("heading", { name: "Không có khung phù hợp bộ lọc" })
+    .waitFor();
+  await themeSelect().selectOption({ label: "Tất cả" });
   await expectCount("frames", 3);
-  assert.equal(await theme.inputValue(), "all");
-  assert.equal(await theme.locator('option[value="theme:Mùa hè"]').count(), 0);
   assert.deepEqual(mutations(), [
     { method: "DELETE", path: "/api/admin/frames/frame-3", body: null },
   ]);
-  assert.deepEqual(pageErrors, []);
+  assertClean();
 });
 
-test("frames can move without opening the editor and search keeps complete-group ordering safe", async () => {
+test("frames move inside their theme without opening the editor", async () => {
   await mount("frames");
-  const up = page.getByRole("button", {
-    name: "Đưa Vườn hồng lên trước",
-    exact: true,
-  });
-  await up.click();
+  await page
+    .getByRole("button", { name: "Đưa Vườn hồng lên trước", exact: true })
+    .click();
   await page.waitForFunction(
     () =>
-      document.querySelector(".frame-catalog-card h4")?.textContent ===
-      "Vườn hồng",
+      document
+        .querySelector(".frames-grid > li .frames-card-image")
+        ?.getAttribute("aria-label") === "Sửa khung Vườn hồng",
   );
   assert.deepEqual(
     data.frames
@@ -509,7 +652,12 @@ test("frames can move without opening the editor and search keeps complete-group
       .map((frame) => frame._id),
     ["frame-2", "frame-1"],
   );
-  assert.equal(await page.getByRole("dialog").count(), 0);
+  assert.deepEqual(await frameNames(), [
+    "Vườn hồng",
+    "Đêm hoa",
+    "Nắng xanh",
+    "Kỷ niệm",
+  ]);
   assert.deepEqual(mutations(), [
     {
       method: "POST",
@@ -517,61 +665,60 @@ test("frames can move without opening the editor and search keeps complete-group
       body: { direction: "up", expectedIds: ["frame-1", "frame-2"] },
     },
   ]);
-  assert.equal(
-    await page
-      .getByRole("button", { name: "Đưa Vườn hồng lên trước", exact: true })
-      .isDisabled(),
-    true,
-  );
-  await page.getByLabel("Tìm khung ảnh", { exact: true }).fill("Đêm");
-  await expectCount("frames", 1);
-  assert.equal(
-    await page
-      .getByRole("button", { name: "Đưa Đêm hoa lên trước", exact: true })
-      .isDisabled(),
-    true,
-  );
-  assert.match(
-    await page.locator(".frame-catalog-sort-hint").innerText(),
-    /xóa từ khóa/,
-  );
-  await page.getByLabel("Tìm khung ảnh", { exact: true }).fill("");
-  await page
-    .getByRole("combobox", { name: "Lọc chủ đề", exact: true })
-    .selectOption({ label: "Hoa" });
-  await expectCount("frames", 2);
-  assert.equal(
-    await page
-      .getByRole("button", { name: "Đưa Đêm hoa lên trước", exact: true })
-      .isDisabled(),
-    false,
-  );
-  assert.deepEqual(pageErrors, []);
+  assert.deepEqual(await notifications(), ["Đã đổi thứ tự khung."]);
+  assertClean();
 });
 
-test("duplicate names have distinct accessible labels that survive filtering", async () => {
-  const frames = structuredClone(frameFixtures);
-  frames[0].name = "pink";
-  frames[1].name = "pink";
-  await mount("frames", { frames });
+test("moving a frame under a filter still sends its complete theme", async () => {
+  await mount("frames");
+  // Only "Đêm hoa" is visible in its theme, but "Vườn hồng" (the small size) shares the order.
+  await sizeSelect().selectOption({ label: "Size lớn" });
+  assert.deepEqual(await frameNames(), ["Đêm hoa", "Nắng xanh", "Kỷ niệm"]);
   await page
-    .getByRole("button", { name: "Sửa pink · 01", exact: true })
-    .waitFor();
-  await page
-    .getByRole("button", { name: "Sửa pink · 02", exact: true })
-    .waitFor();
-  await page
-    .getByRole("combobox", { name: "Lọc trạng thái", exact: true })
-    .selectOption("inactive");
-  await expectCount("frames", 1);
-  await page
-    .getByRole("button", { name: "Sửa pink · 02", exact: true })
+    .getByRole("button", { name: "Đưa Đêm hoa xuống sau", exact: true })
     .click();
-  assert.equal(
-    await page.getByRole("dialog").locator('input[name="name"]').inputValue(),
-    "pink",
+  await page.waitForFunction(() =>
+    window.notifications.includes("Đã đổi thứ tự khung."),
   );
-  assert.deepEqual(pageErrors, []);
+  assert.deepEqual(mutations(), [
+    {
+      method: "POST",
+      path: "/api/admin/frames/frame-1/move",
+      body: { direction: "down", expectedIds: ["frame-1", "frame-2"] },
+    },
+  ]);
+  assertClean();
+});
+
+test("a list changed on another device is reloaded instead of being reordered blindly", async () => {
+  await mount("frames");
+  // Another device already put "Vườn hồng" in front; this page still shows the old order.
+  data.frames.find((frame) => frame._id === "frame-2").order = 0;
+  await page
+    .getByRole("button", { name: "Đưa Đêm hoa xuống sau", exact: true })
+    .click();
+  await page
+    .getByRole("alert")
+    .filter({ hasText: "Danh sách khung vừa thay đổi." })
+    .waitFor();
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector(".frames-grid > li .frames-card-image")
+        ?.getAttribute("aria-label") === "Sửa khung Vườn hồng",
+  );
+  assert.deepEqual(
+    data.frames.find((frame) => frame._id === "frame-1").order,
+    1,
+    "the stale move changed nothing",
+  );
+  assert.deepEqual(await frameNames(), [
+    "Vườn hồng",
+    "Đêm hoa",
+    "Nắng xanh",
+    "Kỷ niệm",
+  ]);
+  assertClean();
 });
 
 test("catalogs and editors fit desktop and mobile widths with review screenshots", async () => {
@@ -584,83 +731,100 @@ test("catalogs and editors fit desktop and mobile widths with review screenshots
       await noOverflow();
       if (resource === "frames") {
         const geometry = await page
-          .locator(".frame-catalog-card")
-          .evaluateAll((cards) =>
-            cards.map((card) => {
-              const preview = card
-                .querySelector(".frame-catalog-preview")
-                .getBoundingClientRect();
-              const image = card
-                .querySelector(".frame-catalog-preview img")
+          .locator(".frames-grid > li")
+          .evaluateAll((items) =>
+            items.map((item) => {
+              const box = item.getBoundingClientRect();
+              const image = item
+                .querySelector(".frames-card-image img")
                 .getBoundingClientRect();
               return {
-                ratio: preview.width / preview.height,
+                card: [Math.round(box.left), Math.round(box.right)],
+                picture: [Math.round(image.left), Math.round(image.right)],
+                fits: box.left >= 0 && box.right <= innerWidth + 1,
                 contained:
-                  image.y >= preview.y && image.bottom <= preview.bottom + 1,
-                footer: getComputedStyle(
-                  card.querySelector(".frame-catalog-actions"),
-                ).backgroundColor,
-                buttons: [
-                  ...card.querySelectorAll(".frame-catalog-actions button"),
-                ].map((button) => {
-                  const r = button.getBoundingClientRect();
-                  return [r.width, r.height];
-                }),
+                  image.left >= box.left - 1 && image.right <= box.right + 1,
+                buttons: [...item.querySelectorAll(".frames-card-actions button")].map(
+                  (button) => {
+                    const r = button.getBoundingClientRect();
+                    return [Math.round(r.width), Math.round(r.height)];
+                  },
+                ),
+                // Buttons cut off by the card (overflow: hidden) cannot be pressed.
+                clipped: [...item.querySelectorAll(".frames-card-actions button")].filter(
+                  (button) => {
+                    const r = button.getBoundingClientRect();
+                    return r.left < box.left - 1 || r.right > box.right + 1;
+                  },
+                ).length,
               };
             }),
           );
         assert.ok(
-          geometry.every(
-            (g) => g.contained && g.ratio >= 1.49 && g.ratio <= 1.51,
-          ),
+          geometry.every((g) => g.fits && g.contained),
           JSON.stringify({ width, geometry }),
         );
+        // Five icon buttons per card, all inside the card and still big enough to hit on a phone.
         assert.ok(
           geometry.every(
             (g) =>
-              g.footer === "rgba(0, 0, 0, 0)" &&
-              g.buttons.every(([w, h]) => w >= 44 && h >= 44),
+              g.buttons.length === 5 &&
+              g.clipped === 0 &&
+              g.buttons.every(([w, h]) => w >= 22 && h >= 28),
           ),
+          JSON.stringify({ width, geometry }),
         );
       }
       await page.screenshot({
         path: join(screenshotDirectory, `${resource}-${width}.png`),
         fullPage: true,
       });
-      if (resource === "packages")
+      if (resource === "packages") {
         await cards(resource)
           .first()
           .getByRole("button", { name: /Sửa|Chỉnh sửa/ })
           .click();
-      else
+        await page.getByRole("dialog").waitFor();
+        await noOverflow();
+        const bounds = await page.getByRole("dialog").boundingBox();
+        assert.ok(
+          bounds.x >= 0 && bounds.x + bounds.width <= width + 1,
+          "Editor must fit the viewport",
+        );
+        // Header and Save stay visible while only the fields scroll on mobile.
+        const save = page.getByRole("dialog").getByRole("button", {
+          name: "Lưu thay đổi",
+          exact: true,
+        });
+        const saveBounds = await save.boundingBox();
+        assert.ok(
+          saveBounds.y >= bounds.y &&
+            saveBounds.y + saveBounds.height <= bounds.y + bounds.height + 1 &&
+            saveBounds.y + saveBounds.height <= height + 1,
+          "The editor Save button must be visible before any scrolling",
+        );
+        await save.click({ trial: true });
+      } else {
+        // The frame editor is a page, not a dialog: it must fit the width and keep its two actions.
         await page
           .getByRole("button", { name: "Sửa Đêm hoa", exact: true })
           .click();
-      await page.getByRole("dialog").waitFor();
-      await noOverflow();
-      const bounds = await page.getByRole("dialog").boundingBox();
-      assert.ok(
-        bounds.x >= 0 && bounds.x + bounds.width <= width + 1,
-        "Editor must fit the viewport",
-      );
-      // Header and Save stay visible while only the fields scroll on mobile.
-      const save = page.getByRole("dialog").getByRole("button", {
-        name: "Lưu thay đổi",
-        exact: true,
-      });
-      const saveBounds = await save.boundingBox();
-      assert.ok(
-        saveBounds.y >= bounds.y &&
-          saveBounds.y + saveBounds.height <= bounds.y + bounds.height + 1 &&
-          saveBounds.y + saveBounds.height <= height + 1,
-        "The editor Save button must be visible before any scrolling",
-      );
-      await save.click({ trial: true });
+        await page.locator(".frame-editor-page").waitFor();
+        await page.locator(".frame-board img").waitFor();
+        await noOverflow();
+        const board = await page.locator(".frame-board").boundingBox();
+        assert.ok(
+          board.x >= 0 && board.x + board.width <= width + 1,
+          "The frame board must fit the viewport",
+        );
+        for (const name of ["Hủy", "Hoàn thành"])
+          await page.getByRole("button", { name, exact: true }).waitFor();
+      }
       await page.screenshot({
         path: join(screenshotDirectory, `${resource}-editor-${width}.png`),
         fullPage: false,
       });
-      assert.deepEqual(pageErrors, []);
+      assertClean();
     }
   }
   console.log(`Catalog review screenshots: ${screenshotDirectory}`);
