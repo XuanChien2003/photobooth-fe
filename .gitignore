@@ -7,8 +7,8 @@ dist/
 .env.*
 !.env.example
 *.log
-.cache/face-detection/
-.cache/r2-storage-review/
+.cache/
+uploads/
 
 # Impeccable: keep shared design context, exclude local reviews/runtime state.
 **/.impeccable/config.local.json
