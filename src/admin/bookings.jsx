@@ -140,7 +140,7 @@ function PrintOrderDialog({ booking, onClose, onExtra, onPrinted }) {
             </label>
           </div>
         ) : (
-          <div className="order-print-empty"><ImageIcon /><h3>Khách chưa gửi file in</h3><p>Mở album để chọn ảnh, ghép khung và gửi file in lần đầu.</p></div>
+          <div className="order-print-empty"><ImageIcon /><h3>Chưa có file in</h3><p>Máy chụp gửi file in sau khi khách chọn ảnh và khung. Đơn này chưa có file in nào.</p></div>
         )}
         <div className="order-print-actions">
           {booking.accessToken && <Link className="button outline" to={`/album/${booking.accessToken}`} target="_blank">Mở album <ExternalLink size={15} /></Link>}
