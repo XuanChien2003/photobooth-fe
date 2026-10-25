@@ -9,7 +9,7 @@ import { bluetoothCameraState, focusBluetooth, pressBluetooth } from "./camera-b
 // - "auto" (mặc định): dùng cách đã cài trên máy này — Bluetooth máy ảnh, rồi Arduino, rồi relay.
 // - "bluetooth": Bluetooth của chính máy ảnh, như nút chụp trong app Fujifilm — không cần mạch
 //   (camera-bluetooth.js).
-// - "arduino" (mặc định): mạch Arduino Pro Micro (dùng chung với máy nhận tiền) nhận lệnh "SHOOT"
+// - "arduino": mạch Arduino Pro Micro (dùng chung với máy nhận tiền) nhận lệnh "SHOOT"
 //   qua cổng COM, nhấn nửa (lấy nét) rồi nhấn hết qua 2 opto nối song song với dây bấm.
 //   Mã mạch: hardware/bill-acceptor-pulse/bill-acceptor-pulse.ino.
 // - "relay": mạch relay USB (Web Serial) nối song song với nút chụp của dây bấm.
@@ -45,6 +45,11 @@ export const hexBytes = (text) => {
 // Cổng USB-serial riêng của từng thiết bị bấm máy ("relay" hoặc mạch Arduino riêng "shutter").
 const ports = new Map();
 const opening = new Map();
+// Một listener cho mọi cổng: rút dây thì quên cổng đó (gắn mỗi lần mở cổng sẽ dồn listener).
+if (relaySupported)
+  navigator.serial.addEventListener?.("disconnect", (event) => {
+    for (const [role, port] of ports) if (port === event.target) ports.delete(role);
+  });
 // Mở cổng đã cho phép trước đó; ask = true thì hỏi nhân viên chọn cổng (cần bấm nút).
 async function openPort(role, baud, ask) {
   if (!relaySupported) throw new Error("Trình duyệt không hỗ trợ cổng USB (Web Serial). Dùng Chrome hoặc Edge.");
@@ -55,9 +60,6 @@ async function openPort(role, baud, ask) {
       if (!chosen) return null;
       if (!chosen.writable) await chosen.open({ baudRate: baud });
       ports.set(role, chosen);
-      navigator.serial.addEventListener?.("disconnect", (event) => {
-        if (event.target === ports.get(role)) ports.delete(role);
-      });
       return chosen;
     })().finally(() => opening.delete(role)));
   return opening.get(role);
