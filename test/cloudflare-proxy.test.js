@@ -235,8 +235,8 @@ test("an unchanged album poll gets an empty 304 even when Render answers the sub
     assert.equal(await response.text(), body, "changed or first load: the full album");
   }
   // Writes are never turned into 304s.
-  const write = await worker.fetch(request("/api/albums/token/favorites", {
-    method: "PUT", headers: { Origin: origin, "If-None-Match": "*", "Content-Type": "application/json" }, body: "{}",
+  const write = await worker.fetch(request("/api/albums/token/photos", {
+    method: "POST", headers: { Origin: origin, "If-None-Match": "*", "Content-Type": "application/json" }, body: "{}",
   }), environment());
   assert.equal(write.status, 200);
 });

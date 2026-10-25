@@ -41,13 +41,13 @@ npm run deploy:studio
 Lần đầu cần đăng nhập và cấp quyền triển khai vào tài khoản Cloudflare của tiệm.
 Tài khoản trong `wrangler.jsonc` phải là tài khoản chứa bucket `nxc-media`.
 
-Kiểm tra trước khi triển khai (full smoke cần repo `Photo_BE` nằm cạnh repo này và
+Kiểm tra trước khi triển khai (full smoke cần repo `photobooth-be` nằm cạnh repo này và
 đã cài dependencies của cả hai repo):
 
 ```sh
 npm test
 npm run build:cloudflare
-node ../Photo_BE/test/browser-smoke.mjs --cloudflare
+node ../photobooth-be/test/browser-smoke.mjs --cloudflare
 ```
 
 Smoke dùng dữ liệu thử trong MongoDB tạm, đi qua chính Worker bằng HTTP local;

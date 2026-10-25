@@ -4,14 +4,14 @@ Triển khai frontend lên Cloudflare: xem [CLOUDFLARE.md](CLOUDFLARE.md).
 Chạy `npm run build:cloudflare` và `npx wrangler@4 deploy`; backend Render và kho R2 giữ nguyên.
 
 Các module được chia theo chức năng trong `src/admin/`, `src/kiosk/`, `src/album/` và
-`src/styles/`. Xem [hướng dẫn tìm file cần sửa](../HUONG_DAN_SUA_CODE.md).
+`src/styles/`.
 
 Web chỉ dùng trong tiệm, không có trang giới thiệu hay tra cứu công khai:
 
 | Đường dẫn         | Ai dùng              | Ghi chú                                                                                      |
 | ----------------- | -------------------- | -------------------------------------------------------------------------------------------- |
 | `/admin`          | Quản trị, lễ tân     | Trang gốc `/` tự chuyển về đây. Tổng quan có bảng phòng trực tiếp + nút “Tạo mã chụp”.       |
-| `/kiosk?device=…` | Máy chụp trong phòng | Mở liên kết “Cài kiosk” (Quản trị → Phòng & chi nhánh) **một lần**, máy tự nhớ 1 năm.        |
+| `/kiosk?device=…` | Máy chụp trong phòng | Mở liên kết “Cài kiosk” (Quản trị → Quản lý máy) **một lần**, máy tự nhớ 1 năm.        |
 | `/album/<mã>`     | Khách                | Mở bằng mã QR hiện trên máy chụp sau khi chụp xong; lễ tân có thể hiện lại QR ở mục Mã chụp. |
 
 Trang được gắn `noindex` và có `robots.txt` chặn công cụ tìm kiếm.
@@ -50,69 +50,21 @@ tab bỏ quên qua đêm không giữ máy chủ chạy 24/24 (hạn mức free 
 giờ mở cửa thì máy chủ vẫn ngủ như cũ, màn đầu tiên mở trong ngày sẽ đánh thức nó. Cần giữ thức
 ngoài các màn này thì dùng dịch vụ ping ngoài (UptimeRobot, cron-job.org) gọi cùng địa chỉ.
 
-Lễ tân có mục **Phòng & chi nhánh**: chọn phòng đang hoạt động → **Cài kiosk** →
+Lễ tân có mục **Quản lý máy**: chọn phòng đang hoạt động → **Cài kiosk** →
 **Mở kiosk** trên máy tính trong phòng. Lễ tân cũng có thể sao chép liên kết, quét QR
 hoặc tải file cài tự mở cho Windows/Mac. Thêm, sửa và ngừng phòng do quản trị viên quản lý.
 Quyền này dùng tài khoản lễ tân hiện có; không cần đổi vai trò tài khoản.
 
-Khách mở album, bấm ô **Thêm ảnh → Từ điện thoại** trong thư viện hoặc nút **Thêm ảnh**
-ở thanh dưới để chọn một hay nhiều ảnh đã chỉnh sửa trên điện thoại. Hỗ trợ JPG, PNG, WebP
-tối đa 40 MB mỗi ảnh; ảnh thêm vào có thể chỉnh sửa, thả tim, ghép khung và gửi in như ảnh chụp.
-
-Khách có thể thả tim mọi ảnh trong thư viện, độc lập với số ô của khung. Tim dùng để
-lọc ảnh yêu thích; các lần thả tim nhanh được lưu lần lượt để không ghi đè lựa chọn mới.
-Khi bấm **Ghép ảnh**, nếu số ảnh yêu thích ít hơn tổng số ô của bộ khung, hộp báo nêu
-rõ số ảnh còn thiếu. **Chọn thêm** quay về thư viện và giữ bộ đã chọn; **Tự động ghép**
-ưu tiên ảnh đã tim rồi bổ sung từ các ảnh còn lại, không tự đổi trạng thái yêu thích.
-Chỉ khi cả thư viện vẫn ít ảnh hơn số ô, hệ thống mới dùng lại ảnh sau khi đã thông báo.
-Ảnh yêu thích nhiều hơn số ô vẫn được giữ để khách đổi ảnh trong bước ghép.
-
-Giao diện dùng nâu espresso **#4b332a** trên nền kem sáng. Sau khi gửi in thành công, khách thấy
-mã vé, trạng thái chuẩn bị/in xong và có thể về thư viện hoặc xem lại để tải ảnh.
-Màn hình chỉ xác nhận gửi thành công khi máy chủ đã trả về lệnh in.
-
-Album tiếp tục làm mới 10 giây/lần khi đang mở, kể cả sau khi buổi chụp kết thúc, để nhận ảnh
-đồng bộ muộn và lượt in mua thêm. Nút **Làm mới ảnh** cập nhật ngay; phản hồi cũ không ghi đè
-thao tác thả tim, tải lên hoặc xóa ảnh đang diễn ra.
-
-Yêu cầu in được lưu tạm trong IndexedDB trước khi gửi. Nếu mất phản hồi, nút **Kiểm tra và thử lại**
-tra đúng yêu cầu cũ; nếu chưa nhận thì gửi lại nguyên ảnh và mã, kể cả khi tải lại trang.
-Lựa chọn được giữ nguyên đến khi xác nhận, rồi xóa bản lưu tạm. Tờ đã gửi có thể chọn để in thêm
-sau khi mua thêm lượt tại quầy. Theo dõi lệnh in tiếp tục đến khi lễ tân xác nhận in xong,
-kể cả máy in đã nhận tờ hoặc báo lỗi. Code gửi in nằm riêng trong `src/album/use-print-request.js`.
+Album của khách (`src/album/AlbumViewer.jsx`) chỉ để xem và tải, giống Snapbox: ảnh lớn ở giữa,
+dải ảnh nhỏ bên dưới gồm ảnh đã ghép khung, video tua nhanh rồi tới các ảnh gốc. Khách giữ vào ảnh
+để lưu trên điện thoại hoặc bấm tải ảnh gốc, ảnh ghép, video hay cả album (ZIP). Chọn ảnh, ghép
+khung và in đều làm ở máy chụp. Album tự làm mới 10 giây/lần khi đang mở để nhận ảnh đồng bộ muộn;
+nút **Làm mới ảnh** cập nhật ngay. Giao diện dùng nâu espresso **#4b332a** trên nền kem sáng.
 
 Quản trị khung: ảnh xem trước gọn hơn, nút **↑ / ↓** lưu thứ tự ngay trong bộ mà không mở hộp sửa.
 Xóa từ khóa và chọn tất cả trạng thái để sắp xếp toàn bộ; vẫn lọc được theo chủ đề.
 Khung trùng tên cùng bộ có nhãn `pink · 01`, `pink · 02` ổn định qua lọc/sắp xếp;
 tên gốc được giữ trong dữ liệu. Tổng ô ảnh của bộ chỉ tính khung đang dùng.
-
-Các công cụ **Thon mặt** và **Má hồng** dùng điểm mốc khuôn mặt. Bộ nhận diện thử thêm
-ảnh có viền đệm và xoay 90° / 180° khi lần đầu không tìm thấy mặt; điểm mốc được quy về
-ảnh gốc trước khi áp dụng hiệu ứng. Mô hình và WASM được đóng gói cùng web, tải khi mở
-trình chỉnh ảnh. Nếu tải hoặc nhận diện lỗi, khách có thể bấm **Thử nhận diện lại**;
-chỉ lưu hoặc tải bản chỉnh sau khi xử lý thành công.
-
-Ảnh đã xử lý và khung thành phẩm được chuẩn bị JPEG trước khi bấm tải, rồi dùng
-lại bản đã chuẩn bị để giảm thời gian chờ. Chất lượng JPEG tải về vẫn là 0,95 và
-giữ nguyên kích thước ảnh xuất; nút tải chặn bấm lặp khi đang chuẩn bị/chia sẻ.
-
-Trắng da nâng sáng nhẹ theo màu da gốc, giảm tác động ở vùng tối và vùng sáng bóng.
-Mịn da giảm nhiễu độ sáng vừa phải, giữ chi tiết da và bảo vệ đường nét. Cả hai chỉ
-áp dụng trong khuôn mặt đã nhận diện, không chỉnh nền ảnh, mắt, môi hoặc lông mày.
-Nếu chưa tìm được mặt, trình chỉnh ảnh báo để thử nhận diện lại.
-
-Code xử lý nằm trong `src/beauty.js`, `src/skin-retouch.js`, `src/face-detection.js` và
-`src/album/photo-engine.js`. Các kiểm tra cache và hình học chạy bằng `npm test`.
-Kiểm tra trên trình duyệt (cần cài dependencies của `Photo_BE`):
-
-```bash
-node test/beauty-rendering.browser.mjs
-node test/photo-editor.browser.mjs
-node test/image-export.browser.mjs
-```
-
-Kiểm tra mô hình thật với ảnh mẫu công khai theo
-[hướng dẫn nhận diện khuôn mặt](test/face-detection.browser.md).
 
 Trong **Hàng chờ in → Trợ lí Minh Dâm**, kho ảnh R2 nằm trước phần dữ liệu MongoDB
 Atlas; hai kho có dung lượng và mức theo dõi riêng. Phần **Hạn lưu ảnh & dọn dẹp**
@@ -143,7 +95,7 @@ báo MB file ảnh và database ứng dụng, còn số MB trống ghi rõ chưa
 Nếu backend chưa có giới hạn, trang giữ số liệu đã dùng và báo chưa tính được dung lượng còn lại.
 
 ```bash
-cd Photo_FE
+cd photobooth-fe
 npm ci
 npm run dev
 ```
@@ -152,8 +104,8 @@ Mở http://localhost:5173/admin. Backend cần chạy tại http://localhost:80
 Đổi địa chỉ backend bằng cách tạo `.env` từ `.env.example` và sửa `API_PROXY_TARGET`.
 
 Ảnh khách có thể lưu trong Cloudflare R2 qua backend; cấu hình theo
-[R2_SETUP.md](../Photo_BE/R2_SETUP.md), không đặt khóa trong frontend hoặc biến `VITE_*`.
-Thư viện gọi `?size=thumbnail` để lấy ảnh nhỏ; chỉnh/tải/in vẫn lấy ảnh đầy đủ.
+[R2_SETUP.md](../photobooth-be/R2_SETUP.md), không đặt khóa trong frontend hoặc biến `VITE_*`.
+Dải ảnh nhỏ gọi `?size=thumbnail`; nút tải lấy ảnh đầy đủ.
 Ảnh cũ không có thumbnail được backend trả ảnh đầy đủ. **Trợ lí Minh Dâm** theo dõi riêng
 MongoDB và kho R2, cảnh báo mức 80/90% và báo chưa biết khi kho R2 không đo được.
 Giao diện theo dõi R2 nằm trong `src/admin/r2-storage.jsx`; warning dùng chung toàn admin,
@@ -171,6 +123,9 @@ Không đặt MONGO_URI hoặc JWT_SECRET trong frontend.
 npm run build
 npm run preview
 ```
+
+`npm test` chạy các test đơn vị. Test trên trình duyệt chạy bằng `node test/<tên>.browser.mjs`
+(cần build trước và repo `photobooth-be` đã cài dependencies nằm cạnh repo này).
 
 Build nằm trong `dist/`. Bản chạy thật ở Cloudflare Workers (https://studio.selfbooth.workers.dev):
 `cloudflare/worker.js` chuyển tiếp `/api/*` tới backend, Static Assets trả `index.html` cho các route
@@ -267,19 +222,15 @@ Danh mục gói chụp và khung ảnh được tách để dễ chỉnh sửa:
 
 - `src/admin/catalog-toolbar.jsx`: tìm kiếm không dấu, lọc trạng thái và chủ đề.
 - `src/admin/package-catalog.jsx`: thẻ gói chụp, giá và quyền lợi.
-- `src/admin/frame-catalog.jsx`: thư viện khung, nhóm chủ đề và ảnh xem trước.
+- `src/admin/frames.jsx`: thư viện khung, nhóm chủ đề và ảnh xem trước.
 - `src/admin/resource-editor.jsx`: form thêm/sửa và xem trước gói chụp.
 - `src/styles/admin/catalogs.css`: giao diện hiện tại của các danh mục.
-  Các module `src/styles/polish/{catalog-controls,package-catalog,frame-catalog}.css`
+  Các module `src/styles/polish/{catalog-controls,package-catalog}.css`
   là cấu trúc nền, được import trước hệ giao diện hiện tại.
 
 Chạy `node test/admin-catalog.browser.mjs` để kiểm tra tìm/lọc, thêm/sửa/xoá và bố cục máy tính/điện thoại.
 Bài kiểm tra dùng dữ liệu mẫu và API giả, không tác động dữ liệu thật.
 
-Luồng album chọn ảnh theo ô: `src/album/frame-capacity.js`, `favorite-queue.js`,
-`AlbumStudio.jsx`, `Gallery.jsx`, `ThemePicker.jsx`; màn hình sau gửi in: `PrintConfirmation.jsx`.
-CSS khung/chủ đề nằm ở `src/styles/album/themes.css` và `composer.css`;
-màn gửi in nằm ở `src/styles/album/results.css`.
 Màu giao diện hiện tại được đặt ở `src/styles/polish/professional-foundation.css`;
 `src/tailwind.css` ánh xạ cùng bảng màu cho các class `tw:`. Các file `legacy` là lớp nền tương thích.
 
@@ -288,13 +239,13 @@ Giao diện được hoàn thiện trong bốn file riêng, nạp cuối `tailwi
 - `src/styles/polish/professional-foundation.css`: chữ, nút, thông báo và hướng dẫn dùng chung.
 - `src/styles/polish/professional-entry.css`: đăng nhập, nhập mã, màn chụp và QR nhận ảnh.
 - `src/styles/polish/professional-admin.css`: bố cục, bảng, gói/khung, hàng in và dung lượng.
-- `src/styles/polish/professional-album.css`: thông tin vé, bốn bước, thư viện, chỉnh và ghép ảnh.
+- `src/styles/polish/professional-album.css`: thông tin vé và trang xem, tải ảnh.
 
 Ba file entry/admin/album ở trên là **index import**; CSS thực tế được chia tại:
 
 - `src/styles/entry/{login,kiosk}.css`.
 - `src/styles/admin/{workspace,operations,controls,catalogs,forms,printing-and-storage,responsive}.css`.
-- `src/styles/album/{workspace,gallery,themes,composer,photo-editor,results,responsive}.css`.
+- `src/styles/album/{workspace,responsive}.css`.
 
 Logo dùng ảnh gốc ở `public/logo-m.jpg`, hiển thị qua `Brand` trong `src/studio.jsx`;
 kích thước theo màn hình ở `src/styles/polish/brand-logo.css`. Hướng dẫn bắt đầu thu gọn
@@ -321,4 +272,4 @@ gitignore; dữ liệu giả trong bài kiểm tra không tác động album/kh�
 `src/dialog-focus.jsx`, nạp qua `ToastProvider` trong `src/studio.jsx`, quản lý bàn phím
 cho hộp thoại: đưa focus vào form, giữ Tab trong hộp thoại trên cùng, Escape dùng nút
 đóng hiện có và trả focus về nút mở. Quy tắc khóa nút khi đang xử lý vẫn do component
-nghiệp vụ quyết định. Kiểm tra bằng `node test/dialog-focus.browser.mjs`.
+nghiệp vụ quyết định.

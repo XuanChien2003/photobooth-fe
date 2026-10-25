@@ -1,5 +1,5 @@
 // The booth removes private JPEG metadata itself before sending a camera original straight to
-// storage. Byte for byte the same rules as the server's cleanJpegMetadata (Photo_BE
+// storage. Byte for byte the same rules as the server's cleanJpegMetadata (photobooth-be
 // src/services/jpeg-metadata.js; test/jpeg-clean.test.js compares them): pixel data is never
 // decoded; the colour profile, JFIF/Adobe colour info and only the EXIF orientation are kept,
 // anything after the image (embedded previews) is dropped, and a file still being written

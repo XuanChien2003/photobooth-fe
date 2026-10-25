@@ -8,7 +8,7 @@ web
 
 ## Users
 
-The studio administrator manages packages, frames, rooms, staff, settings, print jobs and image storage. Receptionists issue shooting codes, monitor rooms and printing, and open kiosks for active rooms. Customers use their phones to receive, upload, edit, favorite, arrange and download photographs and submit print sheets.
+The studio administrator manages packages, frames, rooms, staff, settings, print jobs and image storage. Receptionists issue shooting codes, monitor rooms and printing, and open kiosks for active rooms. Customers scan the album QR code on their phones to view and download their photographs, framed photo and time-lapse video; choosing photographs, framing and printing happen at the kiosk.
 
 ## Product Purpose
 
@@ -23,8 +23,7 @@ Vietnamese interface. Desktop reception and camera kiosks; customers scan an alb
 - Existing React/Vite frontend and separate Node/MongoDB backend; visual redesign keeps API contracts and role permissions.
 - Receptionists access overview, shooting codes, print queue and active rooms/kiosk setup. Administrative CRUD and financial information remain restricted.
 - Individual images expire 24 hours after capture; actual expiration and storage measurements drive warnings.
-- Favorite-photo capacity follows the selected frame set's actual slots, including 12, 13 and 14 photographs. Retain favorite-update serialization.
-- Photo edits, face filters, composition, downloads, print submission and truthful print confirmation must continue working.
+- Kiosk photo filters and composition, album downloads, print submission and truthful print confirmation must continue working.
 - Preserve the custom storage-assistant name and user-requested messages.
 
 ## Brand Commitments
