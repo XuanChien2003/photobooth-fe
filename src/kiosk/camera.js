@@ -1,11 +1,9 @@
 import { isMac } from "./folder.js";
 
-// Hình trực tiếp qua USB của máy ảnh Fujifilm (phần mềm FUJIFILM X Webcam): phần mềm này
-// chiếm máy ảnh nên X Acquire không nhận được ảnh gốc — Fujifilm yêu cầu thoát X Acquire /
-// Capture One khi dùng X Webcam. Ở chế độ ảnh gốc, hình trực tiếp phải lấy qua HDMI.
-export const isFujiWebcam = (d) => /fujifilm|x-?s10/i.test(d?.label || "");
-export const FUJI_WEBCAM_MESSAGE =
-  "Ở chế độ ảnh gốc, máy chụp không dùng FUJIFILM X Webcam làm hình trực tiếp: X Webcam chiếm máy ảnh nên X Acquire không nhận được ảnh. Thoát hẳn FUJIFILM X Webcam; muốn có hình trực tiếp thì cắm cáp micro HDMI từ máy ảnh vào thẻ ghi hình (HDMI capture) rồi chọn thẻ đó ở “Camera live view”.";
+// USB Photo Import/Remote Control is reserved for Canon Camera Agent. Preview uses HDMI.
+export const isCameraUsbVideo = (d) => /canon|eos|\br50\b/i.test(d?.label || "");
+export const CAMERA_USB_MESSAGE =
+  "Canon R50 cần USB ở Photo Import/Remote Control để chụp và nhận JPEG gốc. Thoát EOS Webcam Utility; không chọn Video calls/streaming. Hình trực tiếp dùng micro-HDMI qua thẻ ghi hình USB rồi chọn thẻ đó tại Hình trực tiếp từ máy ảnh.";
 export const CAMERA_ERROR =
   "Không mở được camera. Kiểm tra cáp USB của máy ảnh và cấp quyền camera cho trình duyệt.";
 const isVirtual = (d) => /obs|virtual/i.test(d.label);
@@ -14,7 +12,7 @@ const isVirtual = (d) => /obs|virtual/i.test(d.label);
 // Windows: "Integrated Camera", "HD Webcam", "HP TrueVision", Surface "Camera Front/Rear";
 // macOS: "FaceTime HD", iPhone làm webcam (Continuity Camera, Desk View).
 export const isBuiltInCamera = (d) =>
-  !isFujiWebcam(d) &&
+  !isCameraUsbVideo(d) &&
   /webcam|integrated|built-?in|facetime|truevision|isight|camera (front|rear)|(front|rear) camera|iphone|ipad|continuity|desk view/i.test(
     d?.label || "",
   );
@@ -22,8 +20,7 @@ export const NO_HDMI_MESSAGE =
   "Chưa có hình trực tiếp từ máy ảnh: không thấy thẻ ghi hình HDMI (vd. “USB Video”). Ở chế độ ảnh gốc, máy chụp không dùng webcam của máy tính. Kiểm tra cáp micro HDMI từ máy ảnh và thẻ ghi hình cắm vào máy tính — cắm vào là hình tự hiện. Ảnh chụp vẫn nhận bình thường.";
 export const hdmiFailed = (label, e) =>
   `Không mở được thẻ ghi hình “${label}” (${e?.name || "lỗi"}). Rút ra cắm lại thẻ ghi hình, tắt app khác đang dùng nó (Zoom, OBS, ${isMac ? "QuickTime, Photo Booth" : "app Camera, Teams"}, tab trình duyệt khác) rồi bấm “Mở lại camera”. Ảnh chụp vẫn nhận bình thường.`;
-// Thứ tự tự chọn hình trực tiếp: thẻ ghi hình HDMI của máy ảnh → FUJIFILM X Webcam → camera
-// khác → webcam có sẵn của máy tính → không dùng OBS / ảo.
+// Ưu tiên thẻ ghi hình HDMI, bỏ qua webcam USB chiếm đường điều khiển máy ảnh.
 export const cameraRank = (d) =>
   isVirtual(d)
     ? 9
@@ -31,13 +28,13 @@ export const cameraRank = (d) =>
           d.label,
         )
       ? 0
-      : isFujiWebcam(d)
+      : isCameraUsbVideo(d)
         ? 1
         : isBuiltInCamera(d)
           ? 3
           : 2;
 // Camera dùng được làm hình trực tiếp: chỉ thẻ ghi hình HDMI / camera ngoài của máy ảnh.
-export const liveUsable = (d) => !isFujiWebcam(d) && !isBuiltInCamera(d);
+export const liveUsable = (d) => !isCameraUsbVideo(d) && !isBuiltInCamera(d);
 export const videoConstraints = (deviceId) => ({
   video: {
     ...(deviceId ? { deviceId: { exact: deviceId } } : {}),

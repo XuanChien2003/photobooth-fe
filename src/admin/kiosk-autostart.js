@@ -1,5 +1,5 @@
 // File cài "bật máy là kiosk tự mở" cho máy tính trong phòng chụp, gắn sẵn liên kết của phòng.
-// Chạy một lần: mỗi lần đăng nhập máy sẽ tự mở FUJIFILM X Acquire rồi mở Chrome (hoặc Edge)
+// Chạy một lần: mỗi lần đăng nhập máy sẽ tự mở Canon Camera Agent đã cài rồi mở Chrome (hoặc Edge)
 // toàn màn hình đúng trang kiosk. Giữ hồ sơ riêng "NXC-Kiosk" để nhớ quyền camera / thư mục.
 // Windows có menu nhỏ để điều khiển cửa sổ; Mac dùng nút cửa sổ và menu Xem của trình duyệt.
 import windowsCornerControl from "./installers/kiosk-window-control.ps1?raw";
@@ -37,15 +37,8 @@ export function windowsScript(url, room) {
     "  echo Mo lai sau khi thu nho: bam bieu tuong Chrome / Edge o thanh tac vu. Dong may chup: Alt+F4.",
     "  timeout /t 6 >nul",
     ")",
-    // Mở FUJIFILM X Acquire nếu chưa chạy.
-    'tasklist | find /i "Acquire" >nul || (',
-    '  for /f "delims=" %%F in (\'dir /b /s "%ProgramFiles%\\FUJIFILM\\*Acquire*.exe" "%ProgramFiles(x86)%\\FUJIFILM\\*Acquire*.exe" 2^>nul\') do (',
-    '    start "" "%%F"',
-    "    goto waitacquire",
-    "  )",
-    ")",
-    ":waitacquire",
-    "timeout /t 5 /nobreak >nul",
+    // Canon Camera Agent đã cài sẵn; không mở EOS Utility để tránh chiếm USB.
+    'if exist "%LOCALAPPDATA%\\NXC-CanonAgent\\start.ps1" start "" powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%LOCALAPPDATA%\\NXC-CanonAgent\\start.ps1"',
     'set "BROWSER=%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe"',
     'if not exist "%BROWSER%" set "BROWSER=%ProgramFiles(x86)%\\Google\\Chrome\\Application\\chrome.exe"',
     'if not exist "%BROWSER%" set "BROWSER=%LOCALAPPDATA%\\Google\\Chrome\\Application\\chrome.exe"',
@@ -70,15 +63,14 @@ export function windowsScript(url, room) {
 export function macScript(url, room) {
   return `#!/bin/bash
 # NXC Photobooth - tự mở máy chụp phòng: ${room.replace(/[^\p{L}\p{N} .-]/gu, "")}
-# Chạy một lần: mỗi lần đăng nhập Mac sẽ tự mở X Acquire rồi mở Chrome toàn màn hình.
+# Chạy một lần: mỗi lần đăng nhập Mac sẽ tự mở Chrome toàn màn hình.
 URL='${safe(url)}'
 DIR="$HOME/NXC-Kiosk"
 mkdir -p "$DIR"
 printf '%s' "$URL" > "$DIR/url.txt"
 cat > "$DIR/mo-kiosk.sh" <<'SCRIPT'
 #!/bin/bash
-open -a "FUJIFILM X Acquire" 2>/dev/null || open -a "X Acquire" 2>/dev/null || true
-sleep 5
+# Canon Camera Agent USB hien ho tro Windows x64; khong tu mo phan mem may anh cu.
 APP="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 [ -x "$APP" ] || APP="/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"
 "$APP" --start-fullscreen --new-window --user-data-dir="$HOME/NXC-Kiosk/chrome" ${FLAGS} "$(cat "$HOME/NXC-Kiosk/url.txt")" >/dev/null 2>&1 &

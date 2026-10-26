@@ -9,6 +9,8 @@ dist/
 *.log
 .cache/
 uploads/
+scripts/canon-camera/.runtime/
+public/downloads/canon-camera-agent.zip
 
 # Impeccable: keep shared design context, exclude local reviews/runtime state.
 **/.impeccable/config.local.json

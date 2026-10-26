@@ -6,17 +6,16 @@ import { Guide } from "../guide";
 import { CAMERA_KEY, MIRROR_KEY } from "./constants.js";
 import {
   cameraRank,
-  FUJI_WEBCAM_MESSAGE,
+  CAMERA_USB_MESSAGE,
   isBuiltInCamera,
-  isFujiWebcam,
+  isCameraUsbVideo,
   liveUsable,
   NO_HDMI_MESSAGE,
 } from "./camera.js";
 import { canPickFolder, isMac, PHOTO_FOLDER_EXAMPLE } from "./folder.js";
 import { FolderCheck } from "./FolderCheck.jsx";
 import { KioskDevices } from "./KioskDevices.jsx";
-import { availableShutters, readShutter } from "./shutter.js";
-import { watchBluetoothCamera } from "./camera-bluetooth.js";
+import { canonCameraState, watchCanonCamera } from "./canon-camera.js";
 
 export function KioskSettings({
   folder,
@@ -34,9 +33,9 @@ export function KioskSettings({
   roomInfo,
   toast,
 }) {
-  // Chưa có cách nào bấm máy ảnh: báo ngay trên dòng tiêu đề (đếm giờ sẽ phải mời khách bấm dây).
-  const [shutterReady, setShutterReady] = useState(() => availableShutters().length > 0);
-  useEffect(() => watchBluetoothCamera(() => setShutterReady(availableShutters().length > 0)), []);
+  // Chưa có cách nào bấm máy ảnh: báo trước khi khách bắt đầu chụp tự động.
+  const [shutterReady, setShutterReady] = useState(() => canonCameraState().connected);
+  useEffect(() => watchCanonCamera((state) => setShutterReady(state.connected)), []);
   return (
     <details className="kiosk-settings">
       <summary>
@@ -44,7 +43,7 @@ export function KioskSettings({
           <Settings2 size={18} aria-hidden="true" /> Cài đặt máy chụp (nhân
           viên)
         </span>
-        {!shutterReady && readShutter() !== "hdmi" && (
+        {!shutterReady && (
           <em className="kiosk-settings-warn">Chưa kết nối máy ảnh</em>
         )}
         <ChevronDown
@@ -57,13 +56,13 @@ export function KioskSettings({
         <Guide
           id="kiosk-camera"
           dark
-          title="kết nối máy ảnh X-S10"
+          title="kết nối Canon EOS R50"
           steps={[
             "Cắm cáp USB-C từ máy ảnh vào máy tính, cáp micro HDMI vào thẻ ghi hình (USB). Bật máy ảnh.",
-            "Trên máy ảnh: SET UP → CONNECTION SETTING → CONNECTION MODE → USB TETHER SHOOTING AUTO; chất lượng ảnh FINE hoặc FINE+RAW.",
-            `Mở FUJIFILM X Acquire, chọn thư mục lưu ảnh (vd. ${PHOTO_FOLDER_EXAMPLE}).`,
+            "Trên R50: Choose USB connection app → Photo Import/Remote Control; ảnh JPEG Large/Fine hoặc RAW+JPEG.",
+            `Mở Canon Camera Agent trên Windows, kết nối R50; thư mục ảnh mặc định ${PHOTO_FOLDER_EXAMPLE}. Thoát EOS Utility và EOS Webcam Utility.`,
             "Bấm “Chọn thư mục ảnh” bên dưới, chọn đúng thư mục đó → “Cho phép mỗi lần truy cập”.",
-            "Bấm “Thử nhận ảnh từ máy ảnh” rồi chụp 1 tấm: hiện “Đã nhận DSCF….JPG” là xong.",
+            "Nhập mã Camera Agent ở mục Canon EOS R50 bên dưới, bấm Kết nối R50 và Bấm thử; xác nhận ảnh gốc và flash.",
             "“Hình trực tiếp từ máy ảnh”: để Tự động hoặc chọn thẻ ghi hình (USB Video), không chọn webcam máy tính.",
           ]}
           note="Muốn bật máy tính là tự mở máy chụp: Quản trị → Quản lý máy → Cài máy chụp → tải file cài."
@@ -101,15 +100,12 @@ export function KioskSettings({
               <ChevronDown size={16} aria-hidden="true" />
             </summary>
             <small>
-              Chọn đúng thư mục FUJIFILM X Acquire (hoặc Capture One) lưu ảnh —
+              Chọn đúng thư mục Canon Camera Agent lưu ảnh —
               nên là thư mục riêng, vd. {PHOTO_FOLDER_EXAMPLE}
-              {isMac ? " (dùng Chrome, không dùng Safari)" : ""}. Máy ảnh
-              (firmware 2.00 trở lên) để CONNECTION SETTING → CONNECTION MODE =
-              USB TETHER SHOOTING AUTO, chất lượng ảnh FINE hoặc FINE+RAW (cần
-              có JPEG). Hình trực tiếp lấy qua cáp HDMI + thẻ ghi hình, không
-              dùng FUJIFILM X Webcam; để hình sạch (không khung lấy nét, thông số):
-              MENU → MOVIE SETTING → HDMI OUTPUT INFO DISPLAY = OFF. Khách chọn “Bấm dây” (tự bấm dây bấm của máy
-              ảnh) hoặc “Đếm giờ” (máy chụp tự chụp — xem mục “Tự chụp” bên dưới).
+              {isMac ? " (dùng Chrome; Camera Agent hiện cần Windows x64)" : ""}.
+              R50 cần firmware từ 1.3.0 và USB = Photo Import/Remote Control.
+              Hình trực tiếp dùng micro-HDMI + thẻ ghi hình; không dùng USB streaming đồng thời.
+              Khách chọn “Bấm chụp” hoặc “Hẹn giờ” (3 giây). R50 không có cổng dây bấm như máy ảnh có jack remote.
             </small>
           </details>
         </div>
@@ -147,9 +143,9 @@ export function KioskSettings({
             ))}
           </select>
         </label>
-        {cameras.some(isFujiWebcam) && (
+        {cameras.some(isCameraUsbVideo) && (
           <p className="kiosk-check-result is-warn kiosk-webcam-note">
-            {FUJI_WEBCAM_MESSAGE}
+            {CAMERA_USB_MESSAGE}
           </p>
         )}
         {cameras.some((c) => c.label) &&

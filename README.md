@@ -134,76 +134,58 @@ React. Cách triển khai và cấu hình: `CLOUDFLARE.md`.
 Máy chụp: nên mở trình duyệt ở chế độ toàn màn hình (nút “Bật / tắt toàn màn hình” trong
 “Cài đặt máy chụp (nhân viên)” ở màn nhập mã) và cho phép dùng camera.
 
-## Máy ảnh Fujifilm X-S10: chụp ảnh gốc qua dây USB
+## Canon EOS R50: hẹn giờ và bấm chụp
 
-**Khách chỉ chụp bằng nút chụp / remote của máy ảnh** — màn hình máy chụp không có nút chụp và không chụp từ
-webcam. Không có hình trực tiếp (chưa cắm thẻ ghi hình HDMI) vẫn chụp và nhận ảnh bình thường.
+Kiosk dùng Canon R50, giữ hai chế độ: **Hẹn giờ** (kết nối rồi đếm 3–2–1 trước mỗi ảnh)
+và **Bấm chụp** (khách chạm nút trên màn hình cảm ứng, không tự chụp khi chưa bấm).
+Cả hai gửi lệnh chụp thật qua Canon EDSDK và nhận JPEG gốc từ máy ảnh; HDMI chỉ dùng xem trước.
+Ảnh về chậm hoặc mất kết nối thì tạm dừng; không tự chụp lại và không lấy ảnh HDMI thay thế.
 
-Máy chủ chạy trên mạng nên không thấy máy ảnh cắm ở tiệm. Vì vậy **máy chụp (Chrome/Edge trên máy tính
-trong phòng) tự đọc thư mục ảnh** mà phần mềm của Fujifilm lưu về, rồi gửi lên.
+### Cài trên máy tính trong phòng (Windows x64)
 
-Cần 2 đường nối từ máy ảnh vào máy tính:
+1. Canon R50 firmware từ **1.3.0**. Chọn **Choose USB connection app → Photo Import/Remote Control**,
+   ảnh **JPEG Large/Fine** hoặc RAW+JPEG; **Single shooting** và tắt self-timer trên máy ảnh.
+2. Cáp USB dữ liệu từ máy ảnh vào máy tính. Hình xem trước dùng **micro-HDMI → thẻ ghi hình USB**.
+   Không chọn USB Video calls/streaming hoặc EOS Webcam Utility đồng thời với chụp USB.
+3. Cài Node.js 20+ x64 và [Canon EDSDK x64](https://www.usa.canon.com/support/sdk) có hỗ trợ R50.
+   SDK/DLL do Canon cung cấp theo giấy phép riêng, **không có trong mã nguồn hoặc ZIP bộ cài**.
+4. Trong Cài đặt máy chụp → Canon EOS R50, tải ZIP Camera Agent, giải nén và chạy `install.cmd`.
+   Chọn `EDSDK.dll` trong thư mục DLL x64 của SDK, giữ các DLL đi kèm tại đó.
+   Thoát EOS Utility/EOS Webcam Utility; chỉ Camera Agent giữ kết nối USB với máy ảnh.
+5. Nhập mã Camera Agent hiển thị vào cài đặt kiosk, bấm **Kết nối R50**. Chọn thư mục ảnh
+   **C:\PhotoBooth\CanonR50** hoặc đúng thư mục mà Camera Agent báo. Cho phép trình duyệt đọc thư mục
+   và truy cập mạng cục bộ nếu được hỏi. Bấm **Bấm thử**, xác nhận JPEG và flash thực tế.
+6. Bộ cài tự mở kiosk Windows sẽ mở Camera Agent đã cài khi đăng nhập. Chi tiết trong
+   [hướng dẫn Camera Agent](scripts/canon-camera/README.md). Camera Agent hiện chỉ hỗ trợ Windows x64;
+   tính năng tự chụp qua USB trên macOS chưa được triển khai.
 
-- **Cáp USB-C (truyền dữ liệu, ≤ 1,5 m, cắm thẳng vào máy tính)** → ảnh gốc qua FUJIFILM X Acquire.
-- **Cáp micro-HDMI → thẻ ghi hình HDMI (HDMI capture, cắm cổng USB)** → hình trực tiếp. Cổng HDMI của
-  laptop là cổng _xuất_ hình, cắm máy ảnh vào đó không nhận được gì.
+Phát triển: `npm run camera:agent`; `CANON_SDK_DIR` chỉ thư mục chứa EDSDK.dll x64,
+`CANON_PHOTO_DIR` chọn thư mục ảnh. API chỉ lắng nghe `127.0.0.1:8788`, yêu cầu mã kết nối
+và nguồn web được phép. Không để lộ mã trong frontend build. Trạng thái và các lệnh chụp
+không đi qua backend Cloudflare/Render; JPEG vẫn dùng luồng tải ảnh hiện có.
 
-Không dùng **FUJIFILM X Webcam** cho hình trực tiếp: phần mềm này chiếm máy ảnh nên X Acquire không nhận được
-ảnh (Fujifilm yêu cầu thoát X Acquire / Capture One khi dùng X Webcam). Máy chụp tự bỏ qua camera “FUJIFILM …”
-và webcam có sẵn của máy tính.
+### Remote, flash và khung lấy nét
 
-1. Cài **FUJIFILM X Acquire** (miễn phí, tải ở trang Fujifilm) trên máy tính trong phòng chụp.
-2. Máy ảnh cần **firmware 2.00 trở lên** (bản có chụp tether; bật máy trong lúc giữ `DISP/BACK` để xem).
-   Trên máy ảnh: `MENU → SET UP (cờ lê) → CONNECTION SETTING → CONNECTION MODE → USB TETHER SHOOTING AUTO`
-   (firmware cũ ghi `PC CONNECTION MODE`). Chất lượng ảnh **FINE** hoặc **FINE+RAW** (bắt buộc có JPEG).
-   Nên tắt tự tắt nguồn (`POWER MANAGEMENT → AUTO POWER OFF: OFF`), tắt hiển thị thông tin khi xuất HDMI
-   cho hình sạch, và dùng pin giả / nguồn cắm điện khi chụp cả ngày.
-3. Cắm cáp USB-C từ máy ảnh vào máy tính, mở X Acquire, chọn thư mục lưu ảnh — nên tạo thư mục riêng ngoài
-   OneDrive, vd. `C:\PhotoBooth\X-S10` (Chrome không cho chọn thẳng Desktop / Documents / Downloads).
-4. Khách bấm **nút chụp trên máy ảnh** hoặc **remote có dây** (vd. Fujifilm RR-100 + đầu chuyển 2,5 → 3,5 mm
-   cho X-S10). Máy tính không tự bấm chụp được X-S10 nếu không có phần mềm trả phí (Capture One / Lightroom +
-   plug-in của Fujifilm).
-5. Mở máy chụp (`/kiosk?device=…`) bằng **Chrome hoặc Edge** → “Cài đặt máy chụp (nhân viên)” →
-   **Chọn thư mục ảnh** (đúng thư mục ở bước 3).
-   Khi trình duyệt hỏi quyền, chọn **“Cho phép mỗi lần truy cập”** để không phải cấp lại sau khi khởi động.
-   “Camera live view”: chọn thẻ ghi hình HDMI (không chọn webcam có sẵn của laptop).
-6. Bấm **“Thử nhận ảnh từ máy ảnh”** rồi bấm chụp trên máy ảnh: hiện “Đã nhận DSCF….JPG” là xong. Không nhận
-   được thì màn hình liệt kê các bước cần kiểm tra; máy ảnh chỉ chụp RAW cũng được báo.
+**R50 không có jack dây bấm như máy ảnh có cổng remote.** Lỗ 3,5 mm là cổng mic, không dùng cho
+remote Fuji. Remote [BR-E1](https://cam.start.canon/en/C011/manual/html/UG-06_AF-Drive_0140.html)
+nối trực tiếp qua Bluetooth; chưa xác nhận nó hoạt động đồng thời với phiên USB EDSDK.
+Không coi đây là đường chụp đã hỗ trợ. Chế độ bấm chụp dùng nút trên màn hình cảm ứng;
+nút USB kiểu bàn phím cắm máy tính có thể gửi **Enter/Space**, không ảnh hưởng cảm ứng.
 
-### Máy chụp chạy Windows hoặc macOS
+R50 dùng **Shutter mode = Elec. 1st-curtain** để dùng flash (không có màn trập cơ hoàn toàn),
+tắt Silent shutter. Flash/trigger phải tương thích multi-function shoe; kiểm tra yêu cầu AD-E1
+của phụ kiện. Không tự đổi các thiết lập phơi sáng của khách bằng phần mềm.
 
-Giống nhau: mở kiosk bằng **Chrome hoặc Edge** (Safari không đọc được thư mục ảnh), cài FUJIFILM X Acquire (có bản
-Windows và Mac), thẻ ghi hình HDMI hiện là camera tên kiểu “USB Video”. Khác nhau:
+Khung AF xanh đã nằm trong tín hiệu HDMI thì CSS không xóa được. Kiểm tra hiển thị bằng INFO;
+nếu ở chế độ ảnh vẫn hiện ô AF khi lấy nét, dùng MF vào vị trí khách đứng và kiểm tra ảnh thử.
+Không chuyển sang quay phim chỉ để có HDMI sạch vì photobooth cần chụp ảnh với flash.
 
-|                                     | Windows                                                                     | macOS                                                                               |
-| ----------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Thư mục ảnh nên dùng                | `C:\PhotoBooth\X-S10` (ngoài OneDrive)                                      | `Pictures/PhotoBooth`                                                               |
-| Không đọc được thư mục              | Chrome chặn đọc thẳng Desktop / Documents / Downloads                       | Bật quyền: System Settings → Privacy & Security → Files and Folders → Google Chrome |
-| Webcam có sẵn (máy chụp không dùng) | “Integrated Camera”, “HD Webcam”, “USB2.0 … WebCam”, Surface “Camera Front” | “Camera FaceTime HD”, iPhone (Continuity Camera)                                    |
-| Tải lại trang                       | Ctrl+F5                                                                     | Cmd+Shift+R                                                                         |
-| App hay chiếm thẻ ghi hình          | app Camera, Teams, Zoom, OBS                                                | QuickTime, Photo Booth, Zoom, OBS                                                   |
+Nguồn Canon: [USB](https://cam.start.canon/en/C011/manual/html/UG-09_Set-up_0230.html),
+[các cổng R50](https://cam.start.canon/en/C011/manual/html/UG-00_Before_0110.html),
+[firmware hỗ trợ SDK](https://sg.canon/en/support/0400990102?model=5812C).
 
-Máy chụp **không bao giờ dùng webcam có sẵn của máy tính / iPhone** làm hình trực tiếp (khách sẽ
-thấy sai góc máy): không có thẻ ghi hình thì màn chụp báo “Chưa có hình trực tiếp từ máy ảnh”, cắm thẻ vào là hình
-tự hiện (không cần tải lại trang). Ảnh chụp vẫn nhận bình thường dù chưa có hình trực tiếp. Hướng dẫn trên màn
-hình (thư mục mẫu, cách cấp quyền) tự đổi theo Windows / macOS.
-
-Màn chụp chia đôi: **nửa trên hình trực tiếp, nửa dưới hiện to ảnh vừa chụp** (cột ảnh nhỏ bên phải, bấm để xem
-lại; có ảnh mới thì tự về ảnh mới nhất). Dòng nhỏ phía trên ảnh ghi thư mục đang đọc và số ảnh JPG máy chụp thấy
-trong đó — chụp mà số này không tăng là máy chụp không thấy ảnh mới (sai thư mục, hoặc trên macOS Chrome chưa được
-quyền đọc thư mục: System Settings → Privacy & Security → Files and Folders → Google Chrome; nên để thư mục ảnh
-ngoài Desktop / Documents / Downloads). Tải lại trang mà trình duyệt quên quyền đọc thư mục thì màn chụp hiện nút
-**“Cho phép đọc thư mục ảnh”**. Máy chụp gửi kèm tình trạng này lên máy chủ (`captureDiag` của vé, chỉ quản trị
-xem qua `GET /api/admin/bookings`).
-
-Ghi chú: ảnh gửi lên được thu về 3000 px cạnh dài (đủ in 10 × 15 cm sắc nét, gửi nhanh khi khách chụp liên
-tục); bản gốc 26 MP vẫn nằm trong thư mục trên máy tính. Dùng Capture One thì chọn thư mục `Capture` của phiên
-Capture One. Ảnh có sẵn trong thư mục lúc bắt đầu phiên và tệp RAW (`.RAF`) được bỏ qua. Ảnh mới xuất hiện
-trong phiên luôn được nhận, kể cả khi đồng hồ máy ảnh lệch với máy tính.
-
-Còn ảnh chưa lưu xong lên hệ thống thì nút “Hoàn thành chụp” bị khóa (hiện “Đang lưu N ảnh…”), lưu xong mới
-bấm được. Hết giờ đúng lúc còn ảnh đang lưu: máy chụp lưu nốt rồi mới hiện mã QR (mạng hỏng quá 90 giây thì vẫn
-hiện QR, ảnh còn lại giữ trên máy và tự gửi vào album khi có mạng).
+Kiểm thử phần mềm và biên dịch helper không xác nhận được flash, USB/HDMI đồng thời hoặc
+remote trên phần cứng. Trước khi cho khách dùng cần chạy thử hai chế độ với R50 và bộ flash thật.
 
 ## Giao diện: Tailwind CSS 4
 

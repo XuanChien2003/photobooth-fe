@@ -84,7 +84,7 @@ export function watchCameraFolder({
         }
         if (!newest || file.lastModified >= newest.at)
           newest = { name: path, at: file.lastModified };
-        // X Acquire can replace a JPEG at the same path. Cache the version,
+        // The camera agent can replace a JPEG at the same path. Cache the version,
         // not just the filename, including files ignored at session startup.
         if (seen?.done && seen.size === file.size && seen.time === file.lastModified) {
           seen.checkAt = Date.now() + 1000;

@@ -16,9 +16,9 @@ import { CAMERA_KEY, FOLDER_KEY, MIRROR_KEY, QR_SECONDS } from "./constants.js";
 import {
   CAMERA_ERROR,
   cameraRank,
-  FUJI_WEBCAM_MESSAGE,
+  CAMERA_USB_MESSAGE,
   hdmiFailed,
-  isFujiWebcam,
+  isCameraUsbVideo,
   liveUsable,
   NO_HDMI_MESSAGE,
   videoConstraints,
@@ -44,8 +44,9 @@ import {
   sameKioskSession,
 } from "./network-tasks.js";
 import { readCrop } from "./live-preview-layout.js";
-import { focusShutter, grabHdmiFrame, pressShutter, readShutter } from "./shutter.js";
-import { connect as connectBluetoothCamera } from "./camera-bluetooth.js";
+import { prepareShutter } from "./shutter.js";
+import { runTimedShot } from "./timed-shot.js";
+import { connectCanonCamera } from "./canon-camera.js";
 import { buildTimelapse, createClipRecorder } from "./clip-recorder.js";
 import {
   compositeJpeg,
@@ -75,10 +76,7 @@ const PING_MS = 60_000;
 const MODE_SECONDS = 30;
 const READY_SECONDS = 3;
 const SELECT_SECONDS = 90;
-// Đã bấm máy mà ảnh từ máy ảnh chưa về sau khoảng này (mạch / dây bấm lỏng, máy không lấy được
-// nét…): bấm lại một lần, vẫn không có thì mời khách bấm dây. Không lấy hình HDMI thay: hình đó
-// không có flash (tiệm dùng flash rời).
-const SHOT_WAIT_MS = 8000;
+const SHOT_WAIT_MS = 15000;
 const SALE_KEY = "kiosk-sale";
 // Phòng của máy chụp đọc ngay từ liên kết cài máy (phần giữa của mã), trước khi máy chủ trả lời.
 function deviceRoom(token) {
@@ -145,8 +143,8 @@ export function Kiosk() {
     [video, setVideo] = useState(null),
     [print, setPrint] = useState(null),
     [shotRetry, setShotRetry] = useState(0),
-    // Chế độ đếm giờ mà máy chụp không bấm được máy ảnh: mời khách bấm dây (máy ảnh chụp, flash nổ).
-    [pressPrompt, setPressPrompt] = useState(false);
+    [captureState, setCaptureState] = useState("idle"),
+    [captureError, setCaptureError] = useState("");
   const video$ = useRef(null),
     stream = useRef(null),
     alive = useRef(true),
@@ -209,8 +207,7 @@ export function Kiosk() {
     billAcceptor.connect(false).catch(() => {}).finally(() => billAcceptor.setEnabled(false).catch(() => {}));
     runKioskPrints();
     runKioskComposites();
-    // Bấm máy qua Bluetooth: kết nối sẵn máy ảnh đã ghép đôi (lỗi thì thử lại lúc chụp).
-    if (readShutter() !== "hdmi") connectBluetoothCamera().catch(() => {});
+    connectCanonCamera().catch(() => {});
     return watchKioskPrint((token, state) => {
       if (token === current.current?.accessToken || token === doneRef.current?.token) setPrint(state);
       if (state.status === "manual")
@@ -314,7 +311,7 @@ export function Kiosk() {
         );
       else
         toast.warning(
-          `Đã chọn thư mục ảnh “${handle.name}” nhưng máy chụp chưa thấy ảnh JPG nào. Hãy chọn đúng thư mục FUJIFILM X Acquire đang lưu ảnh (thư mục có các tệp DSCF….JPG), hoặc chụp thử 1 tấm rồi bấm “Thử nhận ảnh từ máy ảnh”. Thư mục có ảnh mà vẫn báo 0: ${FOLDER_ACCESS_HINT}`,
+          `Đã chọn thư mục ảnh “${handle.name}” nhưng máy chụp chưa thấy ảnh JPG nào. Hãy chọn đúng thư mục Canon Camera Agent đang lưu ảnh (các tệp JPEG gốc từ R50), hoặc chụp thử 1 tấm rồi bấm “Thử nhận ảnh từ máy ảnh”. Thư mục có ảnh mà vẫn báo 0: ${FOLDER_ACCESS_HINT}`,
           15000,
         );
     } catch (e) {
@@ -419,8 +416,8 @@ export function Kiosk() {
       const known = await videoInputs();
       const named = known.some((d) => d.label);
       const first = named ? choose(known) : id;
-      blocked.message = known.some(isFujiWebcam)
-        ? FUJI_WEBCAM_MESSAGE
+      blocked.message = known.some(isCameraUsbVideo)
+        ? CAMERA_USB_MESSAGE
         : NO_HDMI_MESSAGE;
       if (named && !first && known.some((d) => !usable(d))) throw blocked;
       let media = await getMedia(first).catch((e) => {
@@ -604,7 +601,7 @@ export function Kiosk() {
       if (!stream.current) openCamera();
     } else stop();
   }, [session?.captureToken, liveCamera]);
-  // Máy chủ bắt đầu tính giờ khi vào chụp thật (sau 3 giây chuẩn bị).
+  // Máy chủ bắt đầu tính giờ trước khi chụp; luồng đếm giờ chỉ đếm khi đã mở phiên thành công.
   useEffect(() => {
     if (!session?.captureToken || phase !== "shoot") return;
     let stopped = false, running = false, timer, failures = 0;
@@ -647,7 +644,11 @@ export function Kiosk() {
   }, [phase, modeLeft, preCount]);
   function pickMode(mode) {
     if (phaseOf(current.current) !== "mode") return;
-    patch({ mode, phase: "ready", readyEndsAt: Date.now() + READY_SECONDS * 1000 });
+    setCaptureError("");
+    setCaptureState(mode === "timer" ? "connecting" : "idle");
+    // Đếm giờ có đúng một lượt 3–2–1, sau khi API và máy ảnh sẵn sàng.
+    patch({ mode, phase: mode === "timer" ? "shoot" : "ready",
+      readyEndsAt: mode === "timer" ? null : Date.now() + READY_SECONDS * 1000 });
   }
 
   async function sync() {
@@ -1092,46 +1093,49 @@ export function Kiosk() {
   const takenRef = useRef(0);
   takenRef.current = taken;
   const pressedAt = useRef(0);
-  // Chụp từ hình HDMI (chế độ "Lấy hình HDMI", hoặc mạch bấm máy chưa sẵn sàng / máy ảnh không chụp).
-  async function grabShot() {
-    try {
-      const blob = await grabHdmiFrame(video$.current, zoomRef.current);
-      const name = `HDMI-${Date.now()}.jpg`;
-      await importCameraPhoto(new File([blob], name, { type: "image/jpeg", lastModified: Date.now() }), name);
-    } catch (e) {
-      notifyOnce("grab", "error", e.message);
-      setShotRetry((n) => n + 1);
-    }
-  }
-  // Hết đếm ngược: bấm máy ảnh như dây bấm (máy chụp thật, flash nổ, ảnh gốc về thư mục X Acquire).
-  async function triggerShot(retry = false) {
-    const before = takenRef.current;
-    const shutter = readShutter();
-    if (shutter === "hdmi") return grabShot();
-    const stillWaiting = () =>
-      alive.current && phaseOf(current.current) === "shoot" && takenRef.current === before && !readingRef.current;
-    try {
-      await pressShutter(shutter);
-    } catch (e) {
-      notifyOnce("relay", "warning",
-        `Chưa tự bấm được máy ảnh (${e.message}). Đang mời khách bấm dây.`, 12000);
-      if (stillWaiting()) setPressPrompt(true);
-      return;
-    }
-    pressedAt.current = Date.now();
-    setFlash((n) => n + 1);
-    setTimeout(() => {
-      if (!stillWaiting()) return;
-      if (!retry) return triggerShot(true);
-      notifyOnce("no-shot", "warning",
-        "Đã bấm máy 2 lần nhưng máy ảnh không gửi ảnh về — kiểm tra dây bấm, lấy nét, flash và X Acquire.", 12000);
-      setPressPrompt(true);
-    }, SHOT_WAIT_MS);
-  }
-  // Có ảnh mới / hết lượt chụp: tắt lời mời bấm dây.
+  const manualCapture = useRef(null);
   useEffect(() => {
-    setPressPrompt(false);
-  }, [taken, phase, done]);
+    if (session?.mode === "remote") { setCaptureState("idle"); setCaptureError(""); }
+    return () => { manualCapture.current?.abort(); manualCapture.current = null; };
+  }, [phase, taken, session?.captureToken]);
+  function runCameraShot(abort, before, countdownSeconds) {
+    setCaptureError("");
+    return runTimedShot({
+      countdownSeconds,
+      prepare: (signal) => prepareShutter(undefined, signal),
+      signal: abort.signal,
+      onState: setCaptureState,
+      onTick: setShotLeft,
+      onPressed: () => { pressedAt.current = Date.now(); setFlash((n) => n + 1); },
+      hasPhoto: () => takenRef.current > before,
+      isReceiving: () => Boolean(readingRef.current || detectingRef.current),
+    }).catch((e) => {
+      if (abort.signal.aborted) return;
+      setCaptureState("error"); setCaptureError(e.message); setShotLeft(null);
+    });
+  }
+  function takeManualPhoto() {
+    const s = current.current;
+    if (!s || s.mode !== "remote" || phaseOf(s) !== "shoot" || !s.booking.captureStartedAt ||
+      endingRef.current || manualCapture.current || readingRef.current || detectingRef.current ||
+      takenRef.current >= Number(s.booking.shots)) return;
+    const abort = new AbortController();
+    manualCapture.current = abort;
+    runCameraShot(abort, takenRef.current, 0).finally(() => {
+      if (manualCapture.current === abort) manualCapture.current = null;
+    });
+  }
+  // Optional USB remote that sends Enter/Space; touching the button uses the same capture path.
+  useEffect(() => {
+    if (phase !== "shoot" || session?.mode !== "remote" || ending) return;
+    const keydown = (event) => {
+      if (event.repeat || event.ctrlKey || event.altKey || event.metaKey || !["Enter", "Space"].includes(event.code) ||
+        event.target?.closest?.("button, input, textarea, select, [contenteditable=true]")) return;
+      event.preventDefault(); takeManualPhoto();
+    };
+    window.addEventListener("keydown", keydown);
+    return () => window.removeEventListener("keydown", keydown);
+  }, [phase, session?.mode, ending]);
   // Theo dõi thư mục ảnh của máy ảnh trong suốt lúc chụp (không khởi động lại mỗi lần có ảnh).
   useEffect(() => {
     const s = session;
@@ -1171,26 +1175,10 @@ export function Kiosk() {
   const [shotLeft, setShotLeft] = useState(null);
   useEffect(() => {
     if (!counting) return setShotLeft(null);
-    const seconds = Number(session.booking.countdownSeconds) || 10;
-    const end = Date.now() + seconds * 1000;
-    setShotLeft(seconds);
-    let fired = false, focused = false;
-    const timer = setInterval(() => {
-      const secondsLeft = Math.max(0, Math.ceil((end - Date.now()) / 1000));
-      setShotLeft(secondsLeft);
-      // Còn 1 giây: nhấn nửa để máy lấy nét trước, hết giờ là chụp ngay.
-      if (secondsLeft === 1 && !focused) {
-        focused = true;
-        focusShutter().catch(() => {});
-      }
-      if (!secondsLeft && !fired) {
-        fired = true;
-        clearInterval(timer);
-        triggerShot();
-      }
-    }, 200);
-    return () => clearInterval(timer);
-  }, [counting, taken, shotRetry]);
+    const abort = new AbortController();
+    runCameraShot(abort, taken);
+    return () => abort.abort();
+  }, [counting, taken, shotRetry, session?.captureToken]);
 
   // ─── Màn hình ────────────────────────────────────────────────────────────
   if (done)
@@ -1243,14 +1231,17 @@ export function Kiosk() {
           shots={shots}
           flash={flash}
           receiving={reading + detecting > 0}
-          pressPrompt={pressPrompt && session.mode === "timer"}
+          captureState={captureState}
+          captureError={captureError}
+          onRetryCapture={() => session.mode === "timer" ? setShotRetry((n) => n + 1) : takeManualPhoto()}
+          onManualCapture={takeManualPhoto}
           modeLeft={modeLeft}
           ending={ending}
           onPickMode={pickMode}
           onEnd={() => endCapture(false)}
           onReopenCamera={() => openCamera()}
         />
-        {error && (
+        {error && !captureError && !(error === CAMERA_ERROR && !ready) && (
           <div className="shoot-error">
             <ErrorBox error={error} />
           </div>

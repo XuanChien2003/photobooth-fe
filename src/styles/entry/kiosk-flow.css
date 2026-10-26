@@ -79,7 +79,24 @@
     margin: 0;
     color: #e9d9cc;
   }
-  /* Đếm giờ mà máy chụp không bấm được máy ảnh: mời khách tự bấm dây (máy ảnh chụp, flash nổ). */
+  .shoot-capture-status {
+    position: absolute;
+    bottom: 6%;
+    left: 50%;
+    z-index: 3;
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    width: min(540px, calc(100% - 32px));
+    padding: 18px 24px;
+    translate: -50% 0;
+    border-radius: 16px;
+    background: rgb(33 23 19 / 92%);
+    color: #fff;
+    text-align: center;
+  }
+  .shoot-capture-status p { margin: 0; color: inherit; }
+  /* Hướng dẫn bấm dây chỉ dành cho chế độ khách chọn “Bấm dây”. */
   .shoot-press {
     position: absolute;
     bottom: 7%;
@@ -96,7 +113,11 @@
     font-size: clamp(20px, 3vh, 30px);
     white-space: nowrap;
     box-shadow: 0 10px 30px rgb(0 0 0 / 35%);
+    border: 0;
+    cursor: pointer;
   }
+  .shoot-press:disabled { opacity: 0.55; cursor: wait; }
+  .shoot-stage:has(.shoot-press) .shoot-capture-status { bottom: 20%; }
   .shoot-press svg {
     flex: none;
     font-size: 1.5em;

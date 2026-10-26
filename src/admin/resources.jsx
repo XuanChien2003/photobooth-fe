@@ -470,7 +470,7 @@ export function ResourceManager({ resource, notify, me }) {
               </h3>
               <p>
                 Tải file cài về <b>máy tính trong phòng</b> rồi chạy một lần: từ
-                đó mỗi lần bật máy sẽ tự mở FUJIFILM X Acquire và Chrome toàn
+                đó mỗi lần bật máy Windows sẽ mở Canon Camera Agent đã cài và Chrome toàn
                 màn hình đúng phòng này. Lần đầu nhớ cho phép camera và chọn thư
                 mục ảnh trong “Cài đặt máy chụp”.
               </p>

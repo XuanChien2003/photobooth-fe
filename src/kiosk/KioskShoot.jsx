@@ -8,6 +8,7 @@ import {
 } from "react-icons/pi";
 import { Button } from "../studio";
 import { CameraPreview } from "./CameraPreview.jsx";
+import { TIMED_SHOT_SECONDS } from "./timed-shot.js";
 
 // Ảnh trên máy (Blob) hoặc trên máy chủ (URL).
 export function useObjectUrl(source) {
@@ -32,7 +33,7 @@ const clock = (s) =>
 
 // Màn chụp: hình trực tiếp toàn màn hình (lật như gương, đã cắt mép thông số máy ảnh), không có
 // chữ trên hình. Bên phải: đồng hồ đếm ngược và các ảnh vừa chụp xếp dọc. Chỉ 3 giây cuối mới hiện
-// số đếm ở giữa màn hình. Trước khi chụp: chọn cách chụp, rồi 3 giây chuẩn bị.
+// số đếm ở giữa màn hình. Đếm giờ chỉ bắt đầu sau khi kết nối máy ảnh sẵn sàng.
 export function KioskShoot({
   videoRef,
   zoom,
@@ -48,12 +49,15 @@ export function KioskShoot({
   shots,
   flash,
   receiving,
-  pressPrompt,
+  captureState,
+  captureError,
   modeLeft,
   ending,
   onPickMode,
   onEnd,
   onReopenCamera,
+  onRetryCapture,
+  onManualCapture,
 }) {
   const centerCount =
     phase === "ready"
@@ -76,7 +80,7 @@ export function KioskShoot({
         {!ready && phase !== "mode" && (
           <div className="shoot-no-camera" role="status">
             <PiVideoCameraSlashDuotone size={36} aria-hidden="true" />
-            <p>Chưa có hình trực tiếp từ máy ảnh — vẫn chụp được bằng dây bấm.</p>
+            <p>Chưa có hình trực tiếp từ máy ảnh. Ảnh gốc vẫn được nhận khi máy ảnh chụp.</p>
             <Button className="outline small" onClick={onReopenCamera}>Mở lại camera</Button>
           </div>
         )}
@@ -85,10 +89,30 @@ export function KioskShoot({
             {centerCount}
           </strong>
         ) : null}
-        {pressPrompt && !ending && (
-          <div className="shoot-press" role="alert">
+        {mode === "remote" && phase === "shoot" && !ending && (
+          <button type="button" className="shoot-press" onClick={onManualCapture}
+            disabled={receiving || ["connecting", "capturing", "waiting"].includes(captureState) || !booking.captureStartedAt}>
             <PiHandTapBold aria-hidden="true" />
-            <strong>Bấm nút trên dây bấm để chụp</strong>
+            <strong>Bấm chụp</strong>
+          </button>
+        )}
+        {phase === "shoot" && !ending && captureState !== "countdown" && captureState !== "idle" && (
+          <div className="shoot-capture-status" role={captureError ? "alert" : "status"}>
+            {captureError ? (
+              <>
+                <strong>{timerMode ? "Đang tạm dừng chụp tự động" : "Chưa chụp được ảnh"}</strong>
+                <p>{captureError}</p>
+                <Button className="outline small" disabled={receiving} onClick={onRetryCapture}>
+                  {timerMode ? "Kết nối lại và đếm 3 giây" : "Thử chụp lại"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <span className="spinner" aria-hidden="true" />
+                <p>{captureState === "waiting" ? "Đang chờ ảnh từ máy ảnh…"
+                  : captureState === "capturing" ? "Máy ảnh đang chụp…" : "Đang kết nối máy ảnh…"}</p>
+              </>
+            )}
           </div>
         )}
         {flash > 0 && <div className="camera-flash" key={flash} aria-hidden="true" />}
@@ -145,17 +169,17 @@ export function KioskShoot({
             <div className="shoot-mode-options">
               <button type="button" onClick={() => onPickMode("timer")}>
                 <PiTimerBold aria-hidden="true" />
-                <strong>Đếm giờ</strong>
-                <span>Máy tự chụp sau {booking.countdownSeconds || 10} giây mỗi tấm</span>
+                <strong>Hẹn giờ</strong>
+                <span>Máy ảnh tự chụp sau {TIMED_SHOT_SECONDS} giây mỗi tấm</span>
               </button>
               <button type="button" onClick={() => onPickMode("remote")}>
                 <PiHandTapBold aria-hidden="true" />
-                <strong>Bấm dây</strong>
-                <span>Tự bấm nút trên dây bấm · {quota} lần bấm</span>
+                <strong>Bấm chụp</strong>
+                <span>Chạm nút chụp trên màn hình · tối đa {quota} tấm</span>
               </button>
             </div>
             <small>
-              <PiCameraBold aria-hidden="true" /> Tự chọn “Đếm giờ” sau {modeLeft} giây
+              <PiCameraBold aria-hidden="true" /> Tự chọn “Hẹn giờ” sau {modeLeft} giây
             </small>
           </div>
         </div>

@@ -1,293 +1,73 @@
 import { useEffect, useState } from "react";
 import { Button } from "../studio";
 import { CROP_KEY } from "./live-preview-layout.js";
-import {
-  arduinoConnected,
-  chooseShutterPort,
-  connectRelay,
-  DEFAULT_RELAY,
-  forgetShutterPort,
-  hasOwnShutterPort,
-  hexBytes,
-  pressArduino,
-  pressRelay,
-  pressShutter,
-  readRelay,
-  readShutter,
-  RELAY_KEY,
-  relayConnected,
-  relaySupported,
-  SHUTTER_KEY,
-} from "./shutter.js";
+import { pressShutter } from "./shutter.js";
+import { connectCanonCamera, readCanonConfig, saveCanonConfig, watchCanonCamera } from "./canon-camera.js";
 import { billAcceptor, billSupported, readBillConfig, saveBillConfig } from "./bill-acceptor.js";
-import { isMac } from "./folder.js";
-import {
-  FORGET_CAMERA_HINT,
-  bluetoothScanSupported,
-  bluetoothSupported,
-  forgetBluetoothCamera,
-  pairBluetoothCamera,
-  scanBluetoothToken,
-  watchBluetoothCamera,
-} from "./camera-bluetooth.js";
-
 const money = (n) => `${Number(n).toLocaleString("vi-VN")} đ`;
 
-// Cài đặt thiết bị của máy chụp (nhân viên): cắt viền thông số HDMI, cách tự chụp ở chế độ đếm
-// giờ, máy đọc tiền. Lưu trên chính máy tính này.
 export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
-  const [shutter, setShutter] = useState(readShutter);
-  const [relay, setRelay] = useState(readRelay);
-  const [relayOn, setRelayOn] = useState(relayConnected);
-  const [ownPort, setOwnPort] = useState(hasOwnShutterPort);
-  const [arduinoOn, setArduinoOn] = useState(arduinoConnected);
-  const [camera, setCamera] = useState({ name: "", saved: false, pending: false, connected: false, log: [] });
-  useEffect(() => watchBluetoothCamera(setCamera), []);
-  const pickShutter = (mode) => {
-    setShutter(mode);
-    localStorage.setItem(SHUTTER_KEY, mode);
-  };
+  const [config, setConfig] = useState(readCanonConfig);
+  const [camera, setCamera] = useState({ connected: false });
+  const [cameraBusy, setCameraBusy] = useState(false);
+  useEffect(() => watchCanonCamera(setCamera), []);
   const [bill, setBill] = useState(readBillConfig);
   const [billStatus, setBillStatus] = useState(billAcceptor.status);
   const [testing, setTesting] = useState(false);
   const [received, setReceived] = useState([]);
-  useEffect(() => billAcceptor.onStatus((text) => {
-    setBillStatus(text);
-    setArduinoOn(arduinoConnected());
-  }), []);
-  // Thử máy đọc tiền: mở nhận tiền tạm thời, hiện các tờ vừa nhận (không tính tiền).
+  useEffect(() => billAcceptor.onStatus(setBillStatus), []);
   useEffect(() => {
     if (!testing) return;
     billAcceptor.setEnabled(true).catch(() => {});
     const off = billAcceptor.onBill((amount) => setReceived((list) => [amount, ...list].slice(0, 6)));
-    return () => {
-      off();
-      billAcceptor.setEnabled(false).catch(() => {});
-    };
+    return () => { off(); billAcceptor.setEnabled(false).catch(() => {}); };
   }, [testing]);
-  const saveRelay = (next) => {
-    setRelay(next);
-    localStorage.setItem(RELAY_KEY, JSON.stringify(next));
-  };
-  const saveBill = (next) => {
-    setBill(next);
-    saveBillConfig(next);
-  };
+  const saveBill = (next) => { setBill(next); saveBillConfig(next); };
   const run = async (action, success) => {
-    try {
-      await action();
-      if (success) toast.success(success);
-    } catch (e) {
-      if (e.name !== "NotFoundError") toast.error(e.message);
-    }
+    try { await action(); if (success) toast.success(success); }
+    catch (e) { if (e.name !== "NotFoundError") toast.error(e.message); }
+  };
+  const cameraAction = async (action, success) => {
+    setCameraBusy(true);
+    try { saveCanonConfig(config); await run(action, success); }
+    finally { setCameraBusy(false); }
   };
   return (
     <div className="kiosk-devices">
       <label className="kiosk-range">
-        <span>
-          Cắt viền thông số máy ảnh trên hình trực tiếp <b>{Math.round(zoom * 100)}%</b>
-        </span>
-        <input
-          type="range"
-          min="0"
-          max="30"
-          value={Math.round(zoom * 100)}
-          onChange={(e) => {
-            const value = Number(e.target.value) / 100;
-            setZoom(value);
-            localStorage.setItem(CROP_KEY, String(value));
-          }}
-        />
-        <small>
-          Thanh này chỉ cắt được mép. Khung lấy nét, ô xanh lấy nét, thông số… do máy ảnh vẽ vào hình, phải tắt
-          trên máy ảnh:
-        </small>
-        <ol className="kiosk-device-steps">
-          <li>
-            SET UP → SCREEN SET-UP → DISP. CUSTOM SETTING: bỏ chọn hết (FOCUS FRAME, FRAMING GUIDELINE,
-            ELECTRONIC LEVEL, AF/MF DISTANCE INDICATOR, HISTOGRAM…).
-          </li>
-          <li>
-            Lấy nét tay: FOCUS MODE = MF, chỉnh nét một lần vào chỗ khách đứng — không còn ô xanh lấy nét, bấm là
-            chụp ngay.
-          </li>
-          <li>
-            Vặn bánh xe sang quay phim → MENU → MOVIE SETTING → HDMI OUTPUT INFO DISPLAY = OFF, rồi vặn lại chụp ảnh.
-          </li>
-          <li>SET UP → SCREEN SET-UP → IMAGE DISP. = OFF (hình không nhảy sang ảnh vừa chụp). Xong để thanh này 0%.</li>
-        </ol>
+        <span>Cắt viền hình trực tiếp <b>{Math.round(zoom * 100)}%</b></span>
+        <input type="range" min="0" max="30" value={Math.round(zoom * 100)}
+          onChange={(e) => { const value = Number(e.target.value) / 100; setZoom(value); localStorage.setItem(CROP_KEY, String(value)); }} />
+        <small>Khung AF nằm trong tín hiệu HDMI phải tắt trên Canon R50; thanh này chỉ cắt mép.</small>
       </label>
-
       <fieldset className="kiosk-device-box">
-        <legend>Tự chụp khi chọn “Đếm giờ”</legend>
-        {/* Cách chính, không cần mạch: Bluetooth của máy ảnh. Ghép đôi một lần, sau đó tự kết nối. */}
-        <p className={`kiosk-shutter-status ${camera.saved ? "is-ok" : "is-warn"}`} role="status">
-          {!bluetoothSupported
-            ? "Trình duyệt / máy tính này không dùng được Bluetooth cho trang web — dùng Chrome hoặc Edge và bật Bluetooth."
-            : camera.saved
-              ? `Máy ảnh ${camera.name || ""} đã ghép đôi${camera.connected ? " · đang kết nối" : " · tự kết nối lúc chụp"} — hết đếm ngược máy ảnh tự chụp (flash nổ).`
-              : camera.pending
-                ? `Đã chọn ${camera.name || "máy ảnh"} nhưng chưa bắt tay được (thiếu mã ghép đôi) — làm theo các bước bên dưới.`
-                : "Chưa kết nối máy ảnh — hết đếm ngược màn hình sẽ phải mời khách bấm dây. Bấm “Kết nối máy ảnh” bên dưới."}
+        <legend>Canon EOS R50 · kết nối chụp ảnh</legend>
+        <p className={`kiosk-shutter-status ${camera.connected ? "is-ok" : "is-warn"}`} role="status">
+          {camera.connected ? `${camera.model || "Canon EOS R50"} đã kết nối USB` : "Chưa kết nối Canon R50 qua USB"}
+          {camera.folder && ` · ảnh lưu tại ${camera.folder}`}
         </p>
-        {camera.pending && (
-          <ol className="kiosk-device-steps">
-            <li>Nếu máy tính đã có {camera.name || "máy ảnh"} trong danh sách Bluetooth — {FORGET_CAMERA_HINT}.</li>
-            <li>Điện thoại có app FUJIFILM XApp / Camera Remote: tắt Bluetooth (để điện thoại không giành kết nối máy ảnh).</li>
-            <li>
-              Máy ảnh: Bluetooth SETTINGS → DELETE PAIRING REG. (xoá ghép đôi cũ), rồi chọn PAIRING REGISTRATION —
-              để yên ở màn chờ ghép đôi (hiện CHECK THE DEVICE SETTINGS thì bấm OK để chờ tiếp).
-            </li>
-            <li>
-              Bấm ngay “Kết nối lại máy ảnh”, chọn máy ảnh; máy tính / máy ảnh hỏi ghép đôi thì đồng ý.
-              {bluetoothScanSupported && " Vẫn không được thì bấm “Đọc mã ghép đôi” → Chrome hỏi quyền quét → Cho phép."}
-            </li>
-          </ol>
-        )}
         <ol className="kiosk-device-steps">
-          <li>
-            Máy tính cần có Bluetooth (laptop thường có sẵn; máy bàn cắm USB Bluetooth).{" "}
-            {isMac
-              ? "Mac: Cài đặt hệ thống → Quyền riêng tư & Bảo mật → Bluetooth → cho phép Chrome."
-              : "Windows: Cài đặt → Bluetooth & thiết bị → bật Bluetooth."}
-          </li>
-          <li>
-            Trên máy ảnh: MENU → SET UP → CONNECTION SETTING → Bluetooth SETTINGS → Bluetooth ON/OFF = ON, rồi chọn
-            PAIRING REGISTRATION (máy ảnh chờ ghép đôi). Nên đặt AUTO POWER OFF = OFF để không mất kết nối.
-          </li>
-          <li>Bấm “Kết nối máy ảnh”, chọn tên máy ảnh (vd. X-S10…) trong bảng Chrome hiện ra; máy tính hỏi ghép đôi thì đồng ý.</li>
-          <li>Bấm “Bấm thử”: máy ảnh phải chụp 1 tấm, flash nổ, ảnh về thư mục X Acquire. Chỉ cần làm một lần.</li>
+          <li>Canon R50 firmware từ 1.3.0; Choose USB connection app → Photo Import/Remote Control. Cắm cáp USB dữ liệu vào máy tính.</li>
+          <li>Trên Windows, mở Canon Camera Agent đã cài Canon EDSDK x64. Thoát EOS Utility và EOS Webcam Utility để chương trình dùng được máy ảnh.</li>
+          <li>Nhập mã kết nối do Camera Agent hiển thị, bấm Kết nối R50 rồi chọn đúng thư mục ảnh mà chương trình báo.</li>
+          <li>Bấm thử: máy ảnh phải chụp thật và nhận JPEG gốc; xác nhận flash rời trước khi đón khách.</li>
         </ol>
+        <p className="kiosk-device-note"><a href="/downloads/canon-camera-agent.zip" download>Tải bộ cài Canon Camera Agent cho Windows</a> · cần Canon EDSDK x64 cài riêng theo giấy phép Canon.</p>
+        <label>Mã kết nối Canon Camera Agent
+          <input type="password" autoComplete="off" value={config.token || ""}
+            onChange={(e) => setConfig({ token: e.target.value })} />
+        </label>
         <div className="kiosk-device-row">
-          <Button type="button" className="small" disabled={!bluetoothSupported}
-            onClick={() => run(async () => { await pairBluetoothCamera(); if (!["auto", "bluetooth"].includes(shutter)) pickShutter("auto"); },
-              "Đã kết nối máy ảnh qua Bluetooth.")}>
-            {camera.saved ? "Kết nối lại máy ảnh" : "Kết nối máy ảnh"}
-          </Button>
-          {/* Chrome chỉ quét cả vùng được trên Mac / Android (Windows không có). */}
-          {camera.pending && bluetoothScanSupported && (
-            <Button type="button" className="small"
-              onClick={() => run(async () => { await scanBluetoothToken(); if (!["auto", "bluetooth"].includes(shutter)) pickShutter("auto"); },
-                "Đã kết nối máy ảnh qua Bluetooth.")}>
-              Đọc mã ghép đôi
-            </Button>
-          )}
-          <Button type="button" className="outline small"
-            onClick={() => run(() => pressShutter(shutter), "Đã bấm thử — máy ảnh phải chụp 1 tấm (flash nổ).")}>
-            Bấm thử
-          </Button>
-          {(camera.saved || camera.pending) && (
-            <Button type="button" className="outline small" onClick={() => forgetBluetoothCamera()}>
-              Bỏ máy ảnh này
-            </Button>
-          )}
+          <Button type="button" className="small" disabled={cameraBusy || !config.token?.trim()}
+            onClick={() => cameraAction(() => connectCanonCamera(), "Đã kết nối Canon R50 qua USB.")}>Kết nối R50</Button>
+          <Button type="button" className="outline small" disabled={cameraBusy || !config.token?.trim()}
+            onClick={() => cameraAction(() => pressShutter(), "Đã gửi lệnh chụp thử. Kiểm tra JPEG gốc và flash rời.")}>Bấm thử</Button>
         </div>
-        {camera.log?.length > 0 && (
-          <details className="kiosk-shutter-log" open={!camera.saved}>
-            <summary>Chi tiết kết nối (chụp màn hình gửi kỹ thuật nếu không kết nối được)</summary>
-            <pre>{camera.log.join("\n")}</pre>
-          </details>
-        )}
-        <details className="kiosk-shutter-advanced">
-          <summary>Cách bấm máy khác (Arduino / relay / HDMI)</summary>
-          <label className="checkbox">
-            <input type="radio" name="shutter" checked={shutter === "auto"} onChange={() => pickShutter("auto")} />
-            Tự động — Bluetooth máy ảnh, rồi Arduino, rồi relay nếu có (khuyên dùng)
-          </label>
-          <label className="checkbox">
-            <input type="radio" name="shutter" checked={shutter === "bluetooth"} disabled={!bluetoothSupported}
-              onChange={() => pickShutter("bluetooth")} />
-            Ưu tiên Bluetooth của máy ảnh
-          </label>
-          <label className="checkbox">
-            <input type="radio" name="shutter" checked={shutter === "arduino"} disabled={!relaySupported}
-              onChange={() => pickShutter("arduino")} />
-            Ưu tiên Arduino như dây bấm (mạch dùng chung với máy nhận tiền)
-          </label>
-          {shutter === "arduino" && (
-            <>
-              <p className="kiosk-device-note">
-                Dùng chung mạch Pro Micro của máy nhận tiền (nạp mã mới: hardware/bill-acceptor-pulse). D5 → opto lấy
-                nét, D6 → opto chụp, đầu ra opto nối song song với dây bấm (jack chia 1 ra 2). Trên máy ảnh: SHUTTER
-                TYPE = MECHANICAL (màn trập điện tử không nháy flash), RELEASE/FOCUS PRIORITY = RELEASE, MIC/REMOTE
-                RELEASE = REMOTE nếu có. Còn 1 giây máy nhấn nửa để lấy nét, hết giờ chụp ngay (flash rời nổ như
-                khi bấm dây). Mạch chưa kết nối hoặc máy ảnh không chụp thì màn hình mời khách bấm dây.
-              </p>
-              <div className="kiosk-device-row">
-                <Button type="button" className="outline small"
-                  onClick={() => run(async () => { await pressArduino(); setArduinoOn(arduinoConnected()); },
-                    "Đã bấm thử — máy ảnh phải chụp 1 tấm (flash nổ).")}>
-                  Bấm thử
-                </Button>
-                {ownPort ? (
-                  <Button type="button" className="outline small"
-                    onClick={() => { forgetShutterPort(); setOwnPort(false); setArduinoOn(arduinoConnected()); }}>
-                    Dùng chung mạch máy nhận tiền
-                  </Button>
-                ) : (
-                  <Button type="button" className="outline small"
-                    onClick={() => run(async () => {
-                      await chooseShutterPort();
-                      setOwnPort(true);
-                      setArduinoOn(arduinoConnected());
-                    }, "Đã chọn cổng riêng cho mạch bấm máy.")}>
-                    Mạch riêng? Chọn cổng
-                  </Button>
-                )}
-              </div>
-              <p className="kiosk-device-note" role="status">
-                {ownPort ? "Mạch bấm máy riêng" : "Dùng chung mạch máy nhận tiền"} ·{" "}
-                {arduinoOn ? "đã kết nối" : "chưa kết nối (bấm thử để mở cổng)"}
-              </p>
-            </>
-          )}
-          <label className="checkbox">
-            <input type="radio" name="shutter" checked={shutter === "relay"} disabled={!relaySupported}
-              onChange={() => pickShutter("relay")} />
-            Ưu tiên relay USB nối song song dây bấm
-          </label>
-          {shutter === "relay" && (
-            <p className="kiosk-device-note">
-              Relay 1 kênh: nối chung đầu (TIP) và vòng (RING) của jack dây bấm vào một chân relay, thân (SLEEVE)
-              vào chân còn lại — relay đóng là nhấn hết như dây bấm. Máy ảnh nên để lấy nét tay (MF) hoặc
-              RELEASE/FOCUS PRIORITY = RELEASE để chụp ngay.
-            </p>
-          )}
-          {shutter === "relay" && (
-            <div className="kiosk-device-row">
-              <Button type="button" className="outline small"
-                onClick={() => run(async () => { await connectRelay(true); setRelayOn(relayConnected()); }, "Đã kết nối relay.")}>
-                {relayOn ? "Đổi cổng relay" : "Kết nối relay"}
-              </Button>
-              <Button type="button" className="outline small" disabled={!relayOn}
-                onClick={() => run(() => pressRelay(relay), "Đã bấm thử — máy ảnh phải chụp 1 tấm.")}>
-                Bấm thử
-              </Button>
-              <label>
-                Lệnh bật
-                <input value={relay.on} onChange={(e) => saveRelay({ ...relay, on: e.target.value })}
-                  onBlur={() => run(() => hexBytes(relay.on))} />
-              </label>
-              <label>
-                Lệnh tắt
-                <input value={relay.off} onChange={(e) => saveRelay({ ...relay, off: e.target.value })}
-                  onBlur={() => run(() => hexBytes(relay.off))} />
-              </label>
-              <label>
-                Giữ (ms)
-                <input type="number" min="50" max="2000" value={relay.ms}
-                  onChange={(e) => saveRelay({ ...relay, ms: Number(e.target.value) || DEFAULT_RELAY.ms })} />
-              </label>
-            </div>
-          )}
-          <label className="checkbox">
-            <input type="radio" name="shutter" checked={shutter === "hdmi"} onChange={() => pickShutter("hdmi")} />
-            Lấy khung hình từ hình trực tiếp HDMI (không cần thêm thiết bị, ảnh 1080p, KHÔNG có flash — không
-            dùng khi tiệm dùng flash)
-          </label>
-        </details>
+        {camera.error && <p className="kiosk-check-result is-warn" role="alert">{camera.error}</p>}
+        <p className="kiosk-device-note">Hẹn giờ: kết nối máy ảnh → đếm 3–2–1 → chụp. Chế độ bấm chụp có nút trên màn hình cảm ứng; có thể dùng nút USB cắm máy tính. R50 không có cổng dây bấm; jack 3,5 mm là cổng mic. Remote Canon BR-E1 dùng Bluetooth, cần kiểm tra khả năng hoạt động đồng thời với USB trước khi sử dụng.</p>
+        <p className="kiosk-device-note">Flash: Shutter mode = Elec. 1st-curtain (R50 không có màn trập cơ hoàn toàn), tắt Silent shutter, chọn Single shooting và JPEG Large/Fine. Flash/trigger phải tương thích ngàm multi-function shoe của R50; một số loại cần AD-E1.</p>
+        <p className="kiosk-device-note">Hình trực tiếp dùng micro-HDMI → thẻ ghi hình USB. Bấm INFO để kiểm tra hiển thị; nếu vẫn còn ô AF ở chế độ ảnh, có thể dùng MF và chỉnh nét vào vị trí khách đứng. Kiểm tra ảnh thử trước khi đón khách.</p>
       </fieldset>
-
       <fieldset className="kiosk-device-box">
         <legend>Máy đọc tiền (ICT)</legend>
         <p className="kiosk-device-note">

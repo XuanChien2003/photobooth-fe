@@ -2,4 +2,5 @@
 export const QR_SECONDS = 120;
 export const CAMERA_KEY = "photo-camera";
 export const MIRROR_KEY = "photo-mirror";
-export const FOLDER_KEY = "camera-folder";
+// A camera change requires selecting the Canon save directory again, not reusing the old folder.
+export const FOLDER_KEY = "camera-folder-canon-r50";

@@ -24,7 +24,7 @@
   line-height: 1.7;
 }
 
-/* Cài đặt máy chụp: thư mục ảnh của máy ảnh (X Acquire / Capture One) */
+/* Cài đặt máy chụp: thư mục JPEG gốc của Canon Camera Agent */
 .kiosk-folder {
   display: grid;
   gap: 8px;
