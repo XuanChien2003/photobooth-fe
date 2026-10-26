@@ -4,7 +4,7 @@ export const isMac =
   /mac/i.test(navigator.userAgentData?.platform || navigator.platform || "");
 export const PHOTO_FOLDER_EXAMPLE = isMac
   ? "Pictures/PhotoBooth"
-  : "C:\\PhotoBooth\\CanonR50";
+  : "C:\\PhotoBooth\\CanonR100";
 // Thư mục ảnh không đọc được: lý do hay gặp khác nhau giữa macOS và Windows.
 export const FOLDER_ACCESS_HINT = isMac
   ? `Trên macOS: System Settings → Privacy & Security → Files and Folders → cho phép Chrome đọc thư mục ảnh Canon ngoài Desktop / Documents / Downloads, vd. ${PHOTO_FOLDER_EXAMPLE}.`

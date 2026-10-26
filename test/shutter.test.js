@@ -1,19 +1,19 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { createCanonServer } from "../scripts/canon-camera/server.js";
+import { createCanonServer, upgradeCanonPhotoFolder } from "../scripts/canon-camera/server.js";
 import { prepareShutter } from "../src/kiosk/shutter.js";
-import { saveCanonConfig } from "../src/kiosk/canon-camera.js";
+import { canonCameraState, readCanonConfig, saveCanonConfig } from "../src/kiosk/canon-camera.js";
 const storage = new Map();
 globalThis.localStorage = { getItem: (key) => storage.get(key) ?? null,
   setItem: (key, value) => storage.set(key, value), removeItem: (key) => storage.delete(key) };
 const fetchOriginal = globalThis.fetch, origin = "http://localhost:5173", token = "fixture-agent-token";
-let server, base, failShot = false;
+let server, base, failShot = false, cameraModel = "Canon EOS R100";
 const calls = [];
 before(async () => {
   server = createCanonServer({ token, origins: [origin], driver: { async request(action, payload) {
     calls.push({ action, payload });
     if (action === "shoot" && failShot) throw new Error("Response lost after physical exposure");
-    return { connected: true, model: "Canon EOS R50", folder: "C:\\PhotoBooth\\CanonR50" };
+    return { connected: true, model: cameraModel, folder: "C:\\PhotoBooth\\CanonR100" };
   } } });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   base = `http://127.0.0.1:${server.address().port}`;
@@ -69,7 +69,25 @@ test("expired commands and pre-cancelled client calls never touch the camera", a
 test("camera connection must be configured on this computer", async () => {
   saveCanonConfig({ token: "" });
   const before = calls.length;
-  await assert.rejects(prepareShutter(), /Chưa cài kết nối Canon R50/);
+  await assert.rejects(prepareShutter(), /Chưa cài kết nối Canon R100/);
   assert.equal(calls.length, before);
   saveCanonConfig({ token });
+});
+test("an old R50 Camera Agent cannot be used to shoot after switching to R100", async () => {
+  cameraModel = "Canon EOS R50";
+  const before = calls.length;
+  try {
+    await assert.rejects(prepareShutter(), /Cập nhật Camera Agent bản R100/);
+    assert.deepEqual(calls.slice(before).map((c) => c.action), ["connect"]);
+    assert.equal(canonCameraState().connected, false);
+  } finally { cameraModel = "Canon EOS R100"; }
+});
+test("camera change keeps the agent token and custom save directories", () => {
+  storage.delete("kiosk-canon-r100-usb");
+  storage.set("kiosk-canon-r50-usb", JSON.stringify({ token }));
+  assert.equal(readCanonConfig().token, token);
+  assert.equal(upgradeCanonPhotoFolder("C:\\PhotoBooth\\CanonR50"), "C:\\PhotoBooth\\CanonR100");
+  assert.equal(upgradeCanonPhotoFolder("D:\\Studio\\Photos"), "D:\\Studio\\Photos");
+  saveCanonConfig({ token });
+  storage.delete("kiosk-canon-r50-usb");
 });

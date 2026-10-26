@@ -57,7 +57,7 @@ export function createCanonDriver({ sdkDirectory, folder }) {
       await opening;
       return new Promise((done, reject) => {
         const id = randomUUID();
-        const timer = setTimeout(() => { requests.delete(id); reject(new Error("Canon R50 không phản hồi; lệnh không được tự gửi lại.")); worker?.kill(); }, 10000);
+        const timer = setTimeout(() => { requests.delete(id); reject(new Error("Canon R100 không phản hồi; lệnh không được tự gửi lại.")); worker?.kill(); }, 10000);
         requests.set(id, { resolve: done, reject, timer });
         worker.stdin.write(JSON.stringify({ ...payload, id, action }) + "\n", (error) => { if (error) fail(error); });
       });

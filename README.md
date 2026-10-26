@@ -134,30 +134,37 @@ React. Cách triển khai và cấu hình: `CLOUDFLARE.md`.
 Máy chụp: nên mở trình duyệt ở chế độ toàn màn hình (nút “Bật / tắt toàn màn hình” trong
 “Cài đặt máy chụp (nhân viên)” ở màn nhập mã) và cho phép dùng camera.
 
-## Canon EOS R50: hẹn giờ và bấm chụp
+## Canon EOS R100: hẹn giờ và bấm dây
 
-Kiosk dùng Canon R50, giữ hai chế độ: **Hẹn giờ** (kết nối rồi đếm 3–2–1 trước mỗi ảnh)
-và **Bấm chụp** (khách chạm nút trên màn hình cảm ứng, không tự chụp khi chưa bấm).
-Cả hai gửi lệnh chụp thật qua Canon EDSDK và nhận JPEG gốc từ máy ảnh; HDMI chỉ dùng xem trước.
+Kiosk dùng Canon R100, giữ hai chế độ: **Hẹn giờ** (kết nối rồi đếm 3–2–1 trước mỗi ảnh)
+và **Bấm dây** (khách nhấn RS-60E3 hoặc dây tương thích cắm trực tiếp vào cổng remote trên R100).
+Hẹn giờ gửi lệnh chụp thật qua Canon EDSDK. Bấm dây chỉ chuẩn bị USB nhận ảnh, không gửi lệnh lấy nét/chụp
+từ trình duyệt, không chụp khi chạm màn hình hoặc nhấn Enter/Space. Cả hai nhận JPEG gốc từ máy ảnh;
+HDMI chỉ dùng xem trước.
 Ảnh về chậm hoặc mất kết nối thì tạm dừng; không tự chụp lại và không lấy ảnh HDMI thay thế.
 
 ### Cài trên máy tính trong phòng (Windows x64)
 
-1. Canon R50 firmware từ **1.3.0**. Chọn **Choose USB connection app → Photo Import/Remote Control**,
-   ảnh **JPEG Large/Fine** hoặc RAW+JPEG; **Single shooting** và tắt self-timer trên máy ảnh.
+1. Canon R100: khuyến nghị firmware **1.3.0** có hỗ trợ EDSDK. Chọn ảnh **JPEG Large/Fine** hoặc RAW+JPEG,
+   **Single shooting**, tắt self-timer và ngắt kết nối Wi-Fi trên máy ảnh trước khi dùng USB.
 2. Cáp USB dữ liệu từ máy ảnh vào máy tính. Hình xem trước dùng **micro-HDMI → thẻ ghi hình USB**.
-   Không chọn USB Video calls/streaming hoặc EOS Webcam Utility đồng thời với chụp USB.
-3. Cài Node.js 20+ x64 và [Canon EDSDK x64](https://www.usa.canon.com/support/sdk) có hỗ trợ R50.
+   Không dùng EOS Webcam Utility đồng thời với phiên USB của Camera Agent.
+3. Cài Node.js 20+ x64 và [Canon EDSDK x64](https://www.usa.canon.com/support/sdk) có hỗ trợ R100.
    SDK/DLL do Canon cung cấp theo giấy phép riêng, **không có trong mã nguồn hoặc ZIP bộ cài**.
-4. Trong Cài đặt máy chụp → Canon EOS R50, tải ZIP Camera Agent, giải nén và chạy `install.cmd`.
+4. Trong Cài đặt máy chụp → Canon EOS R100, tải ZIP Camera Agent, giải nén và chạy `install.cmd`.
    Chọn `EDSDK.dll` trong thư mục DLL x64 của SDK, giữ các DLL đi kèm tại đó.
    Thoát EOS Utility/EOS Webcam Utility; chỉ Camera Agent giữ kết nối USB với máy ảnh.
-5. Nhập mã Camera Agent hiển thị vào cài đặt kiosk, bấm **Kết nối R50**. Chọn thư mục ảnh
-   **C:\PhotoBooth\CanonR50** hoặc đúng thư mục mà Camera Agent báo. Cho phép trình duyệt đọc thư mục
+5. Nhập mã Camera Agent hiển thị vào cài đặt kiosk, bấm **Kết nối R100**. Chọn thư mục ảnh
+   **C:\PhotoBooth\CanonR100** hoặc đúng thư mục mà Camera Agent báo. Cho phép trình duyệt đọc thư mục
    và truy cập mạng cục bộ nếu được hỏi. Bấm **Bấm thử**, xác nhận JPEG và flash thực tế.
 6. Bộ cài tự mở kiosk Windows sẽ mở Camera Agent đã cài khi đăng nhập. Chi tiết trong
    [hướng dẫn Camera Agent](scripts/canon-camera/README.md). Camera Agent hiện chỉ hỗ trợ Windows x64;
    tính năng tự chụp qua USB trên macOS chưa được triển khai.
+
+**Đổi từ bản R50:** cài lại ZIP Camera Agent bản R100 và khởi động lại chương trình trên máy tính phòng chụp
+(hoặc khởi động lại máy tính). Bản Agent cũ nhận diện R50 sẽ không được dùng để chụp R100.
+Mã kết nối được giữ lại. Thư mục mặc định chuyển sang `C:\PhotoBooth\CanonR100` mà không di chuyển/xóa ảnh cũ;
+thư mục tùy chỉnh được giữ nguyên. Chọn lại đúng thư mục trong kiosk sau khi đổi máy ảnh.
 
 Phát triển: `npm run camera:agent`; `CANON_SDK_DIR` chỉ thư mục chứa EDSDK.dll x64,
 `CANON_PHOTO_DIR` chọn thư mục ảnh. API chỉ lắng nghe `127.0.0.1:8788`, yêu cầu mã kết nối
@@ -166,26 +173,25 @@ không đi qua backend Cloudflare/Render; JPEG vẫn dùng luồng tải ảnh h
 
 ### Remote, flash và khung lấy nét
 
-**R50 không có jack dây bấm như máy ảnh có cổng remote.** Lỗ 3,5 mm là cổng mic, không dùng cho
-remote Fuji. Remote [BR-E1](https://cam.start.canon/en/C011/manual/html/UG-06_AF-Drive_0140.html)
-nối trực tiếp qua Bluetooth; chưa xác nhận nó hoạt động đồng thời với phiên USB EDSDK.
-Không coi đây là đường chụp đã hỗ trợ. Chế độ bấm chụp dùng nút trên màn hình cảm ứng;
-nút USB kiểu bàn phím cắm máy tính có thể gửi **Enter/Space**, không ảnh hưởng cảm ứng.
+R100 có [cổng remote cho RS-60E3](https://cam.start.canon/en/C015/manual/html/UG-04_AF-Drive_0070.html).
+Cắm dây bấm đúng cổng remote, không cắm cổng MIC. Nhấn nửa để lấy nét, nhấn hết để chụp.
+USB truyền JPEG gốc về Camera Agent đồng thời với việc nhận ảnh từ dây bấm; cần thử trên bộ máy thật.
+Không cần thêm nút USB cắm máy tính cho chế độ này. Ở chế độ Hẹn giờ, khách không cần nhấn dây.
 
-R50 dùng **Shutter mode = Elec. 1st-curtain** để dùng flash (không có màn trập cơ hoàn toàn),
-tắt Silent shutter. Flash/trigger phải tương thích multi-function shoe; kiểm tra yêu cầu AD-E1
-của phụ kiện. Không tự đổi các thiết lập phơi sáng của khách bằng phần mềm.
+Dùng chế độ chụp ảnh P/Tv/Av/M, tắt Silent shutter để dùng flash. Flash/trigger cần tương thích Canon R100
+và tốc độ đồng bộ đúng theo hướng dẫn phụ kiện. Không áp dụng hướng dẫn ngàm multi-function shoe/AD-E1
+của R50 cho R100. Phần mềm không tự đổi các thiết lập phơi sáng của khách.
 
 Khung AF xanh đã nằm trong tín hiệu HDMI thì CSS không xóa được. Kiểm tra hiển thị bằng INFO;
 nếu ở chế độ ảnh vẫn hiện ô AF khi lấy nét, dùng MF vào vị trí khách đứng và kiểm tra ảnh thử.
 Không chuyển sang quay phim chỉ để có HDMI sạch vì photobooth cần chụp ảnh với flash.
 
-Nguồn Canon: [USB](https://cam.start.canon/en/C011/manual/html/UG-09_Set-up_0230.html),
-[các cổng R50](https://cam.start.canon/en/C011/manual/html/UG-00_Before_0110.html),
-[firmware hỗ trợ SDK](https://sg.canon/en/support/0400990102?model=5812C).
+Nguồn Canon: [USB](https://cam.start.canon/en/C015/manual/html/UG-11_Reference_0020.html),
+[dây bấm RS-60E3](https://cam.start.canon/en/C015/manual/html/UG-04_AF-Drive_0070.html),
+[firmware hỗ trợ SDK](https://sg.canon/en/support/0401145502).
 
 Kiểm thử phần mềm và biên dịch helper không xác nhận được flash, USB/HDMI đồng thời hoặc
-remote trên phần cứng. Trước khi cho khách dùng cần chạy thử hai chế độ với R50 và bộ flash thật.
+remote trên phần cứng. Trước khi cho khách dùng cần chạy thử hai chế độ với R100 và bộ flash thật.
 
 ## Giao diện: Tailwind CSS 4
 

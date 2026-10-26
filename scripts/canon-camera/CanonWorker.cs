@@ -52,7 +52,7 @@ public static class CanonWorker {
     [DllImport(DLL)] static extern uint EdsDownloadCancel(IntPtr item);
 
     static void Check(uint code) {
-        if (code != 0) throw new InvalidOperationException("Canon EDSDK 0x" + code.ToString("X8") + ". Kiem tra cap USB, firmware R50 >= 1.3.0; thoat EOS Utility va EOS Webcam Utility.");
+        if (code != 0) throw new InvalidOperationException("Canon EDSDK 0x" + code.ToString("X8") + ". Kiem tra cap USB, firmware R100 (khuyen nghi 1.3.0), ngat Wi-Fi; thoat EOS Utility va EOS Webcam Utility.");
     }
     static void Emit(object value) { Console.WriteLine(Json.Serialize(value)); Console.Out.Flush(); }
     static object Status() { return new { connected = connected, model = model, folder = folder }; }
@@ -73,12 +73,12 @@ public static class CanonWorker {
                 IntPtr candidate; Check(EdsGetChildAtIndex(list, i, out candidate));
                 DeviceInfo info;
                 uint code = EdsGetDeviceInfo(candidate, out info);
-                if (code == 0 && String.Equals(info.description, "Canon EOS R50", StringComparison.OrdinalIgnoreCase)) {
+                if (code == 0 && String.Equals(info.description, "Canon EOS R100", StringComparison.OrdinalIgnoreCase)) {
                     camera = candidate; model = info.description; break;
                 }
                 EdsRelease(candidate);
             }
-            if (camera == IntPtr.Zero) throw new InvalidOperationException("Khong thay Canon EOS R50. Bat may, cam USB du lieu va chon Photo Import/Remote Control.");
+            if (camera == IntPtr.Zero) throw new InvalidOperationException("Khong thay Canon EOS R100. Bat may, cam USB du lieu va ngat ket noi Wi-Fi tren may anh.");
             Check(EdsOpenSession(camera)); connected = true;
             Check(EdsSetObjectEventHandler(camera, 0x200, objectHandler, IntPtr.Zero));
             Check(EdsSetCameraStateEventHandler(camera, 0x300, stateHandler, IntPtr.Zero));
@@ -127,7 +127,7 @@ public static class CanonWorker {
             if (connected) Check(EdsSendCommand(camera, 4, 0));
             releaseAt = DateTime.MaxValue; return Status();
         }
-        if (!connected) throw new InvalidOperationException("Canon R50 chua ket noi USB.");
+        if (!connected) throw new InvalidOperationException("Canon R100 chua ket noi USB.");
         long expires = Convert.ToInt64(command["expiresAt"]);
         if (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() > expires) throw new InvalidOperationException("Lenh chup da het han; khong chup muon.");
         if (action == "focus") {

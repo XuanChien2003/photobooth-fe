@@ -113,10 +113,7 @@
     font-size: clamp(20px, 3vh, 30px);
     white-space: nowrap;
     box-shadow: 0 10px 30px rgb(0 0 0 / 35%);
-    border: 0;
-    cursor: pointer;
   }
-  .shoot-press:disabled { opacity: 0.55; cursor: wait; }
   .shoot-stage:has(.shoot-press) .shoot-capture-status { bottom: 20%; }
   .shoot-press svg {
     flex: none;

@@ -133,14 +133,14 @@ export function FolderCheck({ folder }) {
           </p>
           <ol>
             <li>
-              Canon R50 firmware từ 1.3.0; Choose USB connection app = Photo Import/Remote Control.
+              Canon R100: cắm USB dữ liệu, ngắt kết nối Wi-Fi; khuyến nghị firmware 1.3.0 hỗ trợ EDSDK.
             </li>
             <li>
               Cáp USB-C cắm thẳng vào máy tính và là cáp truyền dữ liệu (cáp chỉ
               sạc không dùng được).
             </li>
             <li>
-              Canon Camera Agent đang mở và đã kết nối R50. Thoát EOS
+              Canon Camera Agent đang mở và đã kết nối R100. Thoát EOS
               Utility, EOS Webcam Utility và các chương trình khác đang chiếm máy ảnh.
             </li>
             <li>{FOLDER_ACCESS_HINT}</li>
@@ -148,7 +148,7 @@ export function FolderCheck({ folder }) {
               Thư mục lưu ảnh trong cài đặt Canon Camera Agent trùng với thư mục đã chọn
               ở đây.
             </li>
-            <li>Image quality trên R50 là JPEG Large/Fine hoặc RAW+JPEG.</li>
+            <li>Image quality trên R100 là JPEG Large/Fine hoặc RAW+JPEG.</li>
           </ol>
         </div>
       )}

@@ -1,26 +1,34 @@
-# Canon EOS R50 Camera Agent (Windows x64)
+# Canon EOS R100 Camera Agent (Windows x64)
 
 Local USB control for the kiosk. Requires Node.js 20+ x64, .NET Framework 4.8 and Canon EDSDK x64
-supporting the EOS R50. Canon's SDK/DLL files are not distributed in this archive.
+supporting the EOS R100. Canon's SDK/DLL files are not distributed in this archive.
 Obtain the SDK from https://www.usa.canon.com/support/sdk under Canon's licence.
 
-1. R50 firmware >= 1.3.0; choose Photo Import/Remote Control for USB. Connect a data USB cable.
+1. R100 firmware 1.3.0 recommended for EDSDK support. Connect a data USB cable and disconnect camera Wi-Fi.
 2. Exit EOS Utility / EOS Webcam Utility. Only Camera Agent should own the USB session.
 3. Extract this archive and run install.cmd. Select EDSDK.dll from the SDK's x64 DLL directory;
    keep its accompanying Canon DLLs in that directory. Installation copies only the agent source
    files into %LOCALAPPDATA%\NXC-CanonAgent; it does not copy the SDK or change USB drivers.
-4. Copy the displayed connection token into kiosk staff settings → Canon EOS R50.
-5. Choose C:\PhotoBooth\CanonR50 (or the folder displayed by Camera Agent) in the kiosk.
-6. Connect R50, shoot a test and verify JPEG delivery and external flash on the actual equipment.
+4. Copy the displayed connection token into kiosk staff settings → Canon EOS R100.
+5. Choose C:\PhotoBooth\CanonR100 (or the folder displayed by Camera Agent) in the kiosk.
+6. Connect R100, shoot a test and verify JPEG delivery and external flash on the actual equipment.
 
-Both the 3-second timer and the touchscreen capture button send a real Canon exposure command.
-An optional USB keyboard-style remote can send Enter/Space to the computer. The R50 has no wired
-remote jack; its 3.5 mm socket is microphone input. BR-E1 is a Bluetooth remote: do not assume it
-can operate simultaneously with USB tethering. It has not been validated by this integration.
+Timer mode sends a real Canon exposure command after 3 seconds. Cable mode only connects USB
+for image transfer: the customer presses an RS-60E3 or compatible cable connected to the R100's
+remote terminal. Touching the display or pressing Enter/Space does not trigger a software shot.
+Do not connect the shutter cable to the microphone terminal. Both modes receive original JPEGs
+through the same SDK download callback and folder watcher; test simultaneous wired capture,
+USB tethering, HDMI and flash on the actual equipment before customer use.
 
-Set JPEG Large/Fine (or RAW+JPEG), Single shooting, Elec. 1st-curtain; disable Silent shutter.
-The R50 has no fully mechanical shutter. Verify flash/trigger multi-function shoe compatibility
-and whether Canon AD-E1 is required. No flash or image is simulated by this agent.
+Set JPEG Large/Fine (or RAW+JPEG), Single shooting; use a still-photo P/Tv/Av/M mode and disable
+Silent shutter for flash. Verify flash/trigger compatibility and sync speed for the R100.
+Do not apply the R50 multi-function shoe/AD-E1 instructions to this camera.
+No flash or image is simulated by this agent.
+
+Updating from R50: install this R100 archive and restart the previous Camera Agent process (or
+restart the computer). The installed old R50 worker cannot recognise an R100. The agent token
+is preserved; the old default photo directory changes to CanonR100 without moving/deleting old
+files, while custom directories remain unchanged. Re-select the save folder in kiosk settings.
 
 After installing the kiosk autostart file, it starts the installed Camera Agent at login.
 To run manually: powershell -NoProfile -File "$env:LOCALAPPDATA\NXC-CanonAgent\start.ps1".
@@ -33,5 +41,8 @@ Development: npm run camera:agent from photobooth-fe. CANON_SDK_DIR can select t
 CANON_PHOTO_DIR selects the save directory; CANON_KIOSK_ORIGINS is an explicit comma-separated list
 of permitted web origins. Never expose this local server on a network interface.
 
-Code compiles without the Canon SDK, but hardware acceptance still requires the SDK, an R50,
+Code compiles without the Canon SDK, but hardware acceptance still requires the SDK, an R100,
 the flash/trigger and an end-to-end test on the booth computer.
+
+Canon reference: https://cam.start.canon/en/C015/manual/html/UG-04_AF-Drive_0070.html
+Firmware reference: https://sg.canon/en/support/0401145502

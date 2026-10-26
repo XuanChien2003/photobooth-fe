@@ -57,7 +57,6 @@ export function KioskShoot({
   onEnd,
   onReopenCamera,
   onRetryCapture,
-  onManualCapture,
 }) {
   const centerCount =
     phase === "ready"
@@ -89,21 +88,20 @@ export function KioskShoot({
             {centerCount}
           </strong>
         ) : null}
-        {mode === "remote" && phase === "shoot" && !ending && (
-          <button type="button" className="shoot-press" onClick={onManualCapture}
-            disabled={receiving || ["connecting", "capturing", "waiting"].includes(captureState) || !booking.captureStartedAt}>
+        {mode === "remote" && phase === "shoot" && captureState === "idle" && !ending && (
+          <div className="shoot-press" role="status">
             <PiHandTapBold aria-hidden="true" />
-            <strong>Bấm chụp</strong>
-          </button>
+            <strong>Nhấn nút trên dây bấm để chụp</strong>
+          </div>
         )}
         {phase === "shoot" && !ending && captureState !== "countdown" && captureState !== "idle" && (
           <div className="shoot-capture-status" role={captureError ? "alert" : "status"}>
             {captureError ? (
               <>
-                <strong>{timerMode ? "Đang tạm dừng chụp tự động" : "Chưa chụp được ảnh"}</strong>
+                <strong>{timerMode ? "Đang tạm dừng chụp tự động" : "Chưa kết nối máy ảnh"}</strong>
                 <p>{captureError}</p>
                 <Button className="outline small" disabled={receiving} onClick={onRetryCapture}>
-                  {timerMode ? "Kết nối lại và đếm 3 giây" : "Thử chụp lại"}
+                  {timerMode ? "Kết nối lại và đếm 3 giây" : "Kết nối lại máy ảnh"}
                 </Button>
               </>
             ) : (
@@ -174,8 +172,8 @@ export function KioskShoot({
               </button>
               <button type="button" onClick={() => onPickMode("remote")}>
                 <PiHandTapBold aria-hidden="true" />
-                <strong>Bấm chụp</strong>
-                <span>Chạm nút chụp trên màn hình · tối đa {quota} tấm</span>
+                <strong>Bấm dây</strong>
+                <span>Dây bấm cắm trực tiếp vào Canon R100 · tối đa {quota} tấm</span>
               </button>
             </div>
             <small>

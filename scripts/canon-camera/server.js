@@ -6,6 +6,11 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createCanonDriver } from "./driver.js";
 export const DEFAULT_ORIGINS = ["https://photobooth.ngathanh.workers.dev", "https://studio.selfbooth.workers.dev", "http://localhost:5173", "http://127.0.0.1:5173"];
+// Select a new default without moving or deleting any photos from the previous camera.
+export function upgradeCanonPhotoFolder(folder) {
+  return typeof folder === "string" && folder.replaceAll("/", "\\").toLowerCase() === "c:\\photobooth\\canonr50"
+    ? "C:\\PhotoBooth\\CanonR100" : folder;
+}
 
 export function createCanonServer({ driver, token, origins = DEFAULT_ORIGINS }) {
   const shots = new Map();
@@ -53,7 +58,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   await mkdir(directory, { recursive: true });
   let config;
   try { config = JSON.parse(await readFile(path, "utf8")); }
-  catch (error) { if (error.code !== "ENOENT") throw error; config = { token: randomBytes(24).toString("hex"), folder: "C:\\PhotoBooth\\CanonR50" }; }
+  catch (error) { if (error.code !== "ENOENT") throw error; config = { token: randomBytes(24).toString("hex"), folder: "C:\\PhotoBooth\\CanonR100" }; }
+  config.folder = upgradeCanonPhotoFolder(config.folder);
   if (process.env.CANON_SDK_DIR) config.sdkDirectory = resolve(process.env.CANON_SDK_DIR);
   if (process.env.CANON_PHOTO_DIR) config.folder = resolve(process.env.CANON_PHOTO_DIR);
   await writeFile(path, JSON.stringify(config, null, 2), { mode: 0o600 });

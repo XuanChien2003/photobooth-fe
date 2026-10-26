@@ -22,7 +22,8 @@ if ($Install) {
   New-Item -ItemType Directory -Path $configRoot -Force | Out-Null
   $configPath = Join-Path $configRoot 'canon-agent.json'
   if (Test-Path -LiteralPath $configPath) { $config = Get-Content -Raw -Encoding UTF8 -LiteralPath $configPath | ConvertFrom-Json }
-  else { $config = [pscustomobject]@{ token = ''; folder = 'C:\PhotoBooth\CanonR50'; sdkDirectory = '' } }
+  else { $config = [pscustomobject]@{ token = ''; folder = 'C:\PhotoBooth\CanonR100'; sdkDirectory = '' } }
+  if ($config.folder -eq 'C:\PhotoBooth\CanonR50') { $config.folder = 'C:\PhotoBooth\CanonR100' }
   if (-not $config.token) {
     $bytes = New-Object byte[] 24
     $rng = [Security.Cryptography.RandomNumberGenerator]::Create()

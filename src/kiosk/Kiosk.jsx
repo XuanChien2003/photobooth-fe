@@ -311,7 +311,7 @@ export function Kiosk() {
         );
       else
         toast.warning(
-          `Đã chọn thư mục ảnh “${handle.name}” nhưng máy chụp chưa thấy ảnh JPG nào. Hãy chọn đúng thư mục Canon Camera Agent đang lưu ảnh (các tệp JPEG gốc từ R50), hoặc chụp thử 1 tấm rồi bấm “Thử nhận ảnh từ máy ảnh”. Thư mục có ảnh mà vẫn báo 0: ${FOLDER_ACCESS_HINT}`,
+          `Đã chọn thư mục ảnh “${handle.name}” nhưng máy chụp chưa thấy ảnh JPG nào. Hãy chọn đúng thư mục Canon Camera Agent đang lưu ảnh (các tệp JPEG gốc từ R100), hoặc chụp thử 1 tấm rồi bấm “Thử nhận ảnh từ máy ảnh”. Thư mục có ảnh mà vẫn báo 0: ${FOLDER_ACCESS_HINT}`,
           15000,
         );
     } catch (e) {
@@ -1093,15 +1093,24 @@ export function Kiosk() {
   const takenRef = useRef(0);
   takenRef.current = taken;
   const pressedAt = useRef(0);
-  const manualCapture = useRef(null);
+  const waitingForCable = session?.mode === "remote" && ["ready", "shoot"].includes(phase) && !done && !ending;
   useEffect(() => {
-    if (session?.mode === "remote") { setCaptureState("idle"); setCaptureError(""); }
-    return () => { manualCapture.current?.abort(); manualCapture.current = null; };
-  }, [phase, taken, session?.captureToken]);
-  function runCameraShot(abort, before, countdownSeconds) {
+    if (!waitingForCable) return;
+    const abort = new AbortController();
+    setCaptureState("connecting");
+    setCaptureError("");
+    // Prepare USB transfer only. The RS-60E3 cable physically triggers the R100;
+    // this mode must never focus or press the camera through software.
+    connectCanonCamera(abort.signal).then(() => {
+      if (!abort.signal.aborted) setCaptureState("idle");
+    }, (error) => {
+      if (!abort.signal.aborted) { setCaptureState("error"); setCaptureError(error.message); }
+    });
+    return () => abort.abort();
+  }, [waitingForCable, session?.captureToken, shotRetry]);
+  function runCameraShot(abort, before) {
     setCaptureError("");
     return runTimedShot({
-      countdownSeconds,
       prepare: (signal) => prepareShutter(undefined, signal),
       signal: abort.signal,
       onState: setCaptureState,
@@ -1114,28 +1123,6 @@ export function Kiosk() {
       setCaptureState("error"); setCaptureError(e.message); setShotLeft(null);
     });
   }
-  function takeManualPhoto() {
-    const s = current.current;
-    if (!s || s.mode !== "remote" || phaseOf(s) !== "shoot" || !s.booking.captureStartedAt ||
-      endingRef.current || manualCapture.current || readingRef.current || detectingRef.current ||
-      takenRef.current >= Number(s.booking.shots)) return;
-    const abort = new AbortController();
-    manualCapture.current = abort;
-    runCameraShot(abort, takenRef.current, 0).finally(() => {
-      if (manualCapture.current === abort) manualCapture.current = null;
-    });
-  }
-  // Optional USB remote that sends Enter/Space; touching the button uses the same capture path.
-  useEffect(() => {
-    if (phase !== "shoot" || session?.mode !== "remote" || ending) return;
-    const keydown = (event) => {
-      if (event.repeat || event.ctrlKey || event.altKey || event.metaKey || !["Enter", "Space"].includes(event.code) ||
-        event.target?.closest?.("button, input, textarea, select, [contenteditable=true]")) return;
-      event.preventDefault(); takeManualPhoto();
-    };
-    window.addEventListener("keydown", keydown);
-    return () => window.removeEventListener("keydown", keydown);
-  }, [phase, session?.mode, ending]);
   // Theo dõi thư mục ảnh của máy ảnh trong suốt lúc chụp (không khởi động lại mỗi lần có ảnh).
   useEffect(() => {
     const s = session;
@@ -1233,8 +1220,7 @@ export function Kiosk() {
           receiving={reading + detecting > 0}
           captureState={captureState}
           captureError={captureError}
-          onRetryCapture={() => session.mode === "timer" ? setShotRetry((n) => n + 1) : takeManualPhoto()}
-          onManualCapture={takeManualPhoto}
+          onRetryCapture={() => setShotRetry((n) => n + 1)}
           modeLeft={modeLeft}
           ending={ending}
           onPickMode={pickMode}

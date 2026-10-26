@@ -1,9 +1,9 @@
 import { isMac } from "./folder.js";
 
-// USB Photo Import/Remote Control is reserved for Canon Camera Agent. Preview uses HDMI.
-export const isCameraUsbVideo = (d) => /canon|eos|\br50\b/i.test(d?.label || "");
+// USB camera control is reserved for Canon Camera Agent. Preview uses HDMI.
+export const isCameraUsbVideo = (d) => /canon|eos|\br100\b/i.test(d?.label || "");
 export const CAMERA_USB_MESSAGE =
-  "Canon R50 cần USB ở Photo Import/Remote Control để chụp và nhận JPEG gốc. Thoát EOS Webcam Utility; không chọn Video calls/streaming. Hình trực tiếp dùng micro-HDMI qua thẻ ghi hình USB rồi chọn thẻ đó tại Hình trực tiếp từ máy ảnh.";
+  "Canon R100 dùng cáp USB dữ liệu để chụp và nhận JPEG gốc qua Camera Agent. Thoát EOS Webcam Utility, ngắt kết nối Wi-Fi trên máy ảnh. Hình trực tiếp dùng micro-HDMI qua thẻ ghi hình USB rồi chọn thẻ đó tại Hình trực tiếp từ máy ảnh.";
 export const CAMERA_ERROR =
   "Không mở được camera. Kiểm tra cáp USB của máy ảnh và cấp quyền camera cho trình duyệt.";
 const isVirtual = (d) => /obs|virtual/i.test(d.label);

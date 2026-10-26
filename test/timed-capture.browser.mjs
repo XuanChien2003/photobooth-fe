@@ -37,6 +37,14 @@ const shutterFixture = `
     };
   }
 `;
+const canonFixture = `
+  export async function connectCanonCamera(signal) {
+    signal?.throwIfAborted();
+    window.captureConnections = (window.captureConnections || 0) + 1;
+    if (window.connectionError) throw new Error('Máy ảnh chưa kết nối');
+    return { connected: true, model: 'Canon EOS R100' };
+  }
+`;
 before(async () => {
   const bundle = await build({
     configFile: false, logLevel: "error", esbuild: { jsx: "automatic" },
@@ -46,10 +54,12 @@ before(async () => {
       name: "timed-capture-fixture", enforce: "pre",
       resolveId: (id) => id.startsWith("virtual:") ? "\0" + id : null,
       load: (id) => id === "\0virtual:timed-capture.jsx" ? fixture
-        : id === "\0virtual:timer-shutter" ? shutterFixture : null,
+        : id === "\0virtual:timer-shutter" ? shutterFixture
+        : id === "\0virtual:canon-camera" ? canonFixture : null,
       transform(source, id) {
         if (id.replaceAll("\\", "/").endsWith("/src/kiosk/Kiosk.jsx"))
-          return source.replace('from "./shutter.js"', 'from "virtual:timer-shutter"');
+          return source.replace('from "./shutter.js"', 'from "virtual:timer-shutter"')
+            .replace('from "./canon-camera.js"', 'from "virtual:canon-camera"');
       },
     }],
   });
@@ -141,21 +151,36 @@ test("failed timer connection shows retry and never asks the customer to press t
   } finally { await b.page.close(); }
 });
 
-test("manual mode waits for a touchscreen press and blocks duplicates while receiving the photo", async () => {
+test("R100 cable mode receives external photos without issuing software focus or exposure commands", async () => {
   const b = await booth();
   try {
-    await b.page.getByRole("button", { name: /^Bấm chụp/ }).tap();
-    await b.page.waitForFunction(() => [...document.querySelectorAll('button')].some(b => b.textContent === 'Bấm chụp' && !b.disabled));
+    const initialConnections = await b.page.evaluate(() => window.captureConnections || 0);
+    await b.page.getByRole("button", { name: /^Bấm dây/ }).tap();
+    await b.page.getByText("Nhấn nút trên dây bấm để chụp", { exact: true }).waitFor();
+    assert.ok(await b.page.evaluate(() => window.captureConnections) > initialConnections, "prepare USB reception when entering cable mode");
+    assert.equal(await b.page.getByRole("button", { name: "Bấm chụp", exact: true }).count(), 0);
     assert.deepEqual(await b.events(), []);
-    await b.page.getByRole("button", { name: "Bấm chụp", exact: true }).tap();
-    await b.page.waitForFunction(() => window.captureEvents.some(e => e.type === 'press'));
-    assert.equal((await b.events()).filter(e => e.type === "press").length, 1);
-    assert.equal(await b.page.getByRole("button", { name: "Bấm chụp", exact: true }).isDisabled(), true);
-    b.photo();
-    await b.page.waitForFunction(() => [...document.querySelectorAll('button')].some(b => b.textContent === 'Bấm chụp' && !b.disabled));
+    await b.page.getByText("Nhấn nút trên dây bấm để chụp", { exact: true }).tap();
     await b.page.locator('body').click({ position: { x: 5, y: 200 } });
     await b.page.keyboard.press('Space');
-    await b.page.waitForFunction(() => window.captureEvents.filter(e => e.type === 'press').length === 2);
+    await b.page.keyboard.press('Enter');
+    b.photo(); // Physical cable exposure arrives through the existing receive/upload flow.
+    await b.page.waitForFunction(() => document.querySelector('.shoot-timer small')?.textContent.startsWith('1/3'));
+    assert.deepEqual(await b.events(), [], "receiving a cable photo must not start a timer or software exposure");
+    await b.page.screenshot({ path: join(screenshots, "r100-cable-mode.jpg") });
+    assert.deepEqual(b.errors, []);
+  } finally { await b.page.close(); }
+});
+
+test("retrying USB reception in cable mode reconnects without firing", async () => {
+  const b = await booth({ connectionError: true });
+  try {
+    await b.page.getByRole("button", { name: /^Bấm dây/ }).tap();
+    await b.page.getByText("Chưa kết nối máy ảnh", { exact: true }).waitFor();
+    await b.page.evaluate(() => { window.connectionError = false; });
+    await b.page.getByRole("button", { name: "Kết nối lại máy ảnh", exact: true }).tap();
+    await b.page.getByText("Nhấn nút trên dây bấm để chụp", { exact: true }).waitFor();
+    assert.deepEqual(await b.events(), []);
     assert.deepEqual(b.errors, []);
   } finally { await b.page.close(); }
 });

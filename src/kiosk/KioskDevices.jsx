@@ -38,18 +38,18 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
         <span>Cắt viền hình trực tiếp <b>{Math.round(zoom * 100)}%</b></span>
         <input type="range" min="0" max="30" value={Math.round(zoom * 100)}
           onChange={(e) => { const value = Number(e.target.value) / 100; setZoom(value); localStorage.setItem(CROP_KEY, String(value)); }} />
-        <small>Khung AF nằm trong tín hiệu HDMI phải tắt trên Canon R50; thanh này chỉ cắt mép.</small>
+        <small>Khung AF nằm trong tín hiệu HDMI phải tắt trên Canon R100; thanh này chỉ cắt mép.</small>
       </label>
       <fieldset className="kiosk-device-box">
-        <legend>Canon EOS R50 · kết nối chụp ảnh</legend>
+        <legend>Canon EOS R100 · kết nối chụp ảnh</legend>
         <p className={`kiosk-shutter-status ${camera.connected ? "is-ok" : "is-warn"}`} role="status">
-          {camera.connected ? `${camera.model || "Canon EOS R50"} đã kết nối USB` : "Chưa kết nối Canon R50 qua USB"}
+          {camera.connected ? `${camera.model || "Canon EOS R100"} đã kết nối USB` : "Chưa kết nối Canon R100 qua USB"}
           {camera.folder && ` · ảnh lưu tại ${camera.folder}`}
         </p>
         <ol className="kiosk-device-steps">
-          <li>Canon R50 firmware từ 1.3.0; Choose USB connection app → Photo Import/Remote Control. Cắm cáp USB dữ liệu vào máy tính.</li>
+          <li>Canon R100: khuyến nghị firmware 1.3.0 để dùng EDSDK. Cắm cáp USB dữ liệu vào máy tính và ngắt kết nối Wi-Fi trên máy ảnh.</li>
           <li>Trên Windows, mở Canon Camera Agent đã cài Canon EDSDK x64. Thoát EOS Utility và EOS Webcam Utility để chương trình dùng được máy ảnh.</li>
-          <li>Nhập mã kết nối do Camera Agent hiển thị, bấm Kết nối R50 rồi chọn đúng thư mục ảnh mà chương trình báo.</li>
+          <li>Nhập mã kết nối do Camera Agent hiển thị, bấm Kết nối R100 rồi chọn đúng thư mục ảnh mà chương trình báo.</li>
           <li>Bấm thử: máy ảnh phải chụp thật và nhận JPEG gốc; xác nhận flash rời trước khi đón khách.</li>
         </ol>
         <p className="kiosk-device-note"><a href="/downloads/canon-camera-agent.zip" download>Tải bộ cài Canon Camera Agent cho Windows</a> · cần Canon EDSDK x64 cài riêng theo giấy phép Canon.</p>
@@ -59,13 +59,13 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
         </label>
         <div className="kiosk-device-row">
           <Button type="button" className="small" disabled={cameraBusy || !config.token?.trim()}
-            onClick={() => cameraAction(() => connectCanonCamera(), "Đã kết nối Canon R50 qua USB.")}>Kết nối R50</Button>
+            onClick={() => cameraAction(() => connectCanonCamera(), "Đã kết nối Canon R100 qua USB.")}>Kết nối R100</Button>
           <Button type="button" className="outline small" disabled={cameraBusy || !config.token?.trim()}
             onClick={() => cameraAction(() => pressShutter(), "Đã gửi lệnh chụp thử. Kiểm tra JPEG gốc và flash rời.")}>Bấm thử</Button>
         </div>
         {camera.error && <p className="kiosk-check-result is-warn" role="alert">{camera.error}</p>}
-        <p className="kiosk-device-note">Hẹn giờ: kết nối máy ảnh → đếm 3–2–1 → chụp. Chế độ bấm chụp có nút trên màn hình cảm ứng; có thể dùng nút USB cắm máy tính. R50 không có cổng dây bấm; jack 3,5 mm là cổng mic. Remote Canon BR-E1 dùng Bluetooth, cần kiểm tra khả năng hoạt động đồng thời với USB trước khi sử dụng.</p>
-        <p className="kiosk-device-note">Flash: Shutter mode = Elec. 1st-curtain (R50 không có màn trập cơ hoàn toàn), tắt Silent shutter, chọn Single shooting và JPEG Large/Fine. Flash/trigger phải tương thích ngàm multi-function shoe của R50; một số loại cần AD-E1.</p>
+        <p className="kiosk-device-note">Hẹn giờ: kết nối máy ảnh → đếm 3–2–1 → máy ảnh tự chụp. Bấm dây: cắm RS-60E3 hoặc dây tương thích vào cổng remote của R100; khách nhấn dây, kiosk chỉ nhận ảnh. Không cắm dây bấm vào cổng MIC.</p>
+        <p className="kiosk-device-note">Flash: dùng chế độ chụp ảnh P/Tv/Av/M, tắt Silent shutter, chọn Single shooting và JPEG Large/Fine. Kiểm tra flash/trigger tương thích Canon R100 và tốc độ đồng bộ theo hướng dẫn của phụ kiện.</p>
         <p className="kiosk-device-note">Hình trực tiếp dùng micro-HDMI → thẻ ghi hình USB. Bấm INFO để kiểm tra hiển thị; nếu vẫn còn ô AF ở chế độ ảnh, có thể dùng MF và chỉnh nét vào vị trí khách đứng. Kiểm tra ảnh thử trước khi đón khách.</p>
       </fieldset>
       <fieldset className="kiosk-device-box">

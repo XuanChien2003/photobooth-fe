@@ -56,13 +56,13 @@ export function KioskSettings({
         <Guide
           id="kiosk-camera"
           dark
-          title="kết nối Canon EOS R50"
+          title="kết nối Canon EOS R100"
           steps={[
             "Cắm cáp USB-C từ máy ảnh vào máy tính, cáp micro HDMI vào thẻ ghi hình (USB). Bật máy ảnh.",
-            "Trên R50: Choose USB connection app → Photo Import/Remote Control; ảnh JPEG Large/Fine hoặc RAW+JPEG.",
-            `Mở Canon Camera Agent trên Windows, kết nối R50; thư mục ảnh mặc định ${PHOTO_FOLDER_EXAMPLE}. Thoát EOS Utility và EOS Webcam Utility.`,
+            "Trên R100: ảnh JPEG Large/Fine hoặc RAW+JPEG, Single shooting, ngắt kết nối Wi-Fi; khuyến nghị firmware 1.3.0 cho EDSDK.",
+            `Mở Canon Camera Agent trên Windows, kết nối R100; thư mục ảnh mặc định ${PHOTO_FOLDER_EXAMPLE}. Thoát EOS Utility và EOS Webcam Utility.`,
             "Bấm “Chọn thư mục ảnh” bên dưới, chọn đúng thư mục đó → “Cho phép mỗi lần truy cập”.",
-            "Nhập mã Camera Agent ở mục Canon EOS R50 bên dưới, bấm Kết nối R50 và Bấm thử; xác nhận ảnh gốc và flash.",
+            "Nhập mã Camera Agent ở mục Canon EOS R100 bên dưới, bấm Kết nối R100 và Bấm thử; xác nhận ảnh gốc và flash.",
             "“Hình trực tiếp từ máy ảnh”: để Tự động hoặc chọn thẻ ghi hình (USB Video), không chọn webcam máy tính.",
           ]}
           note="Muốn bật máy tính là tự mở máy chụp: Quản trị → Quản lý máy → Cài máy chụp → tải file cài."
@@ -103,9 +103,10 @@ export function KioskSettings({
               Chọn đúng thư mục Canon Camera Agent lưu ảnh —
               nên là thư mục riêng, vd. {PHOTO_FOLDER_EXAMPLE}
               {isMac ? " (dùng Chrome; Camera Agent hiện cần Windows x64)" : ""}.
-              R50 cần firmware từ 1.3.0 và USB = Photo Import/Remote Control.
+              R100 dùng USB dữ liệu và Camera Agent; khuyến nghị firmware 1.3.0 hỗ trợ EDSDK, ngắt kết nối Wi-Fi.
               Hình trực tiếp dùng micro-HDMI + thẻ ghi hình; không dùng USB streaming đồng thời.
-              Khách chọn “Bấm chụp” hoặc “Hẹn giờ” (3 giây). R50 không có cổng dây bấm như máy ảnh có jack remote.
+              Khách chọn “Bấm dây” (RS-60E3 hoặc dây tương thích cắm vào cổng remote R100)
+              hoặc “Hẹn giờ” (máy ảnh tự chụp sau 3 giây).
             </small>
           </details>
         </div>
