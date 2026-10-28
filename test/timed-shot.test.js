@@ -34,18 +34,18 @@ function booth(t, overrides = {}) {
     receiving: (value) => { receiving = value; } };
 }
 
-test("connects first, counts 3–2–1 once, focuses, fires once and waits for the JPEG", async (t) => {
+test("connects first, counts 10–1 once, focuses, fires once and waits for the JPEG", async (t) => {
   let connect;
   const b = booth(t, { prepare: () => new Promise((resolve) => { connect = resolve; }) });
   await advance(t, 5000);
   assert.deepEqual(b.counts, [null]);
   connect(b.shutter);
   await flush();
-  assert.deepEqual(b.counts, [null, 3]);
-  await advance(t, 2950);
+  assert.deepEqual(b.counts, [null, 10]);
+  await advance(t, 9950);
   assert.equal(b.events.includes("press"), false);
   await advance(t, 50);
-  assert.deepEqual(b.counts, [null, 3, 2, 1, 0]);
+  assert.deepEqual(b.counts, [null, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]);
   assert.ok(b.events.indexOf("focus") < b.events.indexOf("press"));
   assert.equal(b.events.filter((e) => e === "press").length, 1);
   await advance(t, 10000); // The old implementation fired a second exposure after 8 s.
@@ -76,7 +76,7 @@ test("leaving a session while connecting prevents a late exposure", async (t) =>
 test("cancelling during autofocus releases the button and never presses", async (t) => {
   const b = booth(t);
   await flush();
-  await advance(t, 2100);
+  await advance(t, 9100);
   assert.ok(b.events.includes("focus"));
   b.abort.abort();
   await flush();
@@ -88,9 +88,9 @@ test("cancelling during autofocus releases the button and never presses", async 
 test("slow or missing JPEG pauses automatic shooting without another exposure", async (t) => {
   const b = booth(t);
   await flush();
-  await advance(t, 19000);
+  await advance(t, 26000);
   assert.match((await b.result).message, /chưa nhận được ảnh/);
-  await advance(t, 20000);
+  await advance(t, 27000);
   assert.equal(b.events.filter((e) => e === "press").length, 1);
 });
 
@@ -110,7 +110,7 @@ test("a timed-out pending press receives cancellation so it cannot fire later", 
   let pendingSignal;
   b.shutter.press = (signal) => { pendingSignal = signal; return new Promise(() => {}); };
   await flush();
-  await advance(t, 11200);
+  await advance(t, 18200);
   assert.match((await b.result).message, /không phản hồi/);
   assert.equal(pendingSignal.aborted, true);
   assert.equal(b.events.includes("exposure"), false);

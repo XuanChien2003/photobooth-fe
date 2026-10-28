@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { PiFolderOpenDuotone } from "react-icons/pi";
 import { ChevronDown, Maximize2, Settings2 } from "lucide-react";
 import { Button } from "../studio";
@@ -12,10 +11,9 @@ import {
   liveUsable,
   NO_HDMI_MESSAGE,
 } from "./camera.js";
-import { canPickFolder, isMac, PHOTO_FOLDER_EXAMPLE } from "./folder.js";
+import { canPickFolder, PHOTO_FOLDER_EXAMPLE } from "./folder.js";
 import { FolderCheck } from "./FolderCheck.jsx";
 import { KioskDevices } from "./KioskDevices.jsx";
-import { canonCameraState, watchCanonCamera } from "./canon-camera.js";
 
 export function KioskSettings({
   folder,
@@ -33,9 +31,6 @@ export function KioskSettings({
   roomInfo,
   toast,
 }) {
-  // Chưa có cách nào bấm máy ảnh: báo trước khi khách bắt đầu chụp tự động.
-  const [shutterReady, setShutterReady] = useState(() => canonCameraState().connected);
-  useEffect(() => watchCanonCamera((state) => setShutterReady(state.connected)), []);
   return (
     <details className="kiosk-settings">
       <summary>
@@ -43,8 +38,8 @@ export function KioskSettings({
           <Settings2 size={18} aria-hidden="true" /> Cài đặt máy chụp (nhân
           viên)
         </span>
-        {!shutterReady && (
-          <em className="kiosk-settings-warn">Chưa kết nối máy ảnh</em>
+        {(!folder || folderAccess !== "granted") && (
+          <em className="kiosk-settings-warn">Chưa chọn thư mục ảnh</em>
         )}
         <ChevronDown
           size={18}
@@ -56,16 +51,16 @@ export function KioskSettings({
         <Guide
           id="kiosk-camera"
           dark
-          title="kết nối Canon EOS R100"
+          title="kết nối Fujifilm X-T3 / X-S10 / X-S20"
           steps={[
-            "Cắm cáp USB-C từ máy ảnh vào máy tính, cáp micro HDMI vào thẻ ghi hình (USB). Bật máy ảnh.",
-            "Trên R100: ảnh JPEG Large/Fine hoặc RAW+JPEG, Single shooting, ngắt kết nối Wi-Fi; khuyến nghị firmware 1.3.0 cho EDSDK.",
-            `Mở Canon Camera Agent trên Windows, kết nối R100; thư mục ảnh mặc định ${PHOTO_FOLDER_EXAMPLE}. Thoát EOS Utility và EOS Webcam Utility.`,
-            "Bấm “Chọn thư mục ảnh” bên dưới, chọn đúng thư mục đó → “Cho phép mỗi lần truy cập”.",
-            "Nhập mã Camera Agent ở mục Canon EOS R100 bên dưới, bấm Kết nối R100 và Bấm thử; xác nhận ảnh gốc và flash.",
+            "Cắm USB dữ liệu từ Fujifilm vào máy tính và micro HDMI vào thẻ ghi hình; bật máy ảnh.",
+            "Trên máy ảnh chọn USB TETHER SHOOTING AUTO, FINE hoặc FINE + RAW, định dạng JPEG, Single shooting và tắt self-timer.",
+            `Mở FUJIFILM X Acquire, chọn tự tải JPEG vào ${PHOTO_FOLDER_EXAMPLE}; không mở gPhoto2 hoặc darktable cùng lúc.`,
+            "Lần đầu bấm “Chọn thư mục ảnh”, chọn đúng thư mục đó. Nếu lần mở sau cần cấp quyền, bấm “Cho phép đọc thư mục” và chọn “Cho phép mỗi lần truy cập”.",
+            "Bấm “Thử nhận ảnh từ máy ảnh”, rồi nhấn dây bấm tương thích Fujifilm; xác nhận JPEG gốc xuất hiện trong thư mục và kiosk.",
             "“Hình trực tiếp từ máy ảnh”: để Tự động hoặc chọn thẻ ghi hình (USB Video), không chọn webcam máy tính.",
           ]}
-          note="Muốn bật máy tính là tự mở máy chụp: Quản trị → Quản lý máy → Cài máy chụp → tải file cài."
+          note="Máy ảnh phải bật nguồn và FUJIFILM X Acquire phải kết nối. Mã voucher đã thanh toán tại quầy sẽ mở lượt chụp; khách bấm dây để chụp."
         />
         <div className="kiosk-folder">
           <p>
@@ -100,13 +95,11 @@ export function KioskSettings({
               <ChevronDown size={16} aria-hidden="true" />
             </summary>
             <small>
-              Chọn đúng thư mục Canon Camera Agent lưu ảnh —
-              nên là thư mục riêng, vd. {PHOTO_FOLDER_EXAMPLE}
-              {isMac ? " (dùng Chrome; Camera Agent hiện cần Windows x64)" : ""}.
-              R100 dùng USB dữ liệu và Camera Agent; khuyến nghị firmware 1.3.0 hỗ trợ EDSDK, ngắt kết nối Wi-Fi.
+              Chọn đúng thư mục phần mềm máy ảnh lưu JPEG —
+              nên là thư mục riêng, vd. {PHOTO_FOLDER_EXAMPLE}.
+              X-T3/X-S10/X-S20 dùng USB dữ liệu và FUJIFILM X Acquire để lưu JPEG xuống máy tính.
               Hình trực tiếp dùng micro-HDMI + thẻ ghi hình; không dùng USB streaming đồng thời.
-              Khách chọn “Bấm dây” (RS-60E3 hoặc dây tương thích cắm vào cổng remote R100)
-              hoặc “Hẹn giờ” (máy ảnh tự chụp sau 3 giây).
+              Khách dùng dây bấm tương thích RR-100 để chụp; X-S10/X-S20 cần đầu chuyển 2,5 mm sang 3,5 mm đúng chân remote.
             </small>
           </details>
         </div>

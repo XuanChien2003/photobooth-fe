@@ -70,6 +70,7 @@ class BillAcceptor {
   accepting = () => this.enabled;
   status = "Chưa kết nối";
   pendingEscrow = null;
+  connecting = null;
 
   onBill(listener) {
     this.listeners.add(listener);
@@ -114,6 +115,15 @@ class BillAcceptor {
 
   // ask = true: nhân viên chọn cổng (cần bấm nút). Không hỏi: mở lại cổng đã cho phép trước đó.
   async connect(ask = false) {
+    if (this.connecting) return this.connecting;
+    this.connecting = this.openConnection(ask);
+    try {
+      return await this.connecting;
+    } finally {
+      this.connecting = null;
+    }
+  }
+  async openConnection(ask = false) {
     if (!billSupported) throw new Error("Trình duyệt không hỗ trợ cổng USB (Web Serial). Dùng Chrome hoặc Edge.");
     const config = readBillConfig();
     if (config.protocol === "keyboard") {

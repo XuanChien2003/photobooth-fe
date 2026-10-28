@@ -1,14 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  PiCameraBold,
   PiCheckBold,
   PiHandTapBold,
-  PiTimerBold,
   PiVideoCameraSlashDuotone,
 } from "react-icons/pi";
 import { Button } from "../studio";
 import { CameraPreview } from "./CameraPreview.jsx";
-import { TIMED_SHOT_SECONDS } from "./timed-shot.js";
 
 // Ảnh trên máy (Blob) hoặc trên máy chủ (URL).
 export function useObjectUrl(source) {
@@ -32,41 +29,28 @@ const clock = (s) =>
   `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
 // Màn chụp: hình trực tiếp toàn màn hình (lật như gương, đã cắt mép thông số máy ảnh), không có
-// chữ trên hình. Bên phải: đồng hồ đếm ngược và các ảnh vừa chụp xếp dọc. Chỉ 3 giây cuối mới hiện
-// số đếm ở giữa màn hình. Đếm giờ chỉ bắt đầu sau khi kết nối máy ảnh sẵn sàng.
+// chữ trên hình. Bên phải: thời gian còn lại và các ảnh vừa chụp xếp dọc.
 export function KioskShoot({
   videoRef,
   zoom,
   ready,
   phase,
-  mode,
-  booking,
   preCount,
-  shotLeft,
   sessionLeft,
   taken,
   quota,
   shots,
   flash,
   receiving,
-  captureState,
-  captureError,
-  modeLeft,
   ending,
-  onPickMode,
   onEnd,
   onReopenCamera,
-  onRetryCapture,
 }) {
   const centerCount =
     phase === "ready"
       ? preCount
-      : phase === "shoot" && !ending
-        ? mode === "timer"
-          ? shotLeft > 0 && shotLeft <= 3 ? shotLeft : null
-          : sessionLeft > 0 && sessionLeft <= 3 ? sessionLeft : null
-        : null;
-  const timerMode = mode === "timer";
+      : phase === "shoot" && !ending && sessionLeft > 0 && sessionLeft <= 3
+        ? sessionLeft : null;
   // Ảnh mới nhất ở đầu cột: có ảnh mới thì cuộn lên đầu để khách thấy ngay.
   const rail = useRef(null);
   useEffect(() => {
@@ -76,7 +60,7 @@ export function KioskShoot({
     <section className={`shoot-screen phase-${phase}`}>
       <div className="shoot-stage">
         <CameraPreview videoRef={videoRef} zoom={zoom} />
-        {!ready && phase !== "mode" && (
+        {!ready && (
           <div className="shoot-no-camera" role="status">
             <PiVideoCameraSlashDuotone size={36} aria-hidden="true" />
             <p>Chưa có hình trực tiếp từ máy ảnh. Ảnh gốc vẫn được nhận khi máy ảnh chụp.</p>
@@ -88,29 +72,10 @@ export function KioskShoot({
             {centerCount}
           </strong>
         ) : null}
-        {mode === "remote" && phase === "shoot" && captureState === "idle" && !ending && (
+        {phase === "shoot" && !ending && (
           <div className="shoot-press" role="status">
             <PiHandTapBold aria-hidden="true" />
             <strong>Nhấn nút trên dây bấm để chụp</strong>
-          </div>
-        )}
-        {phase === "shoot" && !ending && captureState !== "countdown" && captureState !== "idle" && (
-          <div className="shoot-capture-status" role={captureError ? "alert" : "status"}>
-            {captureError ? (
-              <>
-                <strong>{timerMode ? "Đang tạm dừng chụp tự động" : "Chưa kết nối máy ảnh"}</strong>
-                <p>{captureError}</p>
-                <Button className="outline small" disabled={receiving} onClick={onRetryCapture}>
-                  {timerMode ? "Kết nối lại và đếm 3 giây" : "Kết nối lại máy ảnh"}
-                </Button>
-              </>
-            ) : (
-              <>
-                <span className="spinner" aria-hidden="true" />
-                <p>{captureState === "waiting" ? "Đang chờ ảnh từ máy ảnh…"
-                  : captureState === "capturing" ? "Máy ảnh đang chụp…" : "Đang kết nối máy ảnh…"}</p>
-              </>
-            )}
           </div>
         )}
         {flash > 0 && <div className="camera-flash" key={flash} aria-hidden="true" />}
@@ -121,20 +86,12 @@ export function KioskShoot({
         )}
       </div>
 
-      {phase !== "mode" && (
-        <aside className="shoot-rail" aria-label="Thời gian và ảnh đã chụp">
+      <aside className="shoot-rail" aria-label="Thời gian và ảnh đã chụp">
           <div className="shoot-timer" role="timer">
-            <span>{timerMode ? "ĐẾM NGƯỢC" : "THỜI GIAN"}</span>
-            <strong>
-              {phase === "ready"
-                ? "—"
-                : timerMode
-                  ? shotLeft ?? "—"
-                  : clock(sessionLeft)}
-            </strong>
+            <span>THỜI GIAN</span>
+            <strong>{phase === "ready" ? "—" : clock(sessionLeft)}</strong>
             <small>
               {Math.min(taken, quota || taken)}/{quota || "∞"} tấm
-              {timerMode && phase === "shoot" ? ` · ${clock(sessionLeft)}` : ""}
             </small>
           </div>
           <ol className="shoot-thumbs" ref={rail} aria-label="Ảnh vừa chụp, mới nhất ở trên">
@@ -156,32 +113,7 @@ export function KioskShoot({
               <PiCheckBold aria-hidden="true" />
             </button>
           )}
-        </aside>
-      )}
-
-      {phase === "mode" && (
-        <div className="shoot-mode" role="dialog" aria-modal="true" aria-labelledby="mode-title">
-          <div className="shoot-mode-card">
-            <p className="shoot-mode-kicker">{booking.packageName} · {quota} tấm</p>
-            <h1 id="mode-title">Chọn cách chụp</h1>
-            <div className="shoot-mode-options">
-              <button type="button" onClick={() => onPickMode("timer")}>
-                <PiTimerBold aria-hidden="true" />
-                <strong>Hẹn giờ</strong>
-                <span>Máy ảnh tự chụp sau {TIMED_SHOT_SECONDS} giây mỗi tấm</span>
-              </button>
-              <button type="button" onClick={() => onPickMode("remote")}>
-                <PiHandTapBold aria-hidden="true" />
-                <strong>Bấm dây</strong>
-                <span>Dây bấm cắm trực tiếp vào Canon R100 · tối đa {quota} tấm</span>
-              </button>
-            </div>
-            <small>
-              <PiCameraBold aria-hidden="true" /> Tự chọn “Hẹn giờ” sau {modeLeft} giây
-            </small>
-          </div>
-        </div>
-      )}
+      </aside>
     </section>
   );
 }

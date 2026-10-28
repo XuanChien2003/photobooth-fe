@@ -1,8 +1,9 @@
 // File cài "bật máy là kiosk tự mở" cho máy tính trong phòng chụp, gắn sẵn liên kết của phòng.
-// Chạy một lần: mỗi lần đăng nhập máy sẽ tự mở Canon Camera Agent đã cài rồi mở Chrome (hoặc Edge)
-// toàn màn hình đúng trang kiosk. Giữ hồ sơ riêng "NXC-Kiosk" để nhớ quyền camera / thư mục.
+// Chạy một lần: mỗi lần đăng nhập máy sẽ mở Chrome (hoặc Edge) toàn màn hình đúng trang kiosk.
+// Giữ hồ sơ riêng "NXC-Kiosk" để nhớ quyền camera / thư mục ảnh.
 // Windows có menu nhỏ để điều khiển cửa sổ; Mac dùng nút cửa sổ và menu Xem của trình duyệt.
 import windowsCornerControl from "./installers/kiosk-window-control.ps1?raw";
+import startFujiAcquire from "./installers/start-fuji-acquire.ps1?raw";
 
 const FLAGS =
   "--no-first-run --disable-session-crashed-bubble --noerrdialogs --autoplay-policy=no-user-gesture-required --overscroll-history-navigation=0";
@@ -14,9 +15,9 @@ const safe = (url) => {
   return url;
 };
 
-function encodeControl() {
+function encodePayload(source) {
   // PowerShell 5.1 cần BOM để đọc đúng tiếng Việt trong file UTF-8.
-  const bytes = new TextEncoder().encode(`\ufeff${windowsCornerControl}`);
+  const bytes = new TextEncoder().encode(`\ufeff${source}`);
   return btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""));
 }
 
@@ -37,8 +38,6 @@ export function windowsScript(url, room) {
     "  echo Mo lai sau khi thu nho: bam bieu tuong Chrome / Edge o thanh tac vu. Dong may chup: Alt+F4.",
     "  timeout /t 6 >nul",
     ")",
-    // Canon Camera Agent đã cài sẵn; không mở EOS Utility để tránh chiếm USB.
-    'if exist "%LOCALAPPDATA%\\NXC-CanonAgent\\start.ps1" start "" powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%LOCALAPPDATA%\\NXC-CanonAgent\\start.ps1"',
     'set "BROWSER=%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe"',
     'if not exist "%BROWSER%" set "BROWSER=%ProgramFiles(x86)%\\Google\\Chrome\\Application\\chrome.exe"',
     'if not exist "%BROWSER%" set "BROWSER=%LOCALAPPDATA%\\Google\\Chrome\\Application\\chrome.exe"',
@@ -47,6 +46,9 @@ export function windowsScript(url, room) {
     'set "NXC_KIOSK_INSTALLER=%~f0"',
     'set "NXC_KIOSK_CONTROL=%LOCALAPPDATA%\\NXC-Kiosk\\window-control.ps1"',
     'if not exist "%LOCALAPPDATA%\\NXC-Kiosk" mkdir "%LOCALAPPDATA%\\NXC-Kiosk"',
+    'set "NXC_FUJI_ACQUIRE=%LOCALAPPDATA%\\NXC-Kiosk\\start-fuji-acquire.ps1"',
+    `powershell -NoProfile -Command "try { $source = [IO.File]::ReadAllText($env:NXC_KIOSK_INSTALLER); $payload = [regex]::Match($source, '(?m)^rem NXC_FUJI_ACQUIRE_BASE64:([A-Za-z0-9+/=]+)'); if (-not $payload.Success) { exit 1 }; [IO.File]::WriteAllBytes($env:NXC_FUJI_ACQUIRE, [Convert]::FromBase64String($payload.Groups[1].Value)) } catch { exit 1 }"`,
+    'if not errorlevel 1 start "" /min powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%NXC_FUJI_ACQUIRE%"',
     'set "NXC_KIOSK_CONTROL_READY=0"',
     // Payload nằm sau exit /b: không tải thêm file, không đưa base64 dài vào dòng lệnh.
     `powershell -NoProfile -Command "try { $source = [IO.File]::ReadAllText($env:NXC_KIOSK_INSTALLER); $payload = [regex]::Match($source, '(?m)^rem NXC_WINDOW_CONTROL_BASE64:([A-Za-z0-9+/=]+)'); if (-not $payload.Success) { exit 1 }; [IO.File]::WriteAllBytes($env:NXC_KIOSK_CONTROL, [Convert]::FromBase64String($payload.Groups[1].Value)) } catch { exit 1 }"`,
@@ -54,7 +56,8 @@ export function windowsScript(url, room) {
     `start "" "%BROWSER%" --start-fullscreen --new-window "%URL%" --user-data-dir="%LOCALAPPDATA%\\NXC-Kiosk" ${FLAGS}`,
     'if "%NXC_KIOSK_CONTROL_READY%"=="1" start "" powershell -NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File "%NXC_KIOSK_CONTROL%" -ProfileDirectory "%LOCALAPPDATA%\\NXC-Kiosk"',
     "exit /b",
-    `rem NXC_WINDOW_CONTROL_BASE64:${encodeControl()}`,
+    `rem NXC_WINDOW_CONTROL_BASE64:${encodePayload(windowsCornerControl)}`,
+    `rem NXC_FUJI_ACQUIRE_BASE64:${encodePayload(startFujiAcquire)}`,
     "",
   ];
   return lines.join("\r\n");
@@ -70,7 +73,7 @@ mkdir -p "$DIR"
 printf '%s' "$URL" > "$DIR/url.txt"
 cat > "$DIR/mo-kiosk.sh" <<'SCRIPT'
 #!/bin/bash
-# Canon Camera Agent USB hien ho tro Windows x64; khong tu mo phan mem may anh cu.
+# Mo phan mem nhan anh tren may rieng truoc khi don khach.
 APP="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 [ -x "$APP" ] || APP="/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"
 "$APP" --start-fullscreen --new-window --user-data-dir="$HOME/NXC-Kiosk/chrome" ${FLAGS} "$(cat "$HOME/NXC-Kiosk/url.txt")" >/dev/null 2>&1 &

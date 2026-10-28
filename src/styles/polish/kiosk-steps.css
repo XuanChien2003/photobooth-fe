@@ -3,7 +3,29 @@
 @layer components {
   /* ── Màn chờ: ảnh polaroid dán băng keo + tiêu đề có nét bút dạ + nút sticker ── */
   .kiosk-attract {
+    position: relative;
     padding: 0;
+  }
+  .kiosk-attract-settings {
+    position: fixed;
+    right: 16px;
+    bottom: 14px;
+    z-index: 10;
+    width: min(370px, calc(100vw - 32px));
+    padding: 0 14px;
+    border: 1px solid #cdb49c;
+    border-radius: 14px;
+    background: var(--mellow-card);
+    box-shadow: var(--mellow-paper-shadow);
+  }
+  .kiosk-attract-settings:has(> .kiosk-settings[open]) {
+    width: min(580px, calc(100vw - 32px));
+    max-height: calc(100dvh - 28px);
+    overflow: auto;
+  }
+  .kiosk-attract-settings .kiosk-settings {
+    border-top: 0;
+    padding-top: 0;
   }
   .kiosk-tap {
     position: relative;
@@ -86,6 +108,10 @@
     letter-spacing: -0.02em;
     text-wrap: balance;
   }
+  .kiosk-tap strong.kiosk-tap-title-one-line {
+    font-size: clamp(26px, 5vw, 72px);
+    white-space: nowrap;
+  }
   .kiosk-tap mark {
     background: linear-gradient(transparent 60%, var(--mellow-blush) 60% 90%, transparent 90%);
     color: inherit;
@@ -151,9 +177,10 @@
   /* Thẻ khổ ảnh: giấy dán băng keo, nghiêng nhẹ, viền đứt khi chọn */
   .kiosk-size-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 40px;
-    width: 100%;
+    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+    gap: 32px;
+    width: min(980px, 100%);
+    margin: auto;
     padding: 18px 12px 6px;
   }
   .kiosk-size {
@@ -196,6 +223,9 @@
   }
   .kiosk-size strong {
     font: 700 30px/1.1 var(--mellow-display);
+  }
+  .kiosk-size:not(.active) {
+    outline: 2px solid transparent;
   }
   .kiosk-size small {
     color: var(--mellow-muted);
@@ -266,6 +296,17 @@
     color: var(--mellow-muted);
     font-size: 15px;
     text-align: center;
+  }
+  .print-choice {
+    display: grid;
+    justify-items: center;
+    gap: 22px;
+    margin: auto;
+  }
+  .size-screen .kiosk-step-nav,
+  .print-screen .kiosk-step-nav {
+    width: min(550px, 100%);
+    margin-inline: auto;
   }
 
   /* Back / Next */

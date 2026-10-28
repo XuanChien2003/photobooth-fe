@@ -1,16 +1,10 @@
 import { useEffect, useState } from "react";
 import { Button } from "../studio";
 import { CROP_KEY } from "./live-preview-layout.js";
-import { pressShutter } from "./shutter.js";
-import { connectCanonCamera, readCanonConfig, saveCanonConfig, watchCanonCamera } from "./canon-camera.js";
 import { billAcceptor, billSupported, readBillConfig, saveBillConfig } from "./bill-acceptor.js";
 const money = (n) => `${Number(n).toLocaleString("vi-VN")} đ`;
 
 export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
-  const [config, setConfig] = useState(readCanonConfig);
-  const [camera, setCamera] = useState({ connected: false });
-  const [cameraBusy, setCameraBusy] = useState(false);
-  useEffect(() => watchCanonCamera(setCamera), []);
   const [bill, setBill] = useState(readBillConfig);
   const [billStatus, setBillStatus] = useState(billAcceptor.status);
   const [testing, setTesting] = useState(false);
@@ -27,45 +21,25 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
     try { await action(); if (success) toast.success(success); }
     catch (e) { if (e.name !== "NotFoundError") toast.error(e.message); }
   };
-  const cameraAction = async (action, success) => {
-    setCameraBusy(true);
-    try { saveCanonConfig(config); await run(action, success); }
-    finally { setCameraBusy(false); }
-  };
   return (
     <div className="kiosk-devices">
       <label className="kiosk-range">
         <span>Cắt viền hình trực tiếp <b>{Math.round(zoom * 100)}%</b></span>
         <input type="range" min="0" max="30" value={Math.round(zoom * 100)}
           onChange={(e) => { const value = Number(e.target.value) / 100; setZoom(value); localStorage.setItem(CROP_KEY, String(value)); }} />
-        <small>Khung AF nằm trong tín hiệu HDMI phải tắt trên Canon R100; thanh này chỉ cắt mép.</small>
+        <small>Hãy tắt các thông tin hiển thị trong tín hiệu HDMI của Fujifilm; thanh này chỉ cắt mép.</small>
       </label>
       <fieldset className="kiosk-device-box">
-        <legend>Canon EOS R100 · kết nối chụp ảnh</legend>
-        <p className={`kiosk-shutter-status ${camera.connected ? "is-ok" : "is-warn"}`} role="status">
-          {camera.connected ? `${camera.model || "Canon EOS R100"} đã kết nối USB` : "Chưa kết nối Canon R100 qua USB"}
-          {camera.folder && ` · ảnh lưu tại ${camera.folder}`}
-        </p>
+        <legend>Fujifilm X-T3 / X-S10 / X-S20 · chụp bằng dây bấm</legend>
         <ol className="kiosk-device-steps">
-          <li>Canon R100: khuyến nghị firmware 1.3.0 để dùng EDSDK. Cắm cáp USB dữ liệu vào máy tính và ngắt kết nối Wi-Fi trên máy ảnh.</li>
-          <li>Trên Windows, mở Canon Camera Agent đã cài Canon EDSDK x64. Thoát EOS Utility và EOS Webcam Utility để chương trình dùng được máy ảnh.</li>
-          <li>Nhập mã kết nối do Camera Agent hiển thị, bấm Kết nối R100 rồi chọn đúng thư mục ảnh mà chương trình báo.</li>
-          <li>Bấm thử: máy ảnh phải chụp thật và nhận JPEG gốc; xác nhận flash rời trước khi đón khách.</li>
+          <li>Đặt IMAGE QUALITY thành FINE hoặc FINE + RAW; X-S20 chọn SELECT JPEG/HEIF → JPEG. Chọn Single shooting, tắt self-timer và AUTO POWER OFF.</li>
+          <li>Trên máy ảnh chọn CONNECTION MODE → USB TETHER SHOOTING AUTO. X-S10 cần firmware 2.00 trở lên.</li>
+          <li>Cắm USB dữ liệu vào PC; mở FUJIFILM X Acquire và đặt thư mục tải JPEG là C:\PhotoBooth\Fujifilm.</li>
+          <li>Dùng dây bấm tương thích RR-100: X-T3 cổng 2,5 mm; X-S10/X-S20 cần đầu chuyển remote 2,5 mm cái → 3,5 mm đực loại 3 cực và chọn REMOTE nếu máy hỏi.</li>
+          <li>Trong kiosk, chọn cùng thư mục ảnh ở phía trên. Bấm “Thử nhận ảnh từ máy ảnh”, rồi nhấn dây bấm để kiểm tra JPEG gốc.</li>
         </ol>
-        <p className="kiosk-device-note"><a href="/downloads/canon-camera-agent.zip" download>Tải bộ cài Canon Camera Agent cho Windows</a> · cần Canon EDSDK x64 cài riêng theo giấy phép Canon.</p>
-        <label>Mã kết nối Canon Camera Agent
-          <input type="password" autoComplete="off" value={config.token || ""}
-            onChange={(e) => setConfig({ token: e.target.value })} />
-        </label>
-        <div className="kiosk-device-row">
-          <Button type="button" className="small" disabled={cameraBusy || !config.token?.trim()}
-            onClick={() => cameraAction(() => connectCanonCamera(), "Đã kết nối Canon R100 qua USB.")}>Kết nối R100</Button>
-          <Button type="button" className="outline small" disabled={cameraBusy || !config.token?.trim()}
-            onClick={() => cameraAction(() => pressShutter(), "Đã gửi lệnh chụp thử. Kiểm tra JPEG gốc và flash rời.")}>Bấm thử</Button>
-        </div>
-        {camera.error && <p className="kiosk-check-result is-warn" role="alert">{camera.error}</p>}
-        <p className="kiosk-device-note">Hẹn giờ: kết nối máy ảnh → đếm 3–2–1 → máy ảnh tự chụp. Bấm dây: cắm RS-60E3 hoặc dây tương thích vào cổng remote của R100; khách nhấn dây, kiosk chỉ nhận ảnh. Không cắm dây bấm vào cổng MIC.</p>
-        <p className="kiosk-device-note">Flash: dùng chế độ chụp ảnh P/Tv/Av/M, tắt Silent shutter, chọn Single shooting và JPEG Large/Fine. Kiểm tra flash/trigger tương thích Canon R100 và tốc độ đồng bộ theo hướng dẫn của phụ kiện.</p>
+        <p className="kiosk-device-note"><a href="https://www.fujifilm-x.com/global/support/download/software/x-acquire/" target="_blank" rel="noreferrer">FUJIFILM X Acquire chính hãng</a> đã cài trên máy kiosk. Chỉ để một chương trình giữ cổng USB máy ảnh. Kiosk tự đọc ảnh sau khi X Acquire tải ảnh xuống.</p>
+        <p className="kiosk-device-note">Flash: dùng chế độ chụp ảnh, chọn màn trập và tốc độ đồng bộ phù hợp với X-T3/X-S10/X-S20 cùng bộ flash đang dùng. Thử flash và dây bấm trước khi nhận khách.</p>
         <p className="kiosk-device-note">Hình trực tiếp dùng micro-HDMI → thẻ ghi hình USB. Bấm INFO để kiểm tra hiển thị; nếu vẫn còn ô AF ở chế độ ảnh, có thể dùng MF và chỉnh nét vào vị trí khách đứng. Kiểm tra ảnh thử trước khi đón khách.</p>
       </fieldset>
       <fieldset className="kiosk-device-box">

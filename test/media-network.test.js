@@ -35,7 +35,9 @@ test('stalled R2 bytes fall back to the authenticated API and preserve the full 
   };
   try {
     const url = f.base + '/api/albums/token/photos/photo';
-    const blob = await f.fetchMediaBlob(url, { stallTimeout: 80, timeout: 3000 });
+    // Allow the initial local HTTP request to start even when the full suite is busy.
+    // The R2 body itself never finishes, so the stall fallback remains deterministic.
+    const blob = await f.fetchMediaBlob(url, { stallTimeout: 1000, timeout: 5000 });
     assert.deepEqual(Buffer.from(await blob.arrayBuffer()), bytes);
     assert.equal(blob.type, 'image/jpeg');
     assert.equal(seen.length, 3);

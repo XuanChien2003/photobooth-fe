@@ -1,6 +1,5 @@
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import "./build-canon-agent.mjs";
 
 // Cloudflare provides the /api proxy. An inherited VITE_API_URL must never
 // accidentally turn Safari login back into a third-party-cookie request.

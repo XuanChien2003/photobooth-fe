@@ -18,7 +18,7 @@ const skewText = (minutes) => {
   if (m >= 90) return `${Math.round(m / 60)} giờ`;
   return `${m} phút`;
 };
-// Nhân viên thử cả chuỗi máy ảnh → Canon Camera Agent → thư mục → máy chụp, không cần mã vé.
+// Nhân viên thử cả chuỗi dây bấm → phần mềm nhận ảnh → thư mục → máy chụp, không cần mã vé.
 export function FolderCheck({ folder }) {
   const [check, setCheck] = useState(null);
   const run = useRef(0);
@@ -92,8 +92,7 @@ export function FolderCheck({ folder }) {
       {check?.status === "waiting" ? (
         <div className="kiosk-check-waiting">
           <p>
-            <span className="spinner" aria-hidden="true" /> Bấm chụp trên máy
-            ảnh… còn {check.left}s
+            <span className="spinner" aria-hidden="true" /> Bấm dây chụp trên Fujifilm… còn {check.left}s
           </p>
           <Button type="button" className="outline small" onClick={stopCheck}>
             Dừng thử
@@ -133,22 +132,22 @@ export function FolderCheck({ folder }) {
           </p>
           <ol>
             <li>
-              Canon R100: cắm USB dữ liệu, ngắt kết nối Wi-Fi; khuyến nghị firmware 1.3.0 hỗ trợ EDSDK.
+              X-T3/X-S10/X-S20: bật máy, chọn USB TETHER SHOOTING AUTO, cắm USB và dây bấm tương thích, đặt FINE JPEG.
             </li>
             <li>
               Cáp USB-C cắm thẳng vào máy tính và là cáp truyền dữ liệu (cáp chỉ
               sạc không dùng được).
             </li>
             <li>
-              Canon Camera Agent đang mở và đã kết nối R100. Thoát EOS
-              Utility, EOS Webcam Utility và các chương trình khác đang chiếm máy ảnh.
+              FUJIFILM X Acquire đang mở và kết nối máy ảnh. Đóng gPhoto2, darktable
+              và các chương trình khác đang chiếm USB.
             </li>
             <li>{FOLDER_ACCESS_HINT}</li>
             <li>
-              Thư mục lưu ảnh trong cài đặt Canon Camera Agent trùng với thư mục đã chọn
+              Thư mục tải ảnh trong phần mềm máy ảnh trùng với thư mục đã chọn
               ở đây.
             </li>
-            <li>Image quality trên R100 là JPEG Large/Fine hoặc RAW+JPEG.</li>
+            <li>IMAGE QUALITY trên Fujifilm là FINE hoặc FINE + RAW, định dạng JPEG, không chỉ RAW (.RAF) hay HEIF.</li>
           </ol>
         </div>
       )}

@@ -1,11 +1,11 @@
 import { isMac } from "./folder.js";
 
-// USB camera control is reserved for Canon Camera Agent. Preview uses HDMI.
-export const isCameraUsbVideo = (d) => /canon|eos|\br100\b/i.test(d?.label || "");
+// Tether software transfers JPEGs over USB; preview uses an HDMI capture device.
+export const isCameraUsbVideo = (d) => /canon|eos|\br100\b|fujifilm|fuji|\bx-[st](?:3|10|20)\b/i.test(d?.label || "");
 export const CAMERA_USB_MESSAGE =
-  "Canon R100 dùng cáp USB dữ liệu để chụp và nhận JPEG gốc qua Camera Agent. Thoát EOS Webcam Utility, ngắt kết nối Wi-Fi trên máy ảnh. Hình trực tiếp dùng micro-HDMI qua thẻ ghi hình USB rồi chọn thẻ đó tại Hình trực tiếp từ máy ảnh.";
+  "Fujifilm X-T3/X-S10/X-S20 dùng USB tether và FUJIFILM X Acquire để lưu JPEG xuống máy tính. Hình trực tiếp dùng micro-HDMI qua thẻ ghi hình USB; chọn thẻ đó tại Hình trực tiếp từ máy ảnh.";
 export const CAMERA_ERROR =
-  "Không mở được camera. Kiểm tra cáp USB của máy ảnh và cấp quyền camera cho trình duyệt.";
+  "Không mở được hình trực tiếp. Kiểm tra cáp micro-HDMI, thẻ ghi hình USB và quyền camera của trình duyệt.";
 const isVirtual = (d) => /obs|virtual/i.test(d.label);
 // Webcam có sẵn của máy tính (MacBook "Camera FaceTime HD", laptop "USB2.0 FHD UVC WebCam"…):
 // ở chế độ ảnh gốc không dùng làm hình trực tiếp — khách sẽ thấy sai góc máy.

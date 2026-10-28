@@ -410,6 +410,103 @@
     color: var(--mellow-muted, #7a5a48);
   }
 
+  .payment-choice-screen {
+    gap: 12px;
+    padding-block: 18px;
+  }
+  .payment-choice-screen .flow-head .brand {
+    display: none;
+  }
+  .payment-choices {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 20px;
+    width: min(950px, 100%);
+    margin: auto;
+  }
+  .payment-voucher,
+  .payment-cash {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 18px 22px;
+    border: 2px solid #d6bda8;
+    border-radius: 20px;
+    background: #fffaf3;
+    box-shadow: 0 8px 22px rgb(74 50 38 / 12%);
+  }
+  .payment-voucher h2,
+  .payment-cash h2 {
+    margin: 0;
+    font: 700 clamp(22px, 2.5vw, 30px) / 1.15 var(--mellow-display, Georgia, serif);
+  }
+  .payment-voucher p,
+  .payment-cash p {
+    margin: 0;
+    color: var(--mellow-muted, #7a5a48);
+  }
+  .payment-choices .payment-icon {
+    color: var(--mellow-cocoa, #522e22);
+    font-size: 36px;
+  }
+  .payment-voucher label {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .payment-voucher input {
+    width: 100%;
+    height: 46px;
+    padding: 6px 12px;
+    border: 2px solid #cdb49c;
+    border-radius: 10px;
+    background: white;
+    color: var(--mellow-ink, #3f2c25);
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .voucher-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .voucher-keypad button {
+    display: grid;
+    place-items: center;
+    min-height: 42px;
+    border: 1px solid #cdb49c;
+    border-radius: 9px;
+    background: white;
+    color: var(--mellow-ink, #3f2c25);
+    font-size: 20px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .voucher-keypad button:active { background: #ecdbcc; }
+  .payment-choices .button { width: 100%; min-height: 48px; }
+  .payment-voucher small { color: var(--mellow-muted, #7a5a48); }
+  .payment-cash {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .payment-cash .payment-icon { font-size: 72px; }
+  .payment-cash .button { margin-top: 20px; }
+  .payment-choice-screen .flow-foot { margin-top: 0; }
+  @media (max-height: 700px) and (min-width: 901px) {
+    .payment-voucher { gap: 4px; padding-block: 12px; }
+    .payment-voucher .payment-icon { display: none; }
+    .payment-voucher h2 { font-size: 24px; }
+    .payment-voucher p { font-size: 14px; }
+    .payment-voucher input { height: 40px; }
+    .voucher-keypad button { min-height: 40px; }
+    .payment-voucher .button { min-height: 44px; }
+    .payment-voucher small { font-size: 12px; }
+  }
+
   .pay-board {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -732,6 +829,10 @@
     .done-cards,
     .pay-board {
       grid-template-columns: 1fr;
+    }
+    .payment-choices {
+      grid-template-columns: 1fr;
+      max-width: 560px;
     }
   }
 

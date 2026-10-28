@@ -24,7 +24,7 @@
   line-height: 1.7;
 }
 
-/* Cài đặt máy chụp: thư mục JPEG gốc của Canon Camera Agent */
+/* Cài đặt máy chụp: thư mục JPEG gốc từ phần mềm nhận ảnh */
 .kiosk-folder {
   display: grid;
   gap: 8px;

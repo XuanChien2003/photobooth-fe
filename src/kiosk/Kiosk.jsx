@@ -44,9 +44,6 @@ import {
   sameKioskSession,
 } from "./network-tasks.js";
 import { readCrop } from "./live-preview-layout.js";
-import { prepareShutter } from "./shutter.js";
-import { runTimedShot } from "./timed-shot.js";
-import { connectCanonCamera } from "./canon-camera.js";
 import { buildTimelapse, createClipRecorder } from "./clip-recorder.js";
 import {
   compositeJpeg,
@@ -67,16 +64,14 @@ import { KioskEntry } from "./KioskEntry.jsx";
 import { KioskSettings } from "./KioskSettings.jsx";
 import { KioskShoot } from "./KioskShoot.jsx";
 import { KioskSelect, useShotBitmaps } from "./KioskSelect.jsx";
-import { KioskPackages, KioskPayment } from "./KioskSale.jsx";
+import { KioskPackages, KioskPayment, KioskPrintCount } from "./KioskSale.jsx";
 
 // Các chỗ báo lỗi mạng ở màn chụp: mỗi lần mất kết nối chỉ báo một lần, có mạng lại thì xoá.
 const NET_SLOTS = ["poll", "sync", "start", "finish"];
 const PING_MS = 60_000;
-// Thời gian của từng bước sau khi chọn gói: chọn cách chụp, chuẩn bị, chọn ảnh & khung (cùng một màn).
-const MODE_SECONDS = 30;
+// Thời gian chuẩn bị trước khi khách bấm dây, chọn ảnh & khung.
 const READY_SECONDS = 3;
 const SELECT_SECONDS = 90;
-const SHOT_WAIT_MS = 15000;
 const SALE_KEY = "kiosk-sale";
 // Phòng của máy chụp đọc ngay từ liên kết cài máy (phần giữa của mã), trước khi máy chủ trả lời.
 function deviceRoom(token) {
@@ -89,7 +84,7 @@ function deviceRoom(token) {
 }
 // Bước của lượt chụp (lưu cùng phiên để tải lại trang vẫn tiếp tục đúng chỗ).
 const phaseOf = (s) =>
-  !s ? null : s.phase || (s.booking.captureStartedAt ? "shoot" : "mode");
+  !s ? null : s.phase || (s.booking.captureStartedAt ? "shoot" : "ready");
 const secondsUntil = (at) => Math.max(0, Math.ceil(((at || 0) - Date.now()) / 1000));
 function readSale() {
   try {
@@ -141,10 +136,7 @@ export function Kiosk() {
     // Bán lượt chụp tại máy: gói đã chọn và các tờ tiền đã nhận (giữ lại khi tải lại trang).
     [sale, setSaleState] = useState(readSale),
     [video, setVideo] = useState(null),
-    [print, setPrint] = useState(null),
-    [shotRetry, setShotRetry] = useState(0),
-    [captureState, setCaptureState] = useState("idle"),
-    [captureError, setCaptureError] = useState("");
+    [print, setPrint] = useState(null);
   const video$ = useRef(null),
     stream = useRef(null),
     alive = useRef(true),
@@ -173,6 +165,28 @@ export function Kiosk() {
     if (next) localStorage.setItem(SALE_KEY, JSON.stringify(next));
     else localStorage.removeItem(SALE_KEY);
   };
+  // Khách rời máy giữa các bước: trở về màn chờ. Đã nhận tiền thật thì giữ nguyên để nhân viên xử lý.
+  useEffect(() => {
+    if (!["package", "print", "pay"].includes(step) || sale?.bills?.length || busy) return;
+    let timer;
+    const reset = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        setSale(null);
+        setCode("");
+        setError("");
+        setStep("start");
+      }, 120_000);
+    };
+    reset();
+    window.addEventListener("pointerdown", reset);
+    window.addEventListener("keydown", reset);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("pointerdown", reset);
+      window.removeEventListener("keydown", reset);
+    };
+  }, [step, sale?.bills?.length, busy]);
   function applyFlip(flip) {
     setRemoteFlip(flip || "device");
     if (flip !== "on" && flip !== "off") return;
@@ -205,10 +219,13 @@ export function Kiosk() {
   // Máy nhận tiền: mở lại cổng đã cho phép, luôn khóa nhận tiền ngoài màn trả tiền.
   useEffect(() => {
     billAcceptor.connect(false).catch(() => {}).finally(() => billAcceptor.setEnabled(false).catch(() => {}));
+    // The browser may open before a USB serial acceptor finishes starting.
+    const reconnectBill = setInterval(() => {
+      if (!billAcceptor.connected) billAcceptor.connect(false).catch(() => {});
+    }, 5000);
     runKioskPrints();
     runKioskComposites();
-    connectCanonCamera().catch(() => {});
-    return watchKioskPrint((token, state) => {
+    const stopPrint = watchKioskPrint((token, state) => {
       if (token === current.current?.accessToken || token === doneRef.current?.token) setPrint(state);
       if (state.status === "manual")
         notifyOnce("print-manual", "warning", "Máy chủ chưa bật in tự động (PRINT_AGENT_TOKEN trên Render) — in ảnh thủ công từ trang Đơn hàng.", 15000);
@@ -217,6 +234,10 @@ export function Kiosk() {
       if (state.status === "failed" && state.message)
         notifyOnce("print-failed", "error", `Máy in báo lỗi: ${state.message}`, 15000);
     });
+    return () => {
+      clearInterval(reconnectBill);
+      stopPrint();
+    };
   }, []);
   // Gửi kèm khi báo trạng thái lên máy chủ: quản trị xem được vì sao ảnh máy ảnh không về.
   const scanRef = useRef(null),
@@ -311,7 +332,7 @@ export function Kiosk() {
         );
       else
         toast.warning(
-          `Đã chọn thư mục ảnh “${handle.name}” nhưng máy chụp chưa thấy ảnh JPG nào. Hãy chọn đúng thư mục Canon Camera Agent đang lưu ảnh (các tệp JPEG gốc từ R100), hoặc chụp thử 1 tấm rồi bấm “Thử nhận ảnh từ máy ảnh”. Thư mục có ảnh mà vẫn báo 0: ${FOLDER_ACCESS_HINT}`,
+          `Đã chọn thư mục ảnh “${handle.name}” nhưng máy chụp chưa thấy ảnh JPG nào. Hãy chọn đúng thư mục FUJIFILM X Acquire đang lưu JPEG, hoặc chụp thử 1 tấm rồi bấm “Thử nhận ảnh từ máy ảnh”. Thư mục có ảnh mà vẫn báo 0: ${FOLDER_ACCESS_HINT}`,
           15000,
         );
     } catch (e) {
@@ -341,7 +362,7 @@ export function Kiosk() {
       lock?.release().catch(() => {});
     };
   }, []);
-  const liveCamera = ["mode", "ready", "shoot"].includes(phase);
+  const liveCamera = ["ready", "shoot"].includes(phase);
   const reopenRef = useRef(null);
   reopenRef.current = () => {
     if (liveCamera && !ready && !endingRef.current && !doneRef.current) openCamera();
@@ -366,7 +387,17 @@ export function Kiosk() {
     if (params.get("device")) localStorage.setItem("harrod-device", device);
     try {
       const saved = JSON.parse(sessionStorage.getItem(key));
-      if (saved) setSession(saved);
+      if (saved) {
+        // A kiosk updated during an old timer session must not fire a software shot.
+        const resumed = {
+          ...saved,
+          mode: "remote",
+          phase: saved.phase === "mode" ? "ready" : phaseOf(saved),
+          readyEndsAt: saved.phase === "mode" ? Date.now() + READY_SECONDS * 1000 : saved.readyEndsAt,
+        };
+        setSession(resumed);
+        sessionStorage.setItem(key, JSON.stringify(resumed));
+      }
     } catch {}
     return () => {
       alive.current = false;
@@ -525,7 +556,12 @@ export function Kiosk() {
     recorder.current = createClipRecorder();
     setVideo(null);
     setPrint(null);
-    transition(() => update({ ...opened, phase: "mode", modeEndsAt: Date.now() + MODE_SECONDS * 1000 }), "zoom");
+    transition(() => update({
+      ...opened,
+      mode: "remote",
+      phase: "ready",
+      readyEndsAt: Date.now() + READY_SECONDS * 1000,
+    }), "zoom");
     shown.current = {};
   }
   const checkFolder = () => {
@@ -550,11 +586,13 @@ export function Kiosk() {
     try {
       const claimed = await api("/kiosk/claim", { method: "POST", body: { code, device } });
       if (claimed.completed) {
+        setSale(null);
         applyFlip(claimed.flip);
         transition(() => showDone(claimed.booking, claimed.accessToken, {}), "zoom");
         toast.info("Mã này đã chụp xong — quét QR để nhận ảnh nhé.");
         return;
       }
+      setSale(null);
       openSession(claimed);
       toast.success("Mã hợp lệ! Chúc bạn có buổi chụp thật vui.");
     } catch (e) {
@@ -568,21 +606,28 @@ export function Kiosk() {
   // Đủ tiền (hoặc bỏ qua ở chế độ thử): máy chủ mở lượt chụp bằng đúng mã giao dịch đã lưu.
   async function buy(skip = false) {
     const s = readSale() || sale;
-    if (!s?.pack || busy) return;
-    if (!checkFolder()) return;
+    if (!s?.pack || busy) return false;
+    if (!checkFolder()) return false;
     setBusy(true);
     setError("");
     try {
       const opened = await api("/kiosk/sale", {
         method: "POST",
         retry: 2,
-        body: { device, package: s.pack._id, requestKey: s.requestKey, skip, bills: s.bills },
+        body: {
+          device, package: s.pack._id, requestKey: s.requestKey, skip, bills: s.bills,
+          prints: s.prints,
+          expectedTotal: (Number(s.pack.price) || 0) +
+            Math.max(0, (Number(s.prints) || 0) - (Number(s.pack.prints) || 0)) * (Number(s.extraPrintPrice) || 0),
+        },
       });
       setSale(null);
       openSession(opened);
+      return true;
     } catch (e) {
       setError(e.message);
       toast.error(e.message);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -591,10 +636,13 @@ export function Kiosk() {
     () => packages.filter((p) => !p.branches?.length || p.branches.includes(roomInfo?.branch)),
     [packages, roomInfo?.branch],
   );
-  const sellsHere = roomInfo?.payment === "cash" || roomInfo?.paymentTest;
+  const extraPrintPrice = settings.extraPrintPrice === undefined ? undefined : Number(settings.extraPrintPrice);
+  const salePrints = Math.max(Number(sale?.pack?.prints) || 0, Number(sale?.prints) || 0);
+  const saleTotal = (Number(sale?.pack?.price) || 0) +
+    Math.max(0, salePrints - (Number(sale?.pack?.prints) || 0)) * (Number(sale?.extraPrintPrice) || 0);
 
   // ─── Chụp ────────────────────────────────────────────────────────────────
-  // Hình trực tiếp mở từ lúc chọn cách chụp (khách thấy mình ngay), tắt khi chuyển sang chọn ảnh.
+  // Hình trực tiếp mở khi chuẩn bị chụp, tắt khi chuyển sang chọn ảnh.
   useEffect(() => {
     if (!session?.captureToken) return;
     if (liveCamera) {
@@ -630,26 +678,16 @@ export function Kiosk() {
   useEffect(() => {
     if (phase === "shoot" && ready && stream.current) recorder.current.start(stream.current);
   }, [phase, ready]);
-  // Đồng hồ các bước chọn cách chụp / chọn ảnh / chọn khung.
+  // Đồng hồ các bước chuẩn bị / chọn ảnh / chọn khung.
   useEffect(() => {
-    if (!["mode", "ready", "select", "frame"].includes(phase)) return;
+    if (!["ready", "select", "frame"].includes(phase)) return;
     const timer = setInterval(() => setTick((n) => n + 1), 250);
     return () => clearInterval(timer);
   }, [phase]);
-  const modeLeft = secondsUntil(session?.modeEndsAt);
   const preCount = secondsUntil(session?.readyEndsAt);
   useEffect(() => {
-    if (phase === "mode" && session.modeEndsAt && !modeLeft) pickMode("timer");
     if (phase === "ready" && !preCount) patch({ phase: "shoot" });
-  }, [phase, modeLeft, preCount]);
-  function pickMode(mode) {
-    if (phaseOf(current.current) !== "mode") return;
-    setCaptureError("");
-    setCaptureState(mode === "timer" ? "connecting" : "idle");
-    // Đếm giờ có đúng một lượt 3–2–1, sau khi API và máy ảnh sẵn sàng.
-    patch({ mode, phase: mode === "timer" ? "shoot" : "ready",
-      readyEndsAt: mode === "timer" ? null : Date.now() + READY_SECONDS * 1000 });
-  }
+  }, [phase, preCount]);
 
   async function sync() {
     if (!current.current || !alive.current) return;
@@ -1076,8 +1114,7 @@ export function Kiosk() {
         if (!live.captureOrder?.includes(id))
           update({ ...live, captureOrder: [...(live.captureOrder || []), id] });
         trackPending((list) => (list.some((p) => p.id === id) ? list : [...list, row]));
-        // Máy chụp vừa bấm máy thì màn hình đã nháy lúc bấm (cùng lúc flash nổ).
-        if (Date.now() - pressedAt.current > SHOT_WAIT_MS) setFlash((n) => n + 1);
+        setFlash((n) => n + 1);
         recorder.current.cut();
         sync();
       }
@@ -1089,39 +1126,6 @@ export function Kiosk() {
     } finally {
       trackReading(-1);
     }
-  }
-  const takenRef = useRef(0);
-  takenRef.current = taken;
-  const pressedAt = useRef(0);
-  const waitingForCable = session?.mode === "remote" && ["ready", "shoot"].includes(phase) && !done && !ending;
-  useEffect(() => {
-    if (!waitingForCable) return;
-    const abort = new AbortController();
-    setCaptureState("connecting");
-    setCaptureError("");
-    // Prepare USB transfer only. The RS-60E3 cable physically triggers the R100;
-    // this mode must never focus or press the camera through software.
-    connectCanonCamera(abort.signal).then(() => {
-      if (!abort.signal.aborted) setCaptureState("idle");
-    }, (error) => {
-      if (!abort.signal.aborted) { setCaptureState("error"); setCaptureError(error.message); }
-    });
-    return () => abort.abort();
-  }, [waitingForCable, session?.captureToken, shotRetry]);
-  function runCameraShot(abort, before) {
-    setCaptureError("");
-    return runTimedShot({
-      prepare: (signal) => prepareShutter(undefined, signal),
-      signal: abort.signal,
-      onState: setCaptureState,
-      onTick: setShotLeft,
-      onPressed: () => { pressedAt.current = Date.now(); setFlash((n) => n + 1); },
-      hasPhoto: () => takenRef.current > before,
-      isReceiving: () => Boolean(readingRef.current || detectingRef.current),
-    }).catch((e) => {
-      if (abort.signal.aborted) return;
-      setCaptureState("error"); setCaptureError(e.message); setShotLeft(null);
-    });
   }
   // Theo dõi thư mục ảnh của máy ảnh trong suốt lúc chụp (không khởi động lại mỗi lần có ảnh).
   useEffect(() => {
@@ -1156,17 +1160,6 @@ export function Kiosk() {
     if (phase !== "shoot" || !shotQuota || done || reading || detecting) return;
     if (taken >= shotQuota) endCapture();
   }, [phase, taken, shotQuota, reading, detecting, done]);
-  // Chế độ đếm giờ: đếm ngược trước mỗi tấm, hết giờ thì tự chụp; chạy lại khi có ảnh mới.
-  const counting = phase === "shoot" && session?.mode === "timer" &&
-    Boolean(session?.booking.captureStartedAt) && !done && !ending && shotQuota > 0 && taken < shotQuota;
-  const [shotLeft, setShotLeft] = useState(null);
-  useEffect(() => {
-    if (!counting) return setShotLeft(null);
-    const abort = new AbortController();
-    runCameraShot(abort, taken);
-    return () => abort.abort();
-  }, [counting, taken, shotRetry, session?.captureToken]);
-
   // ─── Màn hình ────────────────────────────────────────────────────────────
   if (done)
     return (
@@ -1208,26 +1201,18 @@ export function Kiosk() {
           zoom={zoom}
           ready={ready}
           phase={phase}
-          mode={session.mode}
-          booking={session.booking}
           preCount={preCount}
-          shotLeft={shotLeft}
           sessionLeft={session.booking.captureEndsAt ? remaining : (Number(session.booking.captureDuration) || 0) * 60}
           taken={taken}
           quota={shotQuota}
           shots={shots}
           flash={flash}
           receiving={reading + detecting > 0}
-          captureState={captureState}
-          captureError={captureError}
-          onRetryCapture={() => setShotRetry((n) => n + 1)}
-          modeLeft={modeLeft}
           ending={ending}
-          onPickMode={pickMode}
           onEnd={() => endCapture(false)}
           onReopenCamera={() => openCamera()}
         />
-        {error && !captureError && !(error === CAMERA_ERROR && !ready) && (
+        {error && !(error === CAMERA_ERROR && !ready) && (
           <div className="shoot-error">
             <ErrorBox error={error} />
           </div>
@@ -1238,23 +1223,43 @@ export function Kiosk() {
     return (
       <KioskPackages
         packages={roomPackages}
-        allowCode
         onPick={(pack) => {
-          setSale({ pack, requestKey: crypto.randomUUID(), bills: [] });
+          if (!checkFolder()) return;
+          setSale({ pack, prints: Number(pack.prints) || 0, extraPrintPrice, stage: "print", requestKey: crypto.randomUUID(), bills: [] });
+          transition(() => setStep("print"), "fade");
+        }}
+        onBack={() => transition(() => setStep("start"), "fade")}
+      />
+    );
+  if (step === "print" && sale?.pack)
+    return (
+      <KioskPrintCount
+        pack={sale.pack}
+        prints={salePrints}
+        extraPrintPrice={sale.extraPrintPrice}
+        onChange={(prints) => setSale({ ...sale, prints })}
+        onNext={() => {
+          setSale({ ...sale, stage: "pay" });
           transition(() => setStep("pay"), "fade");
         }}
-        onCode={() => transition(() => setStep("code"), "fade")}
-        onBack={() => transition(() => setStep("start"), "fade")}
+        onBack={() => transition(() => setStep("package"), "fade")}
       />
     );
   if (step === "pay" && sale?.pack)
     return (
       <KioskPayment
         pack={sale.pack}
+        total={saleTotal}
+        prints={salePrints}
+        code={code}
+        setCode={setCode}
+        onVoucher={claim}
         bills={sale.bills}
         testMode={Boolean(roomInfo?.paymentTest)}
         busy={busy}
         error={error}
+        cameraReady={Boolean(folder && folderAccess === "granted")}
+        cashReady={Boolean(roomInfo?.cashCheckoutReady)}
         onBill={(amount) => {
           const latest = readSale() || sale;
           setSale({ ...latest, bills: [...latest.bills, { amount, at: new Date().toISOString() }] });
@@ -1262,31 +1267,18 @@ export function Kiosk() {
         onPaid={() => buy(false)}
         onSkip={() => buy(true)}
         onBack={() => {
-          setSale(null);
-          transition(() => setStep(sellsHere ? "package" : "start"), "fade");
+          setCode("");
+          transition(() => setStep("print"), "fade");
         }}
       />
     );
   return (
     <KioskEntry
-      step={step === "code" ? "code" : "start"}
-      setStep={(next) => {
-        setError("");
-        transition(() => setStep(next), "fade");
-      }}
       onTap={() => {
         setError("");
         // Còn tiền đã đút dở (tải lại trang): quay lại đúng màn trả tiền.
-        transition(() => setStep(sale?.pack ? "pay" : sellsHere ? "package" : "code"), "fade");
+        transition(() => setStep(sale?.pack ? (sale.stage === "print" ? "print" : "pay") : "package"), "fade");
       }}
-      claim={claim}
-      error={error}
-      device={device}
-      code={code}
-      setCode={setCode}
-      busy={busy}
-      folder={folder}
-      folderAccess={folderAccess}
       roomId={roomId}
     >
       <KioskSettings

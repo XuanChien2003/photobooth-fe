@@ -4,19 +4,19 @@ export const isMac =
   /mac/i.test(navigator.userAgentData?.platform || navigator.platform || "");
 export const PHOTO_FOLDER_EXAMPLE = isMac
   ? "Pictures/PhotoBooth"
-  : "C:\\PhotoBooth\\CanonR100";
+  : "C:\\PhotoBooth\\Fujifilm";
 // Thư mục ảnh không đọc được: lý do hay gặp khác nhau giữa macOS và Windows.
 export const FOLDER_ACCESS_HINT = isMac
-  ? `Trên macOS: System Settings → Privacy & Security → Files and Folders → cho phép Chrome đọc thư mục ảnh Canon ngoài Desktop / Documents / Downloads, vd. ${PHOTO_FOLDER_EXAMPLE}.`
-  : `Trên Windows: để Canon Camera Agent lưu ảnh vào thư mục riêng, vd. ${PHOTO_FOLDER_EXAMPLE} (Chrome không cho đọc thẳng Desktop / Documents / Downloads; thư mục OneDrive “chỉ trên mạng” cũng không đọc được).`;
+  ? `Trên macOS: System Settings → Privacy & Security → Files and Folders → cho phép Chrome đọc thư mục ảnh Fujifilm ngoài Desktop / Documents / Downloads, vd. ${PHOTO_FOLDER_EXAMPLE}.`
+  : `Trên Windows: để phần mềm máy ảnh lưu JPEG vào thư mục riêng, vd. ${PHOTO_FOLDER_EXAMPLE} (Chrome không cho đọc thẳng Desktop / Documents / Downloads; thư mục OneDrive “chỉ trên mạng” cũng không đọc được).`;
 
 export const canPickFolder =
   typeof window !== "undefined" && "showDirectoryPicker" in window;
 export const isJpeg = (name) => /\.jpe?g$/i.test(name);
-export const isRaw = (name) => /\.cr[23]$/i.test(name);
+export const isRaw = (name) => /\.raf$/i.test(name);
 export const baseName = (path) => path.replace(/\.[^./]+$/, "").toLowerCase();
 // Ảnh trong thư mục máy ảnh (và thư mục con, vd. "Capture" của Capture One): JPEG để gửi
-// lên; RAW Canon (.CR3/.CR2) chỉ để nhận ra máy ảnh đang chụp RAW mà không kèm JPEG.
+// lên; RAW Fujifilm (.RAF) chỉ để báo thiếu JPEG.
 export async function* listCameraFiles(dir, depth = 2, prefix = "") {
   for await (const [name, handle] of dir.entries()) {
     // Bỏ tệp / thư mục ẩn (vd. "._DSCF0001.JPG" macOS tạo trên thẻ nhớ, ".Trashes").
@@ -28,7 +28,7 @@ export async function* listCameraFiles(dir, depth = 2, prefix = "") {
   }
 }
 export const RAW_ONLY_MESSAGE =
-  "Canon đang chỉ gửi RAW (.CR3/.CR2). Chọn JPEG Large/Fine hoặc RAW+JPEG trên máy ảnh để kiosk nhận ảnh.";
+  "Máy ảnh đang chỉ gửi RAW (.RAF). Chọn FINE hoặc FINE + RAW, định dạng JPEG trên Fujifilm để kiosk nhận ảnh.";
 export async function folderPermission(handle, ask) {
   const opts = { mode: "read" };
   try {

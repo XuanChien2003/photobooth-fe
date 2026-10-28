@@ -1,4 +1,4 @@
-export const TIMED_SHOT_SECONDS = 3;
+export const TIMED_SHOT_SECONDS = 10;
 const CONNECT_MS = 12000;
 const PHOTO_WAIT_MS = 15000;
 
