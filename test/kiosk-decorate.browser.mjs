@@ -49,6 +49,7 @@ const stickerImage = png(60, 60, () => BLUE);
 
 const FRAME = { _id: "frame-decor", name: "Khung thử", printSize: "full", active: true, image: dataUrl(frameImage), slots: SLOTS };
 const STICKER = { _id: "sticker-blue", name: "Tim xanh", image: dataUrl(stickerImage), thumb: dataUrl(stickerImage) };
+const STAR = { _id: "sticker-star", name: "Sao vàng", image: dataUrl(png(40, 40, () => [240, 190, 40, 255])), thumb: "" };
 const SETTINGS = { enabledFilters: ["original", "mono"], customFilters: [] };
 
 let server, browser, base;
@@ -59,7 +60,9 @@ const fixture = `
   import { StudioContext, ToastProvider } from '/src/studio.jsx';
   import { Kiosk } from '/src/kiosk/Kiosk.jsx';
   import '/src/tailwind.css';
-  const studio = ${JSON.stringify({ settings: SETTINGS, packages: [], frames: [FRAME], stickers: [STICKER] })};
+  const studio = ${JSON.stringify({ settings: SETTINGS, packages: [], frames: [FRAME], stickers: [STICKER, STAR] })};
+  // Tiệm chưa tải nhãn dán nào (?stickers=0): máy chụp ẩn mục Nhãn dán.
+  if (new URLSearchParams(location.search).get('stickers') === '0') studio.stickers = [];
   createRoot(document.getElementById('root')).render(React.createElement(React.StrictMode, null,
     React.createElement(MemoryRouter, { initialEntries: ['/kiosk?device=fixture-device'] },
       React.createElement(StudioContext.Provider, { value: studio },
@@ -96,7 +99,7 @@ before(async () => {
 
 after(async () => { await browser?.close(); await new Promise((resolve) => server?.close(resolve)); });
 
-async function selectScreen() {
+async function selectScreen({ query = "" } = {}) {
   const page = await browser.newPage({ viewport: { width: 1366, height: 768 } });
   const errors = [], uploads = { composite: null, print: null };
   page.on("pageerror", (e) => errors.push(e.message));
@@ -132,7 +135,7 @@ async function selectScreen() {
       phase: "select", selected: [], selectEndsAt: Date.now() + 150000, mode: "remote",
     }));
   }, booking);
-  await page.goto(base);
+  await page.goto(base + query);
   return { page, errors, uploads };
 }
 const saved = (page) => page.evaluate(() => JSON.parse(sessionStorage.getItem("photo-capture-fixture-device")));
@@ -176,8 +179,11 @@ test("guests pick photos, a colour and a sticker; the print shows exactly that",
     await tab("Nhãn dán").click();
     await page.getByText("Chạm một nhãn dán bên dưới để dán lên khung.").waitFor();
     const palette = page.getByRole("group", { name: "Thêm nhãn dán" });
-    // Nhãn dán của tiệm đứng trước bộ biểu tượng có sẵn.
-    assert.equal(await palette.getByRole("button").first().getAttribute("aria-label"), "Thêm nhãn dán Tim xanh");
+    // Chỉ nhãn dán của tiệm (Thiết lập → Nhãn dán), không có bộ biểu tượng dựng sẵn.
+    assert.deepEqual(
+      await palette.getByRole("button").evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label"))),
+      ["Thêm nhãn dán Tim xanh", "Thêm nhãn dán Sao vàng"],
+    );
     await palette.getByRole("button", { name: "Thêm nhãn dán Tim xanh" }).click();
     await page.getByRole("button", { name: "To hơn" }).click();
     let sticker = (await saved(page)).decor.stickers[0];
@@ -196,7 +202,7 @@ test("guests pick photos, a colour and a sticker; the print shows exactly that",
     assert.ok(Math.abs(sticker.u - 0.5) < 0.02 && Math.abs(sticker.v - 0.26) < 0.02, `vị trí ${sticker.u}, ${sticker.v}`);
 
     // Thêm rồi xóa một biểu tượng: chỉ còn nhãn dán xanh.
-    await palette.getByRole("button", { name: "Thêm nhãn dán ⭐" }).click();
+    await palette.getByRole("button", { name: "Thêm nhãn dán Sao vàng" }).click();
     await page.getByRole("button", { name: "Xóa nhãn dán" }).click();
     assert.equal((await saved(page)).decor.stickers.length, 1);
 
@@ -313,7 +319,7 @@ test("colour and stickers survive a reload during selection", async () => {
     await shots.nth(2).click();
     await page.getByRole("radio", { name: "Trắng đen" }).click();
     await page.getByRole("tab", { name: /Nhãn dán/ }).click();
-    await page.getByRole("button", { name: "Thêm nhãn dán 🌸" }).click();
+    await page.getByRole("button", { name: "Thêm nhãn dán Sao vàng" }).click();
     await page.reload();
     await page.getByRole("heading", { name: /để chọn ảnh & trang trí/ }).waitFor();
     // Đã đủ ảnh từ trước: không tự chuyển mục, khách vẫn thấy ảnh đã chọn.
@@ -324,6 +330,18 @@ test("colour and stickers survive a reload during selection", async () => {
     await page.getByRole("tab", { name: /Nhãn dán/ }).click();
     await page.getByRole("button", { name: "Xóa hết nhãn dán (1)" }).click();
     assert.deepEqual((await saved(page)).decor.stickers, []);
+    assert.deepEqual(errors, []);
+  } finally { await page.close(); }
+});
+
+test("without any shop sticker the kiosk hides the sticker tab (no built-in emoji set)", async () => {
+  const { page, errors } = await selectScreen({ query: "/?stickers=0" });
+  try {
+    await page.getByRole("heading", { name: /để chọn ảnh & trang trí/ }).waitFor();
+    assert.deepEqual(
+      await page.getByRole("tab").evaluateAll((tabs) => tabs.map((t) => t.textContent.replace(/\d+\/\d+/, "").trim())),
+      ["Chọn ảnh", "Màu ảnh"],
+    );
     assert.deepEqual(errors, []);
   } finally { await page.close(); }
 });

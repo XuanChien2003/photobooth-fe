@@ -65,7 +65,7 @@ Màn chọn ảnh của máy chụp (150 giây) có 3 mục bên cạnh khung xe
 
 - **Chọn ảnh**: chọn đủ số ảnh của gói. Khi đã đủ, máy tự mở mục **Màu ảnh**.
 - **Màu ảnh**: filter từ **Quản lý filter** (gồm "Gốc", filter của tiệm, rồi bộ lọc có sẵn đang bật), áp cho **tất cả ảnh** hoặc **từng ảnh**: chọn số ảnh ở hàng "Áp dụng cho" hoặc chạm vào ảnh trên khung. Chọn màu cho "Tất cả ảnh" sẽ bỏ màu riêng của từng ảnh.
-- **Nhãn dán**: nhãn dán của tiệm trước, rồi bộ biểu tượng có sẵn. Khách kéo nhãn dán trên khung, chụm/mở 2 ngón hoặc bấm **Nhỏ hơn / To hơn** để đổi cỡ.
+- **Nhãn dán**: chỉ các nhãn dán tiệm tải lên ở **Thiết lập → Nhãn dán** (chưa có nhãn dán nào thì mục này ẩn). Khách kéo nhãn dán trên khung, chụm/mở 2 ngón hoặc bấm **Nhỏ hơn / To hơn** để đổi cỡ.
 
 Màu chỉ áp lên ô ảnh, không áp lên nền khung, mã QR và nhãn dán. Ảnh ở màn QR, ảnh ghép trong album và tờ in vẽ cùng một cách (`src/kiosk/decor.js`).
 Khung khổ nhỏ có 2 dải giống nhau trên một tờ thì nhãn dán tự lặp sang dải thứ hai, để 2 dải cắt ra giống nhau.

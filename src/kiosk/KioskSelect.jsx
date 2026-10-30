@@ -12,7 +12,6 @@ import {
   PiTrashBold,
 } from "react-icons/pi";
 import { Button, useToast } from "../studio";
-import { DECOR_STICKERS } from "../album/decorations.js";
 import { composePreview, previewBitmap } from "./compose.js";
 import {
   MAX_STICKERS,
@@ -325,8 +324,13 @@ export function KioskSelect({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
-  // Không có khung thì không có gì để trang trí: chỉ chọn ảnh.
-  const tabs = ["photos", ...(frame && filters.length > 1 ? ["color"] : []), ...(frame ? ["stickers"] : [])];
+  // Không có khung thì không có gì để trang trí: chỉ chọn ảnh. Nhãn dán chỉ lấy từ trang quản trị
+  // Thiết lập → Nhãn dán (không có bộ biểu tượng dựng sẵn): tiệm chưa tải nhãn dán nào thì ẩn mục.
+  const tabs = [
+    "photos",
+    ...(frame && filters.length > 1 ? ["color"] : []),
+    ...(frame && shopStickers.length ? ["stickers"] : []),
+  ];
   const [tab, setTab] = useState("photos");
   const current = tabs.includes(tab) ? tab : "photos";
   const panel = (id) =>
@@ -535,11 +539,6 @@ export function KioskSelect({
                 {shopStickers.map((s) => (
                   <button key={s._id} type="button" aria-label={`Thêm nhãn dán ${s.name || ""}`.trim()} onClick={() => addSticker({ src: s.image })}>
                     <img src={s.thumb || s.image} alt="" loading="lazy" decoding="async" />
-                  </button>
-                ))}
-                {DECOR_STICKERS.map((text) => (
-                  <button key={text} type="button" aria-label={`Thêm nhãn dán ${text}`} onClick={() => addSticker({ text })}>
-                    {text}
                   </button>
                 ))}
               </div>

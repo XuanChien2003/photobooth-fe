@@ -11,10 +11,6 @@ export const DECOR_COLORS = [
   "#382b26", "#ffffff", "#7a4b36", "#c89b7b", "#e8d5c4", "#d94f5c",
   "#f29fb0", "#f2b544", "#5c9c6a", "#4a7bd0", "#8e6bbf", "#111111",
 ];
-export const DECOR_STICKERS = [
-  "⭐", "✨", "💖", "🌸", "🎀", "🦋", "🌙", "☀️", "🍓", "🧸", "🎉", "📸",
-  "😊", "😎", "🥰", "👑", "💐", "🌈", "🍀", "🔥",
-];
 const MAX_POINTS = 600;
 // Sticker ảnh do quản trị tải lên (src là địa chỉ ảnh): nạp một lần, vẽ đồng bộ khi đã sẵn sàng.
 const stickerImages = new Map();
