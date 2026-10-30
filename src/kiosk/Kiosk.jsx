@@ -698,6 +698,15 @@ export function Kiosk() {
   }
   // Loại phòng (Quản lý máy): phòng đút tiền bán lượt chụp tại máy, phòng nhập mã chỉ nhận mã từ quầy.
   const cashRoom = roomInfo?.payment === "cash";
+  // Lượt mua dở (đã chọn gói / số tờ) chỉ có ở phòng đút tiền. Phòng đã đổi sang phòng nhập mã
+  // (Quản lý máy → Cài máy chụp): bỏ lượt mua dở chưa nhận tiền, về màn chờ — chạm là nhập mã.
+  // Đã nhận tiền thật thì giữ lại để nhân viên xử lý.
+  const roomPayment = roomInfo?.payment;
+  useEffect(() => {
+    if (!roomPayment || roomPayment === "cash" || !sale || sale.bills?.length) return;
+    setSale(null);
+    if (["package", "print", "pay"].includes(step)) transition(() => setStep("start"), "fade");
+  }, [roomPayment, sale?.pack, sale?.bills?.length]);
   const cashReady = Boolean(roomInfo?.cashCheckoutReady);
 
   // ─── Chụp ────────────────────────────────────────────────────────────────
@@ -1376,8 +1385,11 @@ export function Kiosk() {
   return (
     <KioskEntry
       onTap={() => {
-        // Còn tiền đã đút dở (tải lại trang): quay lại đúng màn đọc tiền.
-        goTo(sale?.bills?.length ? "pay" : sale?.pack ? (sale.stage === "pay" ? "pay" : "print") : cashRoom ? "package" : "code");
+        // Còn tiền đã đút dở (tải lại trang): quay lại đúng màn đọc tiền. Lượt mua dở chỉ tiếp tục ở
+        // phòng đút tiền; phòng nhập mã luôn vào màn nhập mã.
+        goTo(sale?.bills?.length ? "pay"
+          : !cashRoom ? "code"
+          : sale?.pack ? (sale.stage === "pay" ? "pay" : "print") : "package");
       }}
       roomId={roomId}
     >

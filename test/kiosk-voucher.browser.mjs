@@ -55,13 +55,18 @@ const booking = { _id: "booking-1", code: "123456", status: "checked_in", packag
   shots: 4, captureDuration: 10, photos: [] };
 
 // Máy chụp có thư mục ảnh (OPFS giả lập) và API giả: ping trả phòng, claim / sale mở lượt chụp.
-async function openKiosk(room, handlers = {}) {
+async function openKiosk(room, handlers = {}, { sale = null } = {}) {
   const page = await browser.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.addInitScript(() => {
+  await page.addInitScript((sale) => {
     window.showDirectoryPicker = async () => navigator.storage.getDirectory();
-  });
+    // Lượt mua dở còn lưu trên máy (vd. từ lúc phòng còn là phòng đút tiền).
+    if (sale && !sessionStorage.getItem("sale-seeded")) {
+      localStorage.setItem("kiosk-sale", JSON.stringify(sale));
+      sessionStorage.setItem("sale-seeded", "1");
+    }
+  }, sale);
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     const handler = Object.entries(handlers).find(([end]) => path.endsWith(end));
@@ -135,6 +140,32 @@ test("cash room: touch to start → size → print count → bill reader; enough
     assert.equal(sales[0].prints, 2, "two 10 × 15 sheets = four small prints");
     assert.equal(sales[0].expectedTotal, 90000);
     assert.equal(sales[0].skip, true);
+    assert.deepEqual(errors, []);
+  } finally { await page.close(); }
+});
+
+const staleSale = (bills = []) => ({
+  pack: { _id: "pack-full", name: "Khung to", printSize: "full", price: 100000, prints: 2, shots: 4 },
+  prints: 4, extraPrintPrice: 20000, stage: "pay", requestKey: "stale-key", bills,
+});
+
+test("a code room drops a sale left from when it was a cash room and asks for the code", async () => {
+  const { page, errors } = await openKiosk({ _id: "room-1", flip: "device", payment: "counter" }, {}, { sale: staleSale() });
+  try {
+    await page.getByRole("heading", { name: "Nhập mã chụp" }).waitFor();
+    assert.equal(await page.getByRole("heading", { name: "Đút tiền để bắt đầu chụp" }).count(), 0);
+    assert.equal(await page.evaluate(() => localStorage.getItem("kiosk-sale")), null, "the stale sale is gone");
+    assert.deepEqual(errors, []);
+  } finally { await page.close(); }
+});
+
+test("money already inserted is never dropped: the bill screen comes back even in a code room", async () => {
+  const bills = [{ amount: 50000, at: "2026-10-30T13:00:00.000Z" }];
+  const { page, errors } = await openKiosk({ _id: "room-1", flip: "device", payment: "counter" }, {}, { sale: staleSale(bills) });
+  try {
+    await page.getByRole("heading", { name: "Đút tiền để bắt đầu chụp" }).waitFor();
+    assert.match(await page.locator(".pay-board").innerText(), /50\.000/);
+    assert.notEqual(await page.evaluate(() => localStorage.getItem("kiosk-sale")), null);
     assert.deepEqual(errors, []);
   } finally { await page.close(); }
 });
