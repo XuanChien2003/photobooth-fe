@@ -516,6 +516,30 @@
     margin-inline: auto;
   }
 
+  /* Màn rộng: cột ảnh kéo dài xuống cả hàng nút dưới (hàng đó chỉ có "QR ảnh" ở mép phải), ảnh đã
+     ghép cao theo cả chiều cao thẻ, giữ tỉ lệ tờ 10 × 15 (2 : 3) — không còn khoảng trắng dưới ảnh. */
+  @media (min-width: 821px) {
+    .admin-shell .order-card:has(> .order-more-actions) > .order-identity {
+      grid-row: span 2;
+    }
+    .admin-shell .order-card > .order-more-actions {
+      grid-column: 2 / -1;
+      border-left: 1px solid var(--line);
+    }
+    .admin-shell .order-identity .order-thumb-wrap {
+      display: flex;
+      flex: 0 0 auto;
+      align-self: stretch;
+    }
+    .admin-shell .order-identity .order-thumb {
+      flex: none;
+      width: auto;
+      height: 100%;
+      min-height: 120px;
+      max-height: 220px;
+      aspect-ratio: 2 / 3;
+    }
+  }
   @media (max-width: 1180px) {
     .admin-shell .order-card {
       grid-template-columns: minmax(300px, 1.35fr) minmax(180px, 0.8fr) minmax(190px, 0.8fr);
