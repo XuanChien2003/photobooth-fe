@@ -240,18 +240,6 @@
     font-family: var(--mellow-display);
   }
 
-  /* Thanh chuyển chế độ (Hàng chờ in) */
-  .admin-content .segmented {
-    border: 1px solid #dccab8;
-    border-radius: 10px;
-    background: var(--mellow-kraft);
-  }
-  .admin-content .segmented button.active {
-    background: var(--mellow-cocoa);
-    color: var(--mellow-card);
-    box-shadow: 0 2px 0 var(--mellow-cocoa-deep);
-  }
-
   /* ── Gói chụp & khung ảnh: thẻ giấy dán băng keo ───────────── */
   .admin-content :is(.package-card, .frame-catalog-card) {
     position: relative;

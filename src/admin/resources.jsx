@@ -20,7 +20,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { api, money } from "../api";
 import { Button, ErrorBox, useStudio, useToast } from "../studio";
 import { useValidation } from "../validate";
-import { RESOURCE_LABELS, RESOURCE_RULES, definitions, DEFAULT_STAFF_PERMISSIONS, PERMISSION_GROUPS, can } from "./config";
+import { RESOURCE_LABELS, RESOURCE_RULES, ROOM_TYPES, definitions, DEFAULT_STAFF_PERMISSIONS, PERMISSION_GROUPS, can } from "./config";
 import { PriceEditor } from "../extra-prints";
 import { TableHeading } from "./table-heading";
 import { Guide } from "../guide";
@@ -35,11 +35,6 @@ const searchable = (value) =>
     .replace(/\p{Diacritic}/gu, "")
     .replace(/đ/gi, "d")
     .toLowerCase();
-
-const shortDate = (value) => value
-  ? new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })
-      .format(new Date(value))
-  : "";
 
 // Lần cuối máy chụp báo còn mở trong 3 phút: coi như đang Online.
 const ONLINE_MS = 3 * 60 * 1000;
@@ -236,16 +231,34 @@ export function ResourceManager({ resource, notify, me }) {
       toast.error(e.message);
     }
   }
-  async function setup(item) {
+  // Cài máy chụp: bước 1 chọn loại phòng (nhập mã / đút tiền), bước 2 lưu loại phòng và lấy
+  // liên kết + QR mở máy chụp.
+  const setup = (item) =>
+    setDevice({
+      room: item,
+      name: item.name,
+      step: "type",
+      payment: item.payment || "counter",
+      paymentTest: Boolean(item.paymentTest),
+    });
+  async function issueDevice() {
+    if (device.busy) return;
+    setDevice({ ...device, busy: true });
     try {
-      const d = await api(`/admin/rooms/${item._id}/device`, {
+      const d = await api(`/admin/rooms/${device.room._id}/device`, {
         method: "POST",
+        body: { payment: device.payment, paymentTest: device.payment === "cash" && device.paymentTest },
       });
       setDevice({
+        ...device,
         ...d,
+        busy: false,
+        step: "link",
         url: `${window.location.origin}/kiosk?device=${encodeURIComponent(d.token)}`,
       });
+      load().catch(() => {});
     } catch (e) {
+      setDevice((current) => current && { ...current, busy: false });
       toast.error(e.message);
     }
   }
@@ -257,7 +270,7 @@ export function ResourceManager({ resource, notify, me }) {
           id="rooms-kiosk"
           title="cài máy chụp cho phòng"
           steps={[
-            "Bấm “Cài máy chụp” ở dòng phòng → mở liên kết (hoặc quét QR) trên máy tính trong phòng bằng Chrome / Edge.",
+            "Bấm “Cài máy chụp” ở dòng phòng → chọn loại phòng (nhập mã / đút tiền) → mở liên kết (hoặc quét QR) trên máy tính trong phòng bằng Chrome / Edge.",
             "Trên máy chụp: mở “Cài đặt máy chụp (nhân viên)”, làm theo hướng dẫn kết nối máy ảnh.",
             "Muốn bật máy tính là tự mở máy chụp: trong hộp “Cài máy chụp” tải “File cài cho Windows / Mac”, chạy 1 lần trên máy trong phòng.",
           ]}
@@ -298,21 +311,7 @@ export function ResourceManager({ resource, notify, me }) {
         </div>
       ) : resource === "packages" ? (
         <>
-        {canManage && (
-          <section className="panel extra-price-panel">
-            <div>
-              <h3>Giá in thêm tờ ảnh</h3>
-              <p className="muted">
-                Giá mỗi tờ 10 × 15 cm (khổ nhỏ: mỗi tờ = 2 tờ nhỏ) và mỗi tấm Instax khi khách chọn thêm
-                bản in ở máy chụp hoặc mua thêm tại quầy (Đơn hàng → In ảnh → Thêm lượt in).
-              </p>
-            </div>
-            <div className="extra-price-pair">
-              <PriceEditor price={settings.extraPrintPrice || 0} onSaved={() => reloadCatalog?.()} />
-              <PriceEditor instax price={settings.extraInstaxPrice || 0} onSaved={() => reloadCatalog?.()} />
-            </div>
-          </section>
-        )}
+        {/* Khổ ảnh và giá gói ở trên; giá in thêm (ít khi đổi) ở dưới cùng. */}
         <PackageCatalog
           items={visibleItems}
           onEdit={(item) => openEditor({ ...item })}
@@ -320,6 +319,27 @@ export function ResourceManager({ resource, notify, me }) {
           onCreate={newItem}
           filtered={filtered}
         />
+        {canManage && (
+          <section className="panel extra-price-panel" aria-labelledby="extra-price-title">
+            <div>
+              <h3 id="extra-price-title">Giá in thêm tờ ảnh</h3>
+              <p className="muted">
+                Khi khách chọn thêm bản in ở máy chụp hoặc mua thêm tại quầy (Đơn hàng → In ảnh → Thêm lượt in).
+                Khổ nhỏ: mỗi tờ 10 × 15 cm = 2 tờ nhỏ.
+              </p>
+            </div>
+            <div className="extra-price-pair">
+              <div className="extra-price-item">
+                <small>Khổ to & khổ nhỏ · tờ 10 × 15 cm</small>
+                <PriceEditor price={settings.extraPrintPrice} startOpen={false} onSaved={() => reloadCatalog?.()} />
+              </div>
+              <div className="extra-price-item">
+                <small>Khổ Instax mini · mỗi tấm</small>
+                <PriceEditor instax price={settings.extraInstaxPrice} startOpen={false} onSaved={() => reloadCatalog?.()} />
+              </div>
+            </div>
+          </section>
+        )}
         </>
       ) : (
         <div
@@ -373,13 +393,6 @@ export function ResourceManager({ resource, notify, me }) {
                     ) : resource === "rooms" ? (
                       <>
                         {item.branch || "Chưa đặt chi nhánh"}
-                        <small>
-                          {[item.machineCode && `Mã ${item.machineCode}`, item.model,
-                            item.importedAt && `Nhập ${shortDate(item.importedAt)}`,
-                            item.expiresAt && `Hạn ${shortDate(item.expiresAt)}`]
-                            .filter(Boolean)
-                            .join(" · ") || "Chưa nhập thông tin máy"}
-                        </small>
                         <small className="room-flip">
                           {item.payment === "cash" ? "Phòng đút tiền" : "Phòng nhập mã"}
                           {item.payment === "cash" && item.paymentTest ? " (đang bật chế độ thử)" : ""} ·{" "}
@@ -496,6 +509,47 @@ export function ResourceManager({ resource, notify, me }) {
               <X />
             </button>
             <h2>Cài máy chụp: {device.name}</h2>
+            {device.step === "type" ? (
+              <>
+                <p className="setup-step">Bước 1/2 · Chọn loại phòng cho máy chụp này</p>
+                <div className="room-type-options" role="radiogroup" aria-label="Loại phòng">
+                  {ROOM_TYPES.map(([value, title, detail]) => (
+                    <label key={value} className={`room-type-option${device.payment === value ? " is-selected" : ""}`}>
+                      <input
+                        type="radio"
+                        name="setup-payment"
+                        value={value}
+                        checked={device.payment === value}
+                        onChange={() => setDevice({ ...device, payment: value })}
+                      />
+                      <strong>{title}</strong>
+                      <small>{detail}</small>
+                    </label>
+                  ))}
+                </div>
+                {device.payment === "cash" && (
+                  <label className="checkbox setup-test">
+                    <input
+                      type="checkbox"
+                      checked={device.paymentTest}
+                      onChange={(e) => setDevice({ ...device, paymentTest: e.target.checked })}
+                    />
+                    Chế độ thử: chưa lắp máy đọc tiền — máy chụp có nút giả lập đút tiền (không tính doanh thu)
+                  </label>
+                )}
+                <Button className="full" disabled={device.busy} onClick={issueDevice}>
+                  {device.busy ? "Đang lưu…" : "Tiếp tục: lấy liên kết & QR"}
+                </Button>
+              </>
+            ) : (
+            <>
+            <p className="setup-step">
+              Bước 2/2 · {device.payment === "cash" ? "Phòng đút tiền" : "Phòng nhập mã"}
+              {device.payment === "cash" && device.paymentTest ? " (chế độ thử)" : ""}{" "}
+              <button type="button" className="link-button" onClick={() => setDevice({ ...device, step: "type" })}>
+                Đổi loại phòng
+              </button>
+            </p>
             <p>
               Mở liên kết này một lần trên máy tính trong phòng (hoặc quét QR),
               máy chụp sẽ tự nhớ. Liên kết có hiệu lực 1 năm; chỉ gửi cho nhân
@@ -585,6 +639,8 @@ export function ResourceManager({ resource, notify, me }) {
                 nhật cách điều khiển cửa sổ.
               </p>
             </div>
+            </>
+            )}
           </section>
         </div>
       )}

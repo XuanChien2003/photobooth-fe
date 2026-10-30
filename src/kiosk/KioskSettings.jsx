@@ -9,6 +9,7 @@ import {
   isBuiltInCamera,
   isCameraUsbVideo,
   liveUsable,
+  liveUsableFor,
   NO_HDMI_MESSAGE,
 } from "./camera.js";
 import { canPickFolder, PHOTO_FOLDER_EXAMPLE } from "./folder.js";
@@ -30,7 +31,10 @@ export function KioskSettings({
   setZoom,
   roomInfo,
   toast,
+  webcamTest = false,
+  setWebcamTest = () => {},
 }) {
+  const usable = liveUsableFor(webcamTest);
   return (
     <details className="kiosk-settings">
       <summary>
@@ -108,7 +112,7 @@ export function KioskSettings({
           <select
             aria-label="Hình trực tiếp từ máy ảnh"
             value={
-              cameras.some((c) => c.deviceId === cameraId && !liveUsable(c))
+              cameras.some((c) => c.deviceId === cameraId && !usable(c))
                 ? ""
                 : cameraId
             }
@@ -125,10 +129,10 @@ export function KioskSettings({
               <option
                 key={c.deviceId || i}
                 value={c.deviceId}
-                disabled={!liveUsable(c)}
+                disabled={!usable(c)}
               >
                 {c.label || `Camera ${i + 1}`}
-                {liveUsable(c)
+                {usable(c)
                   ? ""
                   : isBuiltInCamera(c)
                     ? " — webcam máy tính, không dùng"
@@ -142,7 +146,7 @@ export function KioskSettings({
             {CAMERA_USB_MESSAGE}
           </p>
         )}
-        {cameras.some((c) => c.label) &&
+        {!webcamTest && cameras.some((c) => c.label) &&
           !cameras.some((c) => liveUsable(c) && cameraRank(c) < 9) && (
             <p className="kiosk-check-result is-warn kiosk-hdmi-note">
               {NO_HDMI_MESSAGE}
@@ -165,6 +169,11 @@ export function KioskSettings({
           />
           Lưu ảnh lật như gương (giống hình trên màn hình)
           {mirrorLocked && " — quản trị đã đặt ở mục Quản lý máy"}
+        </label>
+        <label className="checkbox">
+          <input type="checkbox" checked={webcamTest} onChange={(e) => setWebcamTest(e.target.checked)} />
+          Thử máy bằng webcam máy tính (khi không có máy ảnh): webcam làm hình trực tiếp, chụp bằng nút
+          “Chạm để chụp” trên màn hình, không cần thư mục ảnh. Tắt trước khi đón khách.
         </label>
         <KioskDevices zoom={zoom} setZoom={setZoom} roomInfo={roomInfo} toast={toast} />
         <Button

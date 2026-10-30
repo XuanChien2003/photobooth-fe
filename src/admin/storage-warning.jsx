@@ -1,4 +1,5 @@
-import { AlertTriangle, Bot } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import { AssistantAvatar } from "./assistant-avatar";
 import { formatDateTime } from "../api";
 import { Button } from "../studio";
 import { useStorageMonitor } from "./storage-monitor";
@@ -66,7 +67,7 @@ export function StorageWarning({ onOpenStorage }) {
             </small>
           </div>
           <Button className="outline small" onClick={onOpenStorage}>
-            <Bot size={17} aria-hidden="true" /> Mở trợ lí để dọn ảnh
+            <AssistantAvatar size={24} /> Mở trợ lí để dọn ảnh
           </Button>
         </div>
       )}

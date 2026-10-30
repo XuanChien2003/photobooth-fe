@@ -318,6 +318,7 @@ test("staff can access active rooms and branches without room administration con
     "Đơn hàng",
     "Quản lý máy",
     "Đối soát",
+    "Dung lượng ảnh",
   ]);
   assert.equal(await nav.getByRole("group").count(), 1);
   assert.equal(await nav.getByRole("group", { name: "Tổng quan" }).count(), 1);
@@ -366,6 +367,7 @@ test("a receptionist's menu and room buttons follow the permissions the server g
     "Đơn hàng",
     "Quản lý máy",
     "Đối soát",
+    "Dung lượng ảnh",
   ]);
   await openRooms();
   // Không có quyền cài máy chụp (rooms:setup): vẫn thấy danh sách máy nhưng không có nút cài.
@@ -385,6 +387,8 @@ test("opening a configured kiosk uses the returned device token and displays QR 
     .click();
   const dialog = kioskDialog();
   await dialog.waitFor();
+  await dialog.getByRole("button", { name: "Tiếp tục: lấy liên kết & QR" }).click();
+  await dialog.getByRole("link", { name: "Mở máy chụp" }).waitFor();
   const url = `http://127.0.0.1:${server.address().port}/kiosk?device=${encodeURIComponent(deviceToken)}`;
   assert.equal(
     await dialog.getByRole("link", { name: "Mở máy chụp" }).getAttribute("href"),
@@ -407,6 +411,8 @@ test("opening a configured kiosk uses the returned device token and displays QR 
     .getByRole("button", { name: "Cài máy chụp cho Phòng 01", exact: true })
     .click();
   await dialog.waitFor();
+  await dialog.getByRole("button", { name: "Tiếp tục: lấy liên kết & QR" }).click();
+  await dialog.getByRole("link", { name: "Mở máy chụp" }).waitFor();
   assert.equal(
     await dialog.getByRole("link", { name: "Mở máy chụp" }).getAttribute("href"),
     `http://127.0.0.1:${server.address().port}/kiosk?device=${encodeURIComponent(freshToken)}`,
@@ -426,6 +432,8 @@ test("staff can create a kiosk link for a room that has never been configured", 
     .click();
   const dialog = kioskDialog();
   await dialog.waitFor();
+  await dialog.getByRole("button", { name: "Tiếp tục: lấy liên kết & QR" }).click();
+  await dialog.getByRole("link", { name: "Mở máy chụp" }).waitFor();
   assert.match(
     await dialog.getByRole("link", { name: "Mở máy chụp" }).getAttribute("href"),
     /device=fixture-device\.token_01-keep\.room-2$/,
@@ -451,6 +459,8 @@ test("downloaded Windows and Mac installers open the same room kiosk", async () 
     .click();
   const dialog = kioskDialog();
   await dialog.waitFor();
+  await dialog.getByRole("button", { name: "Tiếp tục: lấy liên kết & QR" }).click();
+  await dialog.getByRole("link", { name: "Mở máy chụp" }).waitFor();
   const url = await dialog
     .getByRole("link", { name: "Mở máy chụp" })
     .getAttribute("href");
@@ -538,6 +548,8 @@ test("staff mobile navigation closes after opening rooms and kiosk dialog fits t
     .click();
   const dialog = kioskDialog();
   await dialog.waitFor();
+  await dialog.getByRole("button", { name: "Tiếp tục: lấy liên kết & QR" }).click();
+  await dialog.getByRole("link", { name: "Mở máy chụp" }).waitFor();
   assert.equal(
     await page.evaluate(
       () => document.documentElement.scrollWidth > innerWidth,
@@ -594,14 +606,11 @@ test("admin keeps inactive rooms, create/edit/deactivate controls, and room edit
   await dialog
     .getByLabel("Tên máy / phòng", { exact: true })
     .fill("Phòng 01 cập nhật");
-  // Hai loại phòng: nhập mã (mặc định) hoặc đút tiền; chế độ thử chỉ có ở phòng đút tiền.
-  const testMode = dialog.getByRole("checkbox", { name: /Chế độ thử/ });
-  assert.equal(await dialog.getByRole("radio", { name: /Phòng nhập mã/ }).isChecked(), true);
-  assert.equal(await testMode.count(), 0);
-  await dialog.getByRole("radio", { name: /Phòng đút tiền/ }).check();
-  await testMode.check();
-  await mkdir(screenshots, { recursive: true });
-  await page.screenshot({ path: join(screenshots, "room-type-editor-1440.png") });
+  // Hộp sửa phòng không còn loại phòng và thông tin máy (mã, dòng máy, ngày nhập, ngày hết hạn).
+  for (const name of [/Phòng nhập mã/, /Phòng đút tiền/])
+    assert.equal(await dialog.getByRole("radio", { name }).count(), 0);
+  for (const label of ["Mã máy", "Dòng máy", "Ngày nhập máy", "Ngày hết hạn"])
+    assert.equal(await dialog.getByLabel(label, { exact: true }).count(), 0);
   await dialog
     .getByRole("button", { name: "Lưu thay đổi", exact: true })
     .click();
@@ -611,8 +620,28 @@ test("admin keeps inactive rooms, create/edit/deactivate controls, and room edit
   assert.equal(mutation.path, "/api/admin/rooms/room-1");
   assert.equal(mutation.body.branch, "Chi nhánh Nguyễn Trãi");
   assert.equal(mutation.body.name, "Phòng 01 cập nhật");
-  assert.equal(mutation.body.payment, "cash");
-  assert.equal(mutation.body.paymentTest, true);
+
+  // Loại phòng chọn ở bước đầu của "Cài máy chụp"; chế độ thử chỉ có ở phòng đút tiền.
+  await roomRow("Phòng 01 cập nhật")
+    .getByRole("button", { name: /^Cài máy chụp cho / })
+    .click();
+  const setup = kioskDialog();
+  await setup.getByText("Bước 1/2 · Chọn loại phòng cho máy chụp này").waitFor();
+  const testMode = setup.getByRole("checkbox", { name: /Chế độ thử/ });
+  assert.equal(await setup.getByRole("radio", { name: /Phòng nhập mã/ }).isChecked(), true);
+  assert.equal(await testMode.count(), 0);
+  assert.equal(await setup.getByRole("link", { name: "Mở máy chụp" }).count(), 0);
+  await setup.getByRole("radio", { name: /Phòng đút tiền/ }).check();
+  await testMode.check();
+  await mkdir(screenshots, { recursive: true });
+  await page.screenshot({ path: join(screenshots, "room-type-setup-1440.png") });
+  await setup.getByRole("button", { name: "Tiếp tục: lấy liên kết & QR" }).click();
+  await setup.getByRole("link", { name: "Mở máy chụp" }).waitFor();
+  await setup.getByText(/Bước 2\/2 · Phòng đút tiền \(chế độ thử\)/).waitFor();
+  const issued = deviceRequests().at(-1);
+  assert.equal(issued.path, "/api/admin/rooms/room-1/device");
+  assert.deepEqual(issued.body, { payment: "cash", paymentTest: true });
+  await setup.getByRole("button", { name: "Đóng", exact: true }).click();
   await page.screenshot({
     path: join(screenshots, "rooms-admin-1440.png"),
     fullPage: true,

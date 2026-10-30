@@ -105,8 +105,12 @@
       text-align: right;
       overflow-wrap: anywhere;
     }
-    .admin-shell .admin-user > span {
+    .admin-shell .admin-user > span:not(.admin-role) {
       display: none;
+    }
+    .admin-shell .admin-user .admin-role {
+      font-size: 14px;
+      white-space: normal;
     }
     .admin-shell .admin-user > div {
       display: flex;

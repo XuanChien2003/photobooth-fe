@@ -1,4 +1,5 @@
-import { AlertTriangle, Bot, Cloud, HardDrive, Image } from "lucide-react";
+import { AlertTriangle, Cloud, HardDrive, Image } from "lucide-react";
+import { AssistantAvatar } from "./assistant-avatar";
 import { formatDateTime } from "../api";
 import { Button, ErrorBox } from "../studio";
 import { useStorageMonitor } from "./storage-monitor";
@@ -65,13 +66,14 @@ export function R2StorageWarning({ onOpenStorage }) {
         </small>
       </div>
       <Button className="outline small" onClick={onOpenStorage}>
-        <Bot size={17} aria-hidden="true" /> Mở trợ lí để dọn ảnh
+        <AssistantAvatar size={24} /> Mở trợ lí để dọn ảnh
       </Button>
     </div>
   );
 }
 
-export function R2Storage() {
+// children: phần thêm cuối thẻ (vd. danh sách ảnh của từng khách cho quản trị viên).
+export function R2Storage({ children = null }) {
   const { summary } = useStorageMonitor();
   const r2 = summary?.r2;
   if (!r2) return null;
@@ -158,6 +160,7 @@ export function R2Storage() {
             : "Kho ảnh gần mức theo dõi. Bạn có thể dọn file hết hạn bên dưới."}
         </p>
       )}
+      {children}
     </section>
   );
 }

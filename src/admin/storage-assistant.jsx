@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Bot,
   ChevronDown,
   Clock,
   Database,
@@ -14,6 +13,8 @@ import {
 import { api, formatDateTime } from "../api";
 import { Button, ErrorBox, useToast } from "../studio";
 import { useStorageMonitor } from "./storage-monitor";
+import { AssistantAvatar } from "./assistant-avatar";
+import { CustomerStorage } from "./customer-storage";
 import { R2Storage, r2StorageLevel } from "./r2-storage";
 import { MongoStorage, mongoStorageState } from "./mongo-storage";
 import { StorageLifecycle } from "./storage-lifecycle";
@@ -111,10 +112,10 @@ export function StorageAssistant({ canManageStorage = false }) {
       <header className="storage-heading">
         <div className="storage-heading-copy">
           <span className="storage-avatar">
-            <Bot size={25} aria-hidden="true" />
+            <AssistantAvatar size={58} />
           </span>
           <div>
-            <h3 id="storage-assistant-title">Trợ lí Minh Dâm</h3>
+            <h3 id="storage-assistant-title">Trợ lí Minh</h3>
             <p>Xem ảnh đang lưu, hạn xoá gần nhất và file có thể dọn.</p>
             {summary && (
               <p
@@ -157,7 +158,9 @@ export function StorageAssistant({ canManageStorage = false }) {
           <div className="storage-overview">
             <div className="storage-photo-area">
               {hasR2 ? (
-                <R2Storage />
+                <R2Storage>
+                  {canManageStorage && <CustomerStorage canManageStorage />}
+                </R2Storage>
               ) : (
                 <section
                   className="panel storage-photo-store"
@@ -181,6 +184,7 @@ export function StorageAssistant({ canManageStorage = false }) {
                       ? `${storageCount.format(summary.media.files)} file đang lưu`
                       : "Chờ số liệu đầy đủ"}
                   </StorageMetric>
+                  {canManageStorage && <CustomerStorage canManageStorage />}
                 </section>
               )}
               <StorageLifecycle

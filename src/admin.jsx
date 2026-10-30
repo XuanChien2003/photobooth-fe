@@ -140,12 +140,9 @@ export function Admin() {
                 {NAV_DESCRIPTIONS[currentTab]}
               </p>
             </div>
-            <div className="admin-user">
-              <span>
-                {user.name}
-                <small>{isAdmin ? "Quản trị viên" : "Nhân viên"}</small>
-              </span>
-              <div>{user.name.slice(0, 1)}</div>
+            {/* Góc phải chỉ ghi vai trò (tên người dùng hiện khi rê chuột). */}
+            <div className="admin-user" title={user.name}>
+              <span className="admin-role">{isAdmin ? "Quản trị viên" : "Nhân viên"}</span>
             </div>
           </header>
           <div className="admin-content">

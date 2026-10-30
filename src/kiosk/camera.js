@@ -35,6 +35,8 @@ export const cameraRank = (d) =>
           : 2;
 // Camera dùng được làm hình trực tiếp: chỉ thẻ ghi hình HDMI / camera ngoài của máy ảnh.
 export const liveUsable = (d) => !isCameraUsbVideo(d) && !isBuiltInCamera(d);
+// Chế độ thử máy bằng webcam: dùng được cả webcam máy tính (thẻ ghi hình HDMI vẫn được ưu tiên).
+export const liveUsableFor = (webcam) => (webcam ? (d) => !isCameraUsbVideo(d) : liveUsable);
 export const videoConstraints = (deviceId) => ({
   video: {
     ...(deviceId ? { deviceId: { exact: deviceId } } : {}),

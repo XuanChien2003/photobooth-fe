@@ -186,15 +186,6 @@
   .admin-shell .icon-button {
     @apply tw:rounded-xl tw:bg-white tw:text-ink tw:ring-1 tw:ring-line tw:transition tw:hover:bg-cream tw:hover:text-brand;
   }
-  .admin-shell .segmented {
-    @apply tw:bg-[#f0e5dc] tw:ring-1 tw:ring-line;
-  }
-  .admin-shell .segmented button {
-    @apply tw:transition tw:hover:text-ink;
-  }
-  .admin-shell .segmented button.active {
-    @apply tw:bg-white tw:text-brand tw:shadow-sm;
-  }
 
   /* ── Ô nhập ──────────────────────────────────────────────────── */
   .admin-shell

@@ -69,6 +69,7 @@
   .admin-shell .range-presets button,
   .admin-shell .segmented button {
     display: inline-flex;
+    justify-content: center;
     align-items: center;
     gap: 6px;
     min-height: 34px;
@@ -83,21 +84,40 @@
     cursor: pointer;
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   }
-  .admin-shell .range-presets button:hover,
-  .admin-shell .segmented button:hover {
+  .admin-shell .range-presets button:hover {
     border-color: var(--mellow-cocoa);
     color: var(--mellow-cocoa);
   }
-  .admin-shell .range-presets button.active,
-  .admin-shell .segmented button.active {
+  .admin-shell .range-presets button.active {
     border-color: var(--mellow-cocoa);
     background: var(--mellow-cocoa);
     color: var(--mellow-card);
   }
+  /* Chọn chỉ số (Doanh thu / Số lượng đơn): một thanh bo tròn liền khối, mục đang chọn là viên nâu
+     bên trong; mục còn lại không có nền / viền riêng. Cao bằng nút "Tải về" bên cạnh. */
   .admin-shell .segmented {
     display: inline-flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--mellow-line);
+    border-radius: 999px;
+    background: var(--mellow-kraft, #efe4d6);
+    box-shadow: none;
+  }
+  .admin-shell .segmented button {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+  .admin-shell .segmented button:hover {
+    background: rgb(82 46 34 / 8%);
+    color: var(--mellow-cocoa);
+  }
+  .admin-shell .segmented button.active {
+    background: var(--mellow-cocoa);
+    color: var(--mellow-card);
+    box-shadow: 0 1px 3px rgb(47 26 18 / 22%);
   }
   .admin-shell .range-fields {
     display: flex;
@@ -746,13 +766,11 @@
     background: #2d7a4d;
     box-shadow: 0 0 0 3px rgba(45, 122, 77, 0.18);
   }
+  /* Giá in thêm: nằm dưới các cột khổ ảnh, tiêu đề trên, hai ô giá bên dưới. */
   .admin-shell .extra-price-panel {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px 24px;
-    margin-bottom: 16px;
+    display: grid;
+    gap: 14px;
+    margin: 24px 0 0;
   }
   .admin-shell .extra-price-panel h3 {
     margin: 0 0 2px;

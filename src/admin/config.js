@@ -4,7 +4,6 @@ import {
   DoorOpen,
   Package,
   Image,
-  HardDrive,
   Settings2,
   Scale,
   ChartColumn,
@@ -22,6 +21,7 @@ import {
   minLength,
   required,
 } from "../validate";
+import { AssistantAvatar } from "./assistant-avatar";
 
 // Tên hiển thị & luật kiểm tra cho từng loại dữ liệu quản trị.
 export const RESOURCE_LABELS = {
@@ -41,8 +41,6 @@ export const RESOURCE_RULES = {
     name: ["Tên phòng", required, maxLength(100)],
     branch: ["Chi nhánh / địa chỉ", required, maxLength(200)],
     description: ["Mô tả", maxLength(1000)],
-    machineCode: ["Mã máy", maxLength(100)],
-    model: ["Dòng máy", maxLength(100)],
   },
   packages: {
     name: ["Tên gói", required, maxLength(200)],
@@ -98,13 +96,15 @@ export const NAV_TREE = [
   ]],
   ["users", "Tài khoản", Users],
   ["reconciliation", "Đối soát", Scale],
+  // Trợ lí Minh: dung lượng kho ảnh, ảnh từng khách, dọn ảnh hết hạn.
+  ["storage", "Dung lượng ảnh", AssistantAvatar],
 ];
 // Danh sách phẳng các trang (mục lá) để tìm tên / icon theo mã.
 export const nav = NAV_TREE.flatMap(([key, label, Icon, children]) =>
   children ? children : [[key, label, Icon]],
 );
 // Trang không có trên mục lục, mở từ nút trong trang khác (vd. cảnh báo dung lượng → trợ lí dọn ảnh).
-export const HIDDEN_PAGES = [["storage", "Dung lượng lưu trữ", HardDrive]];
+export const HIDDEN_PAGES = [];
 
 // Quyền cấp cho nhân viên (Tài khoản → Phân quyền), nhóm theo mục lục. Máy chủ kiểm tra lại.
 export const PERMISSION_GROUPS = [
@@ -147,16 +147,16 @@ export const NAV_DESCRIPTIONS = {
   reconciliation: "Mở, đóng ca và đối soát tiền theo ca, theo tháng và từng chi nhánh.",
 };
 
+// Loại phòng: chọn ở bước đầu của "Cài máy chụp" (Quản lý máy), trước khi lấy liên kết / QR.
+export const ROOM_TYPES = [
+  ["counter", "Phòng nhập mã", "Khách chuyển khoản trước tại quầy, nhân viên đưa mã 6 số. Khách chạm màn hình → nhập mã → chụp."],
+  ["cash", "Phòng đút tiền", "Khách chọn khổ ảnh, số bản in rồi đút tiền vào máy đọc tiền. Đủ tiền là vào chụp. Cần lắp máy đọc tiền."],
+];
+
 export const definitions = {
   rooms: [
     ["name", "Tên máy / phòng"],
     ["branch", "Chi nhánh / địa chỉ"],
-    ["payment", "Loại phòng", "payment"],
-    ["paymentTest", "Chế độ thử: chưa lắp máy đọc tiền — có nút giả lập đút tiền (không tính doanh thu)", "checkbox"],
-    ["machineCode", "Mã máy"],
-    ["model", "Dòng máy"],
-    ["importedAt", "Ngày nhập máy", "date"],
-    ["expiresAt", "Ngày hết hạn", "date"],
     ["flip", "Chế độ lật ảnh", "flip"],
     ["description", "Mô tả", "textarea"],
   ],

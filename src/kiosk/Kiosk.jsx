@@ -12,14 +12,14 @@ import {
   saveSetting,
 } from "../capture-store";
 import { transition } from "../transitions";
-import { CAMERA_KEY, FOLDER_KEY, MIRROR_KEY, QR_SECONDS } from "./constants.js";
+import { CAMERA_KEY, FOLDER_KEY, MIRROR_KEY, QR_SECONDS, WEBCAM_KEY } from "./constants.js";
 import {
   CAMERA_ERROR,
   cameraRank,
   CAMERA_USB_MESSAGE,
   hdmiFailed,
   isCameraUsbVideo,
-  liveUsable,
+  liveUsableFor,
   NO_HDMI_MESSAGE,
   videoConstraints,
 } from "./camera.js";
@@ -122,7 +122,11 @@ export function Kiosk() {
       () => localStorage.getItem(CAMERA_KEY) || "",
     ),
     [cameras, setCameras] = useState([]),
-    [zoom, setZoom] = useState(readCrop);
+    [zoom, setZoom] = useState(readCrop),
+    // Thử máy bằng webcam máy tính (không có máy ảnh): nhớ trên máy này tới khi tắt.
+    [webcamTest, setWebcamState] = useState(() => localStorage.getItem(WEBCAM_KEY) === "1"),
+    [liveLabel, setLiveLabel] = useState(""),
+    [snapCount, setSnapCount] = useState(0);
   const [ready, setReady] = useState(false),
     [flash, setFlash] = useState(0),
     [done, setDone] = useState(null),
@@ -154,7 +158,9 @@ export function Kiosk() {
     // không phải chờ ảnh gốc tải lên mạng.
     localShots = useRef(new Map()),
     recorder = useRef(createClipRecorder()),
-    endingRef = useRef(false);
+    endingRef = useRef(false),
+    webcamRef = useRef(webcamTest),
+    snapping = useRef(false);
   current.current = session;
   const phase = phaseOf(session);
   const key = "photo-capture-" + device.slice(-24);
@@ -434,7 +440,7 @@ export function Kiosk() {
       (await navigator.mediaDevices.enumerateDevices()).filter(
         (d) => d.kind === "videoinput",
       );
-    const usable = liveUsable;
+    const usable = liveUsableFor(webcamRef.current);
     const choose = (list) =>
       list.some((d) => d.deviceId === id && usable(d))
         ? id
@@ -481,6 +487,7 @@ export function Kiosk() {
       setCameras(list);
       video$.current.srcObject = media;
       await video$.current.play().catch(() => {});
+      setLiveLabel(media.getVideoTracks()[0]?.label || "");
       setReady(true);
       setError((e) => (e === CAMERA_ERROR ? "" : e));
       cameraError.current = failed ? `${failed.name}: ${failed.message}`.trim() : "";
@@ -641,7 +648,43 @@ export function Kiosk() {
   // Số tờ 10 × 15 khách mua (khổ nhỏ: 1 tờ = 2 tờ nhỏ), không dưới mức tối thiểu của gói.
   const sheetsOf = (s) => Math.max(minSheets(s.pack), Number(s.prints) || 0);
   const saleSheets = sale?.pack ? sheetsOf(sale) : 0;
-  const cameraReady = Boolean(folder && folderAccess === "granted");
+  // Có thư mục ảnh của máy ảnh, hoặc đang thử máy bằng webcam (ảnh chụp từ webcam).
+  const cameraReady = Boolean(folder && folderAccess === "granted") || webcamTest;
+  function setWebcamTest(on) {
+    localStorage.setItem(WEBCAM_KEY, on ? "1" : "0");
+    webcamRef.current = on;
+    setWebcamState(on);
+    toast[on ? "info" : "success"](on
+      ? "Đang thử máy bằng webcam máy tính: chạm “Chạm để chụp” trên màn chụp. Nhớ tắt khi đón khách."
+      : "Đã tắt thử máy bằng webcam — máy chụp dùng máy ảnh như bình thường.");
+    if (liveCamera) openCamera();
+  }
+  // Thử máy bằng webcam: đếm 3‑2‑1 rồi chụp một khung hình từ webcam, nhận như ảnh từ máy ảnh.
+  async function snapWebcam() {
+    if (snapping.current || phaseOf(current.current) !== "shoot") return;
+    snapping.current = true;
+    try {
+      for (let n = 3; n > 0; n--) {
+        setSnapCount(n);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+      setSnapCount(0);
+      const v = video$.current;
+      if (!v?.videoWidth || phaseOf(current.current) !== "shoot") return;
+      const canvas = document.createElement("canvas");
+      canvas.width = v.videoWidth;
+      canvas.height = v.videoHeight;
+      canvas.getContext("2d").drawImage(v, 0, 0);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+      canvas.width = canvas.height = 0;
+      if (!blob) return;
+      const name = `WEBCAM_${Date.now()}.jpg`;
+      await importCameraPhoto(new File([blob], name, { type: "image/jpeg", lastModified: Date.now() }), `webcam/${name}`);
+    } finally {
+      snapping.current = false;
+      setSnapCount(0);
+    }
+  }
   // Loại phòng (Quản lý máy): phòng đút tiền bán lượt chụp tại máy, phòng nhập mã chỉ nhận mã từ quầy.
   const cashRoom = roomInfo?.payment === "cash";
   const cashReady = Boolean(roomInfo?.cashCheckoutReady);
@@ -1230,6 +1273,7 @@ export function Kiosk() {
           ending={ending}
           onEnd={() => endCapture(false)}
           onReopenCamera={() => openCamera()}
+          webcam={{ on: webcamTest, label: liveLabel, count: snapCount, onSnap: snapWebcam, onToggle: setWebcamTest }}
         />
         {error && !(error === CAMERA_ERROR && !ready) && (
           <div className="shoot-error">
@@ -1337,6 +1381,8 @@ export function Kiosk() {
         setZoom={setZoom}
         roomInfo={roomInfo}
         toast={toast}
+        webcamTest={webcamTest}
+        setWebcamTest={setWebcamTest}
       />
     </KioskEntry>
   );

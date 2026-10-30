@@ -37,6 +37,145 @@
     box-shadow: none;
     font-size: 13px;
   }
+  /* Lịch lọc đơn: ‹ [Tháng 10/2026 ▾] ›, bấm nhãn mở bảng 12 tháng (và chọn một ngày). */
+  .admin-shell .order-toolbar .button.is-current {
+    border-color: var(--mellow-cocoa, #522e22);
+    background: var(--mellow-cocoa, #522e22);
+    color: var(--mellow-card, #fffaf3);
+  }
+  .admin-shell .period-picker {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+    min-height: 42px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+  }
+  .admin-shell .period-picker > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    cursor: pointer;
+  }
+  .admin-shell .period-step {
+    width: 40px;
+    color: var(--muted);
+  }
+  .admin-shell .period-step:hover:not(:disabled) {
+    background: #f6eee6;
+    color: var(--ink);
+  }
+  .admin-shell .period-step:first-child {
+    border-radius: 9px 0 0 9px;
+  }
+  .admin-shell .period-step:last-of-type {
+    border-radius: 0 9px 9px 0;
+  }
+  .admin-shell .period-step:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+  .admin-shell .period-current {
+    min-width: 232px;
+    padding: 0 12px;
+    border-inline: 1px solid var(--line) !important;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .admin-shell .period-current > svg {
+    color: var(--muted);
+  }
+  .admin-shell .period-current > span {
+    flex: 1;
+    text-align: left;
+  }
+  .admin-shell .period-current[aria-expanded="true"] {
+    background: #f6eee6;
+  }
+  .admin-shell .period-pop {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 30;
+    display: grid;
+    gap: 12px;
+    width: 300px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 14px 32px rgb(47 26 18 / 18%);
+  }
+  .admin-shell .period-year {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .admin-shell .period-year button {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .admin-shell .period-year button:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+  .admin-shell .period-months {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .admin-shell .period-months button {
+    min-height: 38px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: #f6eee6;
+    color: var(--ink);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .admin-shell .period-months button:hover:not(:disabled) {
+    border-color: var(--mellow-cocoa, #522e22);
+  }
+  .admin-shell .period-months button.is-now {
+    border-color: #cdb49c;
+  }
+  .admin-shell .period-months button[aria-pressed="true"] {
+    border-color: var(--mellow-cocoa, #522e22);
+    background: var(--mellow-cocoa, #522e22);
+    color: var(--mellow-card, #fffaf3);
+  }
+  .admin-shell .period-months button:disabled {
+    background: none;
+    color: #c8b8aa;
+    cursor: default;
+  }
+  .admin-shell .period-day {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+  .admin-shell .period-day input {
+    min-height: 38px;
+  }
   .admin-shell .order-actions-bar {
     padding: 0 0 14px;
     border-bottom: 1px solid var(--line);
@@ -396,6 +535,9 @@
     .admin-shell .order-toolbar > *,
     .admin-shell .order-actions-bar > * { width: 100%; max-width: none; }
     .admin-shell .order-date-range { justify-content: space-between; gap: 6px; padding: 0 8px; }
+    .admin-shell .period-current { flex: 1; min-width: 0; }
+    .admin-shell .order-toolbar > select { width: 100%; }
+    .admin-shell .period-pop { width: min(300px, calc(100vw - 40px)); }
     /* Hai ô ngày chia đều chỗ còn lại thay vì cố định 118 px (điện thoại 320 px không đủ chỗ). */
     .admin-shell .order-date-range input { flex: 1 1 0; width: auto; min-width: 0; }
     .admin-shell .order-card { grid-template-columns: minmax(0, 1fr); }

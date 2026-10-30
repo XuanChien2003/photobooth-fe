@@ -163,6 +163,7 @@ let heldStorageResponses = [];
 let requests = [];
 let unexpected = [];
 let pageErrors = [];
+let customers = [];
 
 async function readJson(request) {
   let body = "";
@@ -253,6 +254,16 @@ before(async () => {
           response.statusCode = 503;
           response.end(JSON.stringify({ message: storageError }));
         } else response.end(JSON.stringify(currentSummary));
+        return;
+      }
+      if (path === "/api/admin/storage/customers" && entry.method === "GET") {
+        response.end(JSON.stringify(customers));
+        return;
+      }
+      if (path.startsWith("/api/admin/storage/customers/") && entry.method === "DELETE") {
+        const id = path.split("/").pop();
+        customers = customers.filter((row) => row.id !== id);
+        response.end(JSON.stringify({ files: 5, photos: 2, printJobs: 0, summary: currentSummary }));
         return;
       }
       if (
@@ -357,7 +368,7 @@ async function mount({
   await page.goto(`http://127.0.0.1:${server.address().port}/storage-test`);
   await page.waitForFunction(() => typeof window.mountStorage === "function");
   await page.evaluate((canManage) => window.mountStorage(canManage), canManage);
-  await page.getByRole("heading", { name: "Trợ lí Minh Dâm" }).waitFor();
+  await page.getByRole("heading", { name: "Trợ lí Minh" }).waitFor();
   if (error) await page.getByText(error, { exact: false }).first().waitFor();
   else {
     await page.locator(".storage-mongo").waitFor();
@@ -947,12 +958,12 @@ test("warning persists across every admin page and its action opens the controll
   const initialReads = storageReads().length;
   await assistantCTA().click();
   await page
-    .getByRole("heading", { name: "Trợ lí Minh Dâm", exact: true })
+    .getByRole("heading", { name: "Trợ lí Minh", exact: true })
     .waitFor();
-  // The assistant is a hidden page: it has no menu entry, only this button.
+  // The warning button opens the assistant's page ("Dung lượng ảnh", also in the menu).
   assert.equal(
     await page.locator(".admin-header h2").innerText(),
-    "Dung lượng lưu trữ",
+    "Dung lượng ảnh",
   );
   assert.equal(await warning().count(), 1);
   assert.equal(
@@ -963,13 +974,13 @@ test("warning persists across every admin page and its action opens the controll
   await navButton("Đơn hàng").click();
   await page.locator(".admin-header h2").filter({ hasText: "Đơn hàng" }).waitFor();
   assert.equal(
-    await page.getByRole("heading", { name: "Trợ lí Minh Dâm" }).count(),
+    await page.getByRole("heading", { name: "Trợ lí Minh" }).count(),
     0,
   );
   assert.equal(await warning().count(), 1);
   await assistantCTA().click();
   await page
-    .getByRole("heading", { name: "Trợ lí Minh Dâm", exact: true })
+    .getByRole("heading", { name: "Trợ lí Minh", exact: true })
     .waitFor();
   assert.equal(storageReads().length, initialReads);
   assert.equal(
@@ -1105,7 +1116,7 @@ test("an initial monitor failure is visible on the admin homepage and never clai
   assert.doesNotMatch(await warning().innerText(), /Còn .* MB/);
   await assistantCTA().click();
   await page
-    .getByRole("heading", { name: "Trợ lí Minh Dâm", exact: true })
+    .getByRole("heading", { name: "Trợ lí Minh", exact: true })
     .waitFor();
   await page.getByText(storageError, { exact: false }).first().waitFor();
   assert.equal(
@@ -1124,7 +1135,7 @@ test("expired cleanup publishes updated warnings immediately even while subseque
   await page.locator(".storage-warning-critical[role=alert]").waitFor();
   await assistantCTA().click();
   await page
-    .getByRole("heading", { name: "Trợ lí Minh Dâm", exact: true })
+    .getByRole("heading", { name: "Trợ lí Minh", exact: true })
     .waitFor();
   assert.equal(storageReads().length, 1);
   holdStorageReads = true;
@@ -1160,7 +1171,7 @@ test("staff also receive the global warning while unauthenticated visitors never
   await page.locator(".storage-warning-critical[role=alert]").waitFor();
   await assistantCTA().click();
   await page
-    .getByRole("heading", { name: "Trợ lí Minh Dâm", exact: true })
+    .getByRole("heading", { name: "Trợ lí Minh", exact: true })
     .waitFor();
   await assertReadOnlyLimits();
   assert.equal(
@@ -1264,12 +1275,11 @@ const nearestImage = () =>
     .getByLabel("Ảnh sắp xoá gần nhất", { exact: true });
 const expiryLabel = () => nearestImage().locator("strong");
 
-// The assistant has no menu entry: it opens from the storage warning, so the summaries in these
-// tests are near the limit.
+// These tests open the assistant from the storage warning, so their summaries are near the limit.
 async function openAssistant() {
   await assistantCTA().click();
   await page
-    .getByRole("heading", { name: "Trợ lí Minh Dâm", exact: true })
+    .getByRole("heading", { name: "Trợ lí Minh", exact: true })
     .waitFor();
 }
 
@@ -1850,4 +1860,45 @@ test("active R2 admin assistant keeps readable limits at all target widths with 
     assert.deepEqual(mutations(), []);
     assertClean();
   }
+});
+
+test("stored photos per customer: an admin searches and deletes one customer after confirming", async () => {
+  const row = (id, code, name, extra = {}) => ({ id, code, name, phone: "0912345678", status: "completed",
+    createdAt: "2026-10-23T08:00:00.000Z", photos: 2, printJobs: 0, pendingPrints: 0, files: 5,
+    bytes: 31.5 * MB, lastPhotoAt: "2026-10-23T08:10:00.000Z", expiresAt: "2026-10-24T08:00:00.000Z", ...extra });
+  customers = [row("b1", "111111", "Lan", { pendingPrints: 1 }), row("b2", "222222", "Minh")];
+  await mount({ data: r2Summary(2) });
+  // Ảnh đại diện Trợ lí Minh thay icon robot.
+  assert.equal(await page.locator(".storage-heading img.assistant-avatar").getAttribute("src"), "/tro-li-minh.webp");
+  const list = page.locator(".storage-r2 .storage-customers");
+  await list.locator("summary").click();
+  await list.getByText("#111111", { exact: false }).waitFor();
+  assert.match(await list.innerText(), /2 khách/);
+  assert.match(await list.innerText(), /1 lệnh in đang chờ/);
+  assert.match(await list.innerText(), /2 ảnh · 31,5 MB/);
+  await list.getByRole("searchbox", { name: "Tìm khách" }).fill("minh");
+  assert.equal(await list.locator(".storage-customers-list > li").count(), 1);
+  await list.getByRole("searchbox", { name: "Tìm khách" }).fill("");
+
+  const dismissed = page.waitForEvent("dialog").then(async (dialog) => {
+    assert.match(dialog.message(), /#111111/);
+    assert.match(dialog.message(), /Không thể khôi phục/);
+    assert.match(dialog.message(), /lệnh in/);
+    await dialog.dismiss();
+  });
+  await list.getByRole("button", { name: "Xoá ảnh của vé #111111", exact: true }).click();
+  await dismissed;
+  assert.deepEqual(mutations(), [], "cancelling deletes nothing");
+
+  const accepted = page.waitForEvent("dialog").then((dialog) => dialog.accept());
+  await list.getByRole("button", { name: "Xoá ảnh của vé #111111", exact: true }).click();
+  await accepted;
+  await page.getByText("Đã xoá ảnh của vé #111111", { exact: false }).waitFor();
+  assert.deepEqual(mutations().map((m) => [m.method, m.path]), [["DELETE", "/api/admin/storage/customers/b1"]]);
+  assert.equal(await list.locator(".storage-customers-list > li").count(), 1);
+
+  // Lễ tân: danh sách khách (API chỉ dành cho quản trị viên) không hiện.
+  await mount({ data: r2Summary(2), canManage: false });
+  assert.equal(await page.locator(".storage-customers").count(), 0);
+  assert.deepEqual(pageErrors, []);
 });

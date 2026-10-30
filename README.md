@@ -76,7 +76,7 @@ Xóa từ khóa và chọn tất cả trạng thái để sắp xếp toàn bộ
 Khung trùng tên cùng bộ có nhãn `pink · 01`, `pink · 02` ổn định qua lọc/sắp xếp;
 tên gốc được giữ trong dữ liệu. Tổng ô ảnh của bộ chỉ tính khung đang dùng.
 
-Trong **Hàng chờ in → Trợ lí Minh Dâm**, kho ảnh R2 nằm trước phần dữ liệu MongoDB
+Trong **Dung lượng ảnh → Trợ lí Minh** (mục cuối của menu, cũng mở từ cảnh báo dung lượng), kho ảnh R2 nằm trước phần dữ liệu MongoDB
 Atlas; hai kho có dung lượng và mức theo dõi riêng. Phần **Hạn lưu ảnh & dọn dẹp**
 hiển thị hạn ảnh gần nhất, dung lượng file đã hết hạn và lý do chưa thể dọn.
 Số liệu cập nhật mỗi 30 giây; **Làm mới** lấy lại ngay. Thời điểm cập nhật và trạng
@@ -116,7 +116,7 @@ Mở http://localhost:5173/admin. Backend cần chạy tại http://localhost:80
 Ảnh khách có thể lưu trong Cloudflare R2 qua backend; cấu hình theo
 [R2_SETUP.md](../photobooth-be/R2_SETUP.md), không đặt khóa trong frontend hoặc biến `VITE_*`.
 Dải ảnh nhỏ gọi `?size=thumbnail`; nút tải lấy ảnh đầy đủ.
-Ảnh cũ không có thumbnail được backend trả ảnh đầy đủ. **Trợ lí Minh Dâm** theo dõi riêng
+Ảnh cũ không có thumbnail được backend trả ảnh đầy đủ. **Trợ lí Minh** theo dõi riêng
 MongoDB và kho R2, cảnh báo mức 80/90% và báo chưa biết khi kho R2 không đo được.
 Giao diện theo dõi R2 nằm trong `src/admin/r2-storage.jsx`; warning dùng chung toàn admin,
 monitor vẫn chỉ gọi một API `/admin/storage` mỗi 30 giây. Mức R2 bằng GB thập phân là

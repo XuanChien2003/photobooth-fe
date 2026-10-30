@@ -9,6 +9,7 @@ import { useLiveData } from "../use-live-data";
 import { Button, ErrorBox, useToast } from "../studio";
 import { CounterTicket } from "../counter-ticket";
 import { ExtraPrints } from "../extra-prints";
+import { PeriodPicker } from "./period-picker";
 
 // Khổ in của đơn: DNP 10 × 15 (to / nhỏ cắt đôi) hoặc Instax mini.
 const SIZE_NAMES = { full: "Lớn", strip: "Nhỏ", instax: "Instax" };
@@ -227,11 +228,9 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
   return <>
     <ErrorBox error={error} />
     <div className="order-toolbar">
-      <Button className="outline small" onClick={() => { setFrom(today); setTo(today); }}>Hôm nay</Button>
-      <label className="order-date-range"><CalendarDays size={16} />
-        <input aria-label="Từ ngày" type="date" value={from} onChange={(event) => setFrom(event.target.value)} /><span>→</span>
-        <input aria-label="Đến ngày" type="date" value={to} min={from} onChange={(event) => setTo(event.target.value)} />
-      </label>
+      <Button className={`outline small ${from === today && to === today ? "is-current" : ""}`} aria-pressed={from === today && to === today}
+        onClick={() => { setFrom(today); setTo(today); }}>Hôm nay</Button>
+      <PeriodPicker from={from} to={to} onChange={(start, end) => { setFrom(start); setTo(end); }} />
       <select aria-label="Lọc thanh toán" value={payment} onChange={(event) => setPayment(event.target.value)}>
         <option value="">Thanh toán: Tất cả</option><option value="cash">Tiền mặt</option><option value="transfer">Chuyển khoản</option>
       </select>

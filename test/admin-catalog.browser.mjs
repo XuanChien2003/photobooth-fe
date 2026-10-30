@@ -498,6 +498,8 @@ test("packages are grouped by photo size; a small-size package starts with one s
   assert.equal(created.method, "POST");
   assert.equal(created.body.printSize, "strip");
   assert.equal(created.body.prints, 1);
+  // Danh sách tải lại sau khi lưu: chờ thẻ mới hiện rồi mới đếm.
+  await small.locator(".package-card").first().waitFor();
   assert.equal(await small.locator(".package-card").count(), 1);
   assertClean();
 });

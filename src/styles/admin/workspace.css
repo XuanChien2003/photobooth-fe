@@ -147,6 +147,14 @@
     color: var(--muted);
     font-size: 11px;
   }
+  .admin-shell .admin-user .admin-role {
+    display: inline;
+    color: var(--ink);
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
   .admin-shell .admin-user > div {
     width: 38px;
     height: 38px;

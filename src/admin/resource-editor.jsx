@@ -7,10 +7,6 @@ import { definitions, DEFAULT_STAFF_PERMISSIONS, PERMISSION_GROUPS } from "./con
 import { includedSheets, isInstax, isStrip, piecesLabel, printSizeOf } from "../kiosk/print-count.js";
 
 // Loại phòng quyết định màn đầu tiên khách thấy sau “Chạm để bắt đầu”.
-const ROOM_TYPES = [
-  ["counter", "Phòng nhập mã", "Khách chuyển khoản trước tại quầy, nhân viên đưa mã 6 số. Khách chạm màn hình → nhập mã → chụp."],
-  ["cash", "Phòng đút tiền", "Khách chọn khổ ảnh, số bản in rồi đút tiền vào máy đọc tiền. Đủ tiền là vào chụp. Cần lắp máy đọc tiền."],
-];
 const ALL_PERMISSIONS = PERMISSION_GROUPS.flatMap(([, items]) => items.map(([key]) => key));
 const plain = (value) =>
   String(value || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/đ/gi, "d").toLowerCase();
@@ -103,7 +99,6 @@ export function ResourceEditor({
   const field = ([key, label, type = "text"]) => {
     if (type === "permissions" && edit.role !== "staff") return null;
     // Chế độ thử chỉ có ở phòng đút tiền.
-    if (key === "paymentTest" && edit.payment !== "cash") return null;
     if (type === "checkbox")
       return (
         <label key={key} className="checkbox">
@@ -116,7 +111,7 @@ export function ResourceEditor({
           {label}
         </label>
       );
-    const Field = ["branches", "permissions", "payment"].includes(type) ? "div" : "label";
+    const Field = ["branches", "permissions"].includes(type) ? "div" : "label";
     return (
       <Field
         key={key}
@@ -149,22 +144,6 @@ export function ResourceEditor({
             <option value="on">Có lật ảnh (như gương)</option>
             <option value="off">Không lật ảnh</option>
           </select>
-        ) : type === "payment" ? (
-          <div className="room-type-options" role="radiogroup" aria-label={label}>
-            {ROOM_TYPES.map(([value, title, detail]) => (
-              <label key={value} className={`room-type-option${(edit[key] || "counter") === value ? " is-selected" : ""}`}>
-                <input
-                  type="radio"
-                  name={key}
-                  value={value}
-                  checked={(edit[key] || "counter") === value}
-                  onChange={() => onChange({ ...edit, [key]: value, ...(value !== "cash" && { paymentTest: false }) })}
-                />
-                <strong>{title}</strong>
-                <small>{detail}</small>
-              </label>
-            ))}
-          </div>
         ) : type === "branches" ? (
           <BranchesField value={edit[key] || []} onChange={(value) => update(key, value)} />
         ) : type === "permissions" ? (

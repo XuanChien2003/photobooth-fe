@@ -436,10 +436,42 @@
   .admin-shell .kiosk-size-preview .kiosk-size.full .kiosk-size-art i { width: 32px; }
   .admin-shell .kiosk-size-preview .kiosk-size.strip .kiosk-size-art i { width: 17px; }
   .admin-shell .kiosk-size-preview .kiosk-size.instax .kiosk-size-art i { width: 46px; border-width: 4px 4px 14px; }
+  /* Giá in thêm (cuối trang bảng giá): mỗi loại giấy một ô. */
   .admin-shell .extra-price-pair {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr));
     gap: 14px;
+  }
+  .admin-shell .extra-price-item {
+    display: grid;
+    align-content: start;
+    gap: 6px;
+    padding: 14px 16px;
+    border: 1px solid var(--mellow-line, #e2d3c4);
+    border-radius: 12px;
+    background: var(--mellow-card, #fffaf3);
+  }
+  .admin-shell .extra-price-item > small {
+    color: var(--mellow-muted, #7a5a48);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .admin-shell .extra-price-item :is(.extra-price-line, .extra-price-editor) {
+    margin: 0;
+  }
+  .admin-shell .extra-price-item .extra-price-editor {
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+  .admin-shell .extra-price-line .is-unset {
+    color: #a36114;
+  }
+  .admin-shell .extra-price-buttons {
+    display: flex;
+    gap: 8px;
   }
 
   @media (max-width: 600px) {

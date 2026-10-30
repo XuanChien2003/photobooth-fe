@@ -20,11 +20,14 @@ const RULES = {
 
 // Giá mỗi tờ in thêm: chỉ quản trị viên đặt/sửa, ngay tại đây (không còn trang Cài đặt studio).
 // instax: giá mỗi tấm Instax mini (phim Instax đắt hơn giấy DNP nên có giá riêng).
-export function PriceEditor({ price, onSaved, instax = false }) {
+// price chưa có (undefined / null): tiệm chưa đặt giá. startOpen: mở sẵn ô nhập (hộp bán thêm ở quầy
+// mở ngay khi chưa có giá; trang bảng giá chỉ ghi "Chưa đặt").
+export function PriceEditor({ price, onSaved, instax = false, startOpen = !price }) {
   const field = instax ? "extraInstaxPrice" : "extraPrintPrice";
   const unit = instax ? "tấm" : "tờ";
+  const set = price !== undefined && price !== null && price !== "";
   const toast = useToast();
-  const [editing, setEditing] = useState(!price);
+  const [editing, setEditing] = useState(startOpen);
   const [value, setValue] = useState(price ? String(price) : "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -48,9 +51,10 @@ export function PriceEditor({ price, onSaved, instax = false }) {
   if (!editing)
     return (
       <p className="extra-price-line">
-        Giá in thêm{instax ? " Instax" : ""}: <strong>{money(price)} / {unit}</strong>{" "}
+        Giá in thêm{instax ? " Instax" : ""}:{" "}
+        {set ? <strong>{money(price)} / {unit}</strong> : <strong className="is-unset">Chưa đặt</strong>}{" "}
         <button type="button" className="link-button" onClick={() => setEditing(true)}>
-          Sửa giá
+          {set ? "Sửa giá" : "Đặt giá"}
         </button>
       </p>
     );
@@ -70,9 +74,16 @@ export function PriceEditor({ price, onSaved, instax = false }) {
           onChange={(e) => { setValue(e.target.value); setError(""); }}
         />
       </label>
-      <Button type="button" className="small" disabled={busy || value === ""} onClick={save}>
-        {busy ? "Đang lưu…" : "Lưu giá"}
-      </Button>
+      <div className="extra-price-buttons">
+        {!startOpen && (
+          <Button type="button" className="outline small" disabled={busy} onClick={() => { setEditing(false); setError(""); }}>
+            Hủy
+          </Button>
+        )}
+        <Button type="button" className="small" disabled={busy || value === ""} onClick={save}>
+          {busy ? "Đang lưu…" : "Lưu giá"}
+        </Button>
+      </div>
       {error && <p className="field-error" role="alert">{error}</p>}
     </div>
   );

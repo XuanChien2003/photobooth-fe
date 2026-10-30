@@ -221,3 +221,15 @@
   display: grid;
   gap: 6px;
 }
+
+/* Cài máy chụp · bước 1: hộp thoại canh giữa, nhưng mô tả loại phòng đọc dễ hơn khi canh trái. */
+.modal .room-type-option,
+.modal .setup-test {
+  text-align: left;
+}
+.modal .setup-step {
+  margin: 0 0 4px;
+  color: var(--mellow-muted, #7a5a48);
+  font-size: 13px;
+  font-weight: 600;
+}
