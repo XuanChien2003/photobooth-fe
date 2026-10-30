@@ -37,11 +37,12 @@ export const cameraRank = (d) =>
 export const liveUsable = (d) => !isCameraUsbVideo(d) && !isBuiltInCamera(d);
 // Chế độ thử máy bằng webcam: dùng được cả webcam máy tính (thẻ ghi hình HDMI vẫn được ưu tiên).
 export const liveUsableFor = (webcam) => (webcam ? (d) => !isCameraUsbVideo(d) : liveUsable);
-export const videoConstraints = (deviceId) => ({
+// light: thử máy bằng webcam máy tính — 1280 × 720 cho nhẹ (webcam laptop thường yếu ở 1080p).
+export const videoConstraints = (deviceId, light = false) => ({
   video: {
     ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
-    width: { ideal: 1920 },
-    height: { ideal: 1080 },
+    width: { ideal: light ? 1280 : 1920 },
+    height: { ideal: light ? 720 : 1080 },
     frameRate: { ideal: 30 },
   },
   audio: false,

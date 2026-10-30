@@ -79,6 +79,14 @@ async function booth(launched, { webcam }) {
       : path.endsWith("/kiosk/finish") ? { ...booking, status: "completed" } : { booking } });
   });
   await page.addInitScript(({ booking, webcam }) => {
+    // Đếm số bộ ghi video được tạo (thử máy bằng webcam không được quay video tua nhanh).
+    window.__recorders = 0;
+    if (window.MediaRecorder) {
+      const Native = window.MediaRecorder;
+      window.MediaRecorder = class extends Native {
+        constructor(...args) { super(...args); window.__recorders++; }
+      };
+    }
     if (sessionStorage.getItem("photo-capture-fixture-device")) return;
     localStorage.setItem("kiosk-webcam-test", webcam ? "1" : "0");
     sessionStorage.setItem("photo-capture-fixture-device", JSON.stringify({
@@ -120,6 +128,8 @@ test("in webcam test mode a tap counts down, takes a photo from the webcam and i
     await b.page.locator(".shoot-thumbs .shoot-thumb-no", { hasText: "1" }).waitFor({ timeout: 15000 });
     const saved = await b.page.evaluate(() => JSON.parse(sessionStorage.getItem("photo-capture-fixture-device")));
     assert.equal(saved.captureOrder.length, 1);
+    // Webcam laptop: không mã hóa video liên tục (đã làm sập tab Chrome trên máy thật).
+    assert.equal(await b.page.evaluate(() => window.__recorders), 0);
     await b.page.getByRole("button", { name: "Chụp xong, chọn ảnh" }).click();
     await b.page.getByRole("heading", { name: /để chọn ảnh/ }).waitFor({ timeout: 20000 });
     const picks = b.page.getByRole("group", { name: "Ảnh đã chụp" }).getByRole("button");

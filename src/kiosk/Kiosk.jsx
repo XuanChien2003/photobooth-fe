@@ -160,7 +160,8 @@ export function Kiosk() {
     recorder = useRef(createClipRecorder()),
     endingRef = useRef(false),
     webcamRef = useRef(webcamTest),
-    snapping = useRef(false);
+    snapping = useRef(false),
+    opening = useRef(false);
   current.current = session;
   const phase = phaseOf(session);
   const key = "photo-capture-" + device.slice(-24);
@@ -370,8 +371,10 @@ export function Kiosk() {
   }, []);
   const liveCamera = ["ready", "shoot"].includes(phase);
   const reopenRef = useRef(null);
+  // Cắm / rút thiết bị: mở lại hình trực tiếp nếu đang thiếu — không mở chồng khi đang mở dở
+  // (mở / tắt camera có thể làm trình duyệt báo đổi thiết bị lần nữa).
   reopenRef.current = () => {
-    if (liveCamera && !ready && !endingRef.current && !doneRef.current) openCamera();
+    if (liveCamera && !ready && !opening.current && !endingRef.current && !doneRef.current) openCamera();
   };
   useEffect(() => {
     const media = navigator.mediaDevices;
@@ -433,9 +436,17 @@ export function Kiosk() {
   }
   // Mặc định dùng thẻ ghi hình / máy ảnh, không dùng OBS; nhớ lựa chọn của nhân viên.
   async function openCamera(id = cameraId) {
+    opening.current = true;
+    try {
+      return await openCameraNow(id);
+    } finally {
+      opening.current = false;
+    }
+  }
+  async function openCameraNow(id) {
     const turn = ++request.current;
     const getMedia = (deviceId) =>
-      navigator.mediaDevices.getUserMedia(videoConstraints(deviceId));
+      navigator.mediaDevices.getUserMedia(videoConstraints(deviceId, webcamRef.current));
     const videoInputs = async () =>
       (await navigator.mediaDevices.enumerateDevices()).filter(
         (d) => d.kind === "videoinput",
@@ -722,10 +733,11 @@ export function Kiosk() {
       unsubscribe();
     };
   }, [session?.captureToken, phase]);
-  // Quay video tua nhanh trong lúc chụp (cần hình trực tiếp HDMI).
+  // Quay video tua nhanh trong lúc chụp (cần hình trực tiếp HDMI). Thử máy bằng webcam thì không
+  // quay: mã hóa video liên tục từ webcam laptop đã làm sập tab Chrome (STATUS_BREAKPOINT).
   useEffect(() => {
-    if (phase === "shoot" && ready && stream.current) recorder.current.start(stream.current);
-  }, [phase, ready]);
+    if (phase === "shoot" && ready && stream.current && !webcamTest) recorder.current.start(stream.current);
+  }, [phase, ready, webcamTest]);
   // Đồng hồ các bước chuẩn bị / chọn ảnh / chọn khung.
   useEffect(() => {
     if (!["ready", "select", "frame"].includes(phase)) return;
