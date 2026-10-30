@@ -607,7 +607,7 @@ test("admin keeps inactive rooms, create/edit/deactivate controls, and room edit
     .getByLabel("Tên máy / phòng", { exact: true })
     .fill("Phòng 01 cập nhật");
   // Hộp sửa phòng không còn loại phòng và thông tin máy (mã, dòng máy, ngày nhập, ngày hết hạn).
-  for (const name of [/Phòng nhập mã/, /Phòng đút tiền/])
+  for (const name of [/Photobooth/, /Polaroid/])
     assert.equal(await dialog.getByRole("radio", { name }).count(), 0);
   for (const label of ["Mã máy", "Dòng máy", "Ngày nhập máy", "Ngày hết hạn"])
     assert.equal(await dialog.getByLabel(label, { exact: true }).count(), 0);
@@ -626,21 +626,24 @@ test("admin keeps inactive rooms, create/edit/deactivate controls, and room edit
     .getByRole("button", { name: /^Cài máy chụp cho / })
     .click();
   const setup = kioskDialog();
-  await setup.getByText("Bước 1/2 · Chọn loại phòng cho máy chụp này").waitFor();
+  await setup.getByText("Bước 1/2 · Chọn loại hình chụp của phòng này").waitFor();
   const testMode = setup.getByRole("checkbox", { name: /Chế độ thử/ });
-  assert.equal(await setup.getByRole("radio", { name: /Phòng nhập mã/ }).isChecked(), true);
-  assert.equal(await testMode.count(), 0);
+  assert.equal(await setup.getByRole("radio", { name: /Photobooth/ }).isChecked(), true);
+  assert.equal(await testMode.isChecked(), false);
   assert.equal(await setup.getByRole("link", { name: "Mở máy chụp" }).count(), 0);
-  await setup.getByRole("radio", { name: /Phòng đút tiền/ }).check();
+  // Polaroid không thu tiền tại máy: không có chế độ thử đút tiền.
+  await setup.getByRole("radio", { name: /Polaroid/ }).check();
+  assert.equal(await testMode.count(), 0);
+  await setup.getByRole("radio", { name: /Photobooth/ }).check();
   await testMode.check();
   await mkdir(screenshots, { recursive: true });
   await page.screenshot({ path: join(screenshots, "room-type-setup-1440.png") });
   await setup.getByRole("button", { name: "Tiếp tục: lấy liên kết & QR" }).click();
   await setup.getByRole("link", { name: "Mở máy chụp" }).waitFor();
-  await setup.getByText(/Bước 2\/2 · Phòng đút tiền \(chế độ thử\)/).waitFor();
+  await setup.getByText(/Bước 2\/2 · Phòng Photobooth \(chế độ thử đút tiền\)/).waitFor();
   const issued = deviceRequests().at(-1);
   assert.equal(issued.path, "/api/admin/rooms/room-1/device");
-  assert.deepEqual(issued.body, { payment: "cash", paymentTest: true });
+  assert.deepEqual(issued.body, { kind: "photobooth", paymentTest: true });
   await setup.getByRole("button", { name: "Đóng", exact: true }).click();
   await page.screenshot({
     path: join(screenshots, "rooms-admin-1440.png"),

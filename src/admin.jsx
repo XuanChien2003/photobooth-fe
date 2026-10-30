@@ -13,6 +13,7 @@ import { ThemesManager } from "./admin/themes";
 import { FramesManager } from "./admin/frames";
 import { StickersManager } from "./admin/stickers";
 import { FiltersManager } from "./admin/filters";
+import { KioskTextsManager } from "./admin/kiosk-texts";
 import { Reconciliation } from "./admin/reconciliation";
 import { useAdminSession } from "./admin/use-admin-session";
 import { LoginPage, PasswordDialog } from "./admin/auth";
@@ -179,6 +180,8 @@ export function Admin() {
               <StickersManager notify={notify} />
             ) : currentTab === "filters" ? (
               <FiltersManager notify={notify} />
+            ) : currentTab === "kiosk-texts" ? (
+              <KioskTextsManager notify={notify} />
             ) : currentTab === "reconciliation" ? (
               <Reconciliation
                 assignedBranch={user.branch}

@@ -16,6 +16,9 @@ const SIZE_NAMES = { full: "Lớn", strip: "Nhỏ", instax: "Instax" };
 const SIZE_CM = { full: "10 × 15 cm", strip: "5 × 15 cm", instax: "Instax mini" };
 
 const paymentLabel = (method) => method === "cash" ? "Tiền mặt" : method === "transfer" ? "Chuyển khoản" : "—";
+// Lượt chụp phòng Polaroid: khách trả tiền ở quầy sau khi chọn layout — nhân viên bấm "Đã thu".
+const awaitingPayment = (booking) =>
+  booking.source === "polaroid" && !booking.paid && ["checked_in", "completed"].includes(booking.status);
 const albumUrl = (booking) => booking.accessToken ? `${window.location.origin}/album/${booking.accessToken}` : "";
 
 // Ảnh đại diện của đơn: ảnh đã ghép khung (máy chụp ghép, rồi tới lệnh in gần nhất), chưa có thì
@@ -203,7 +206,9 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
     try {
       await api(`/admin/bookings/${booking._id}`, { method: "PATCH", body });
       await load();
-      notify(body.status === "cancelled" ? `Đã hủy đơn #${booking.code}.` : `Đã cập nhật đơn #${booking.code}.`);
+      notify(body.status === "cancelled" ? `Đã hủy đơn #${booking.code}.`
+        : body.collected ? `Đã ghi nhận thu ${money(booking.total)} (${paymentLabel(body.collected)}) cho đơn #${booking.code}.`
+          : `Đã cập nhật đơn #${booking.code}.`);
     } catch (updateError) { toast.error(updateError.message); }
     finally { setBusyId(""); }
   }
@@ -255,7 +260,7 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
         return <article className="order-card" key={booking._id} title={`Mã hệ thống: ${booking._id}`}>
           <div className="order-identity">
             <OrderThumb booking={booking} />
-            <div className="order-main"><div className="order-when"><time>{formatDateTime(booking.createdAt)}</time>{booking.status !== "completed" && <span className={`badge ${booking.status}`}>{labels[booking.status]}</span>}</div><strong>#{booking.code} · {booking.name || "Khách tại quầy"}</strong><small>{booking.roomName || "Chưa chọn máy"} · {booking.packageName || "Gói chụp"}</small>
+            <div className="order-main"><div className="order-when"><time>{formatDateTime(booking.createdAt)}</time>{booking.status !== "completed" && <span className={`badge ${booking.status}`}>{labels[booking.status]}</span>}{awaitingPayment(booking) && <span className="badge unpaid">Polaroid · chưa thu tiền</span>}</div><strong>#{booking.code} · {booking.name || "Khách tại quầy"}</strong><small>{booking.roomName || "Chưa chọn máy"} · {booking.packageName || "Gói chụp"}</small>
               <div className="order-card-actions">{booking.accessToken && <>
                 <a className="order-album-link" href={albumUrl(booking)} target="_blank" rel="noreferrer">Link ảnh <ExternalLink size={14} /></a>
                 {canPrint && <button onClick={() => setPrinting(booking)}>In ảnh <Printer size={14} /></button>}
@@ -269,13 +274,17 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
           </dl>
           {canSeeMoney && <dl className="order-pricing"><div><dt>Đơn giá:</dt><dd>{money((booking.total || 0) + (booking.discount || 0))}</dd></div>
             <div><dt>Giảm giá:</dt><dd>{money(booking.discount || 0)}</dd></div><div><dt>Tổng đơn:</dt><dd>{money(booking.total)}</dd></div></dl>}
-          <dl className="order-payment"><div><dt>Thanh toán:</dt><dd>{paymentLabel(booking.paymentMethod)}</dd></div>
+          <dl className="order-payment"><div><dt>Thanh toán:</dt><dd>{awaitingPayment(booking) ? "Trả ở quầy" : paymentLabel(booking.paymentMethod)}</dd></div>
             {canSeeMoney && <><div><dt>Tổng đơn:</dt><dd>{money(booking.total)}</dd></div><div className={booking.paid ? "received" : "unpaid"}><dt>Thực nhận:</dt><dd>{money(booking.paid ? booking.total : 0)}</dd></div></>}
           </dl>
-          {((booking.status === "completed" && !booking.mediaDeleted && booking.accessToken) ||
+          {((booking.status === "completed" && !booking.mediaDeleted && booking.accessToken) || awaitingPayment(booking) ||
             (booking.status === "pending" && booking.source === "counter") ||
             (canCancel && booking.status === "confirmed")) && (
             <div className="order-more-actions">
+              {awaitingPayment(booking) && <>
+                <button className="order-collect" disabled={busyId === booking._id} onClick={() => update(booking, { collected: "cash" })}>Đã thu tiền mặt</button>
+                <button className="order-collect" disabled={busyId === booking._id} onClick={() => update(booking, { collected: "transfer" })}>Đã thu chuyển khoản</button>
+              </>}
               {booking.status === "completed" && !booking.mediaDeleted && booking.accessToken && <button onClick={() => setAlbumQr(booking)}>QR ảnh</button>}
               {booking.status === "pending" && booking.source === "counter" && <button onClick={() => setCollecting(booking)}>Xác nhận đã thu</button>}
               {canCancel && booking.status === "confirmed" && <button disabled={busyId === booking._id} onClick={() => update(booking, { status: "cancelled" })}>Hủy đơn</button>}

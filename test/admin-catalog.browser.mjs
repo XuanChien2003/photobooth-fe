@@ -474,7 +474,7 @@ test("packages are grouped by photo size; a small-size package starts with one s
   await mount("packages");
   const small = page.getByRole("region", { name: "Khổ nhỏ" });
   const large = page.getByRole("region", { name: "Khổ to" });
-  assert.match(await page.getByRole("region", { name: "Khổ Instax mini" }).innerText(), /Chưa có gói Instax mini/);
+  assert.match(await page.getByRole("region", { name: "Layout Polaroid" }).innerText(), /Chưa có layout Polaroid/);
   assert.equal(await large.locator(".package-card").count(), 3);
   assert.match(await small.innerText(), /Chưa có gói khổ nhỏ/);
   // Khổ to kèm 1 tờ: dưới mức tối thiểu 2 tờ, không gửi lên máy chủ.

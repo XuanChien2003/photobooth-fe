@@ -918,3 +918,38 @@
     height: 15px;
   }
 }
+
+/* Thiết lập → Chữ trên máy chụp */
+@layer components {
+  .admin-shell .kiosk-text-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+    gap: 12px 20px;
+    margin-top: 12px;
+  }
+  .admin-shell .kiosk-text-field {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+  }
+  .admin-shell .kiosk-text-field > span {
+    color: var(--mellow-muted, #7a5a48);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .admin-shell .kiosk-text-field > div {
+    display: flex;
+    gap: 6px;
+  }
+  .admin-shell .kiosk-text-field input {
+    flex: 1;
+    min-width: 0;
+  }
+  .admin-shell .kiosk-texts-save {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+    margin-top: 16px;
+  }
+}

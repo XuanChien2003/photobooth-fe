@@ -96,9 +96,15 @@ export function ResourceEditor({
     onChange({ ...edit, [key]: value });
     form.clear(key);
   };
-  const field = ([key, label, type = "text"]) => {
+  // Gói khổ Instax là layout của phòng Polaroid: đặt tên các ô theo layout.
+  const POLAROID_LABELS = {
+    name: "Tên layout (thẻ trên màn Chọn layout)",
+    selectCount: "Số ảnh trong layout (1, 2, 3, 4, 6…)",
+    shots: "Số lần chụp tối đa",
+  };
+  const field = ([key, baseLabel, type = "text"]) => {
+    const label = catalog && edit.printSize === "instax" ? POLAROID_LABELS[key] || baseLabel : baseLabel;
     if (type === "permissions" && edit.role !== "staff") return null;
-    // Chế độ thử chỉ có ở phòng đút tiền.
     if (type === "checkbox")
       return (
         <label key={key} className="checkbox">
@@ -133,7 +139,7 @@ export function ResourceEditor({
           >
             <option value="full">Khổ to · ảnh 10 × 15 cm nguyên tờ (máy DNP)</option>
             <option value="strip">Khổ nhỏ · 1 tờ 10 × 15 cắt đôi thành 2 tờ nhỏ (máy DNP)</option>
-            <option value="instax">Khổ Instax mini · thẻ 5,4 × 8,6 cm (máy Instax mini Link 3)</option>
+            <option value="instax">Polaroid · layout trên thẻ Instax mini 5,4 × 8,6 cm (phòng Polaroid, máy Instax mini Link 3)</option>
           </select>
         ) : type === "flip" ? (
           <select

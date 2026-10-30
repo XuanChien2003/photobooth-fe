@@ -5,6 +5,7 @@ import {
 } from "react-icons/pi";
 import { QRCodeSVG } from "qrcode.react";
 import { Brand, Button } from "../studio";
+import { useKioskText } from "./use-kiosk-text.js";
 
 const PRINT_TEXT = {
   sending: "Đang gửi ảnh tới máy in…",
@@ -27,6 +28,7 @@ const PRINT_WARN = new Set(["stalled", "manual", "failed"]);
 
 // Màn cuối: ảnh đã ghép khung (trái), mã QR tải ảnh & video (giữa), video tua nhanh (phải).
 export function KioskDone({ done, pending, left, nextGuest }) {
+  const t = useKioskText();
   const print = done.print?.status;
   const framed = done.framed !== false;
   const instax = done.printSize === "instax";
@@ -62,7 +64,7 @@ export function KioskDone({ done, pending, left, nextGuest }) {
       </div>
       {/* Chỉ hứa "lấy ảnh" khi ảnh đang in; in trục trặc thì dòng trạng thái bên dưới mời nhân viên giúp. */}
       <h1 className="done-title">
-        Quét QR để tải ảnh & video.
+        {t("done.title")}
         {done.prints > 0 && framed && !PRINT_WARN.has(print) &&
           (instax ? " Lấy ảnh ở máy Instax cạnh bạn." : " Lấy ảnh tại khay ảnh.")}
       </h1>

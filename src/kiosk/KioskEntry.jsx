@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Brand, useStudio } from "../studio";
+import { useKioskText } from "./use-kiosk-text.js";
 
 export function KioskEntry({
   roomId,
   onTap,
   children,
 }) {
+  const t = useKioskText();
   const { settings = {}, screens = [] } = useStudio();
   // Màn hình chờ: cấu hình riêng của máy này, không có thì cấu hình chung (Thiết lập → Màn hình chờ).
   const screen =
@@ -44,7 +46,7 @@ export function KioskEntry({
               {idle.title || <>Cười lên, <mark>mình chụp nhé!</mark></>}
             </strong>
             <span className="kiosk-hand">{idle.subtitle || "chụp xong in ngay · nhận ảnh trên điện thoại"}</span>
-            <span className="kiosk-sticker">Chạm để bắt đầu</span>
+            <span className="kiosk-sticker">{t("start.tap")}</span>
           </span>
         </button>
         <div className="kiosk-attract-settings">{children}</div>

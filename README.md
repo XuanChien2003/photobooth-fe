@@ -144,18 +144,24 @@ React. Cách triển khai và cấu hình: `CLOUDFLARE.md`.
 Máy chụp: nên mở trình duyệt ở chế độ toàn màn hình (nút “Bật / tắt toàn màn hình” trong
 “Cài đặt máy chụp (nhân viên)” ở màn chờ) và cho phép dùng camera.
 
-Luồng khách theo **loại phòng** (Quản trị → Quản lý máy → Loại phòng):
+Một web, hai **loại phòng**. Đầu ca, nhân viên mở máy chụp từng phòng ở Quản trị → Quản lý máy →
+**Cài máy chụp**: bước 1 chọn loại phòng, bước 2 lấy liên kết / QR.
 
-- **Phòng nhập mã**: khách chuyển khoản tại quầy, nhân viên tạo mã 6 số và đưa cho khách.
-  Chạm để bắt đầu → nhập mã → vào màn chụp luôn; gói và số bản in lấy từ mã.
-- **Phòng đút tiền**: Chạm để bắt đầu → chọn khổ ảnh/gói → chọn số bản in → **Thanh toán tiền
-  mặt** mở ngay màn đọc tiền. Mỗi tờ tiền máy nhận được cộng ngay trên màn hình; đủ tiền là vào
-  màn chụp. Màn chọn khổ ảnh có nút phụ “Đã có mã chụp” cho khách đã chuyển khoản ở quầy.
-  Chưa lắp máy đọc tiền thì bật “Chế độ thử” của phòng để thử bằng nút giả lập.
+- **Photobooth** (in ở máy DNP DS-RX1): Chạm để bắt đầu → **Chọn cách thanh toán**.
+  - **Nhập mã**: khách chuyển khoản tại quầy, nhân viên tạo mã 6 số → nhập mã → vào màn chụp luôn;
+    gói và số bản in lấy từ mã.
+  - **Tiền mặt**: chọn loại tờ (tờ bé / tờ to) → chọn số lượng → màn đọc tiền. Mỗi tờ tiền máy nhận
+    được cộng ngay trên màn hình; đủ tiền là vào màn chụp. Chưa lắp máy đọc tiền thì bật “Chế độ
+    thử tiền mặt” ở bước 1 để thử bằng nút giả lập.
+- **Polaroid** (in ở máy Instax mini Link 3, qua print agent — xem README của `photobooth-be`):
+  Chạm để bắt đầu → **Chọn layout** (thẻ số ảnh + giá) → thông báo “Chọn layout này, vào chụp nha!” →
+  chụp (đồng hồ đếm ngược, tối đa số lần chụp của layout, mặc định 10) → chọn ảnh & khung → in Instax.
+  Khách **trả tiền ở quầy**: đơn ghi “Polaroid · chưa thu tiền”, nhân viên bấm “Đã thu tiền mặt / chuyển
+  khoản” ở Đơn hàng. Layout là các gói khổ Instax ở Khổ ảnh & bảng giá (số ảnh trong layout, giá, số lần
+  chụp tối đa); khung Instax là ảnh dọc 1200 × 1600, mỗi tấm in 600 × 800.
 
-Máy in đi theo khổ ảnh của gói: khổ to / khổ nhỏ in ra DNP DS-RX1, khổ **Instax mini** in ra máy
-Instax mini Link 3 cạnh máy chụp (qua print agent, xem README của `photobooth-be`). Khổ Instax chỉ mở
-khi máy in còn kết nối và đủ phim; khung Instax là ảnh dọc 1200 × 1600, mỗi tấm in 600 × 800.
+Mọi chữ chính trên màn hình máy chụp (tiêu đề, nút, thông báo chọn layout…) sửa ở Thiết lập →
+**Chữ trên máy chụp**; ô để trống dùng chữ mặc định (`src/kiosk/kiosk-texts.js`).
 
 Số bản in đếm theo tờ khách cầm trên tay, tối thiểu 2 tờ: khổ nhỏ là 1 tờ 10 × 15 cắt đôi
 (= 2 tờ nhỏ, mỗi lần bấm + thêm 2 tờ nhỏ), khổ to tối thiểu 2 tờ. Gói đã kèm số tờ ghi trong

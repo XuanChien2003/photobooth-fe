@@ -47,8 +47,8 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
         <p className="kiosk-device-note">
           Loại phòng:{" "}
           <b>
-            {roomInfo?.payment === "cash" ? "Phòng đút tiền" : "Phòng nhập mã (máy đọc tiền không dùng)"}
-            {roomInfo?.payment === "cash" && roomInfo?.paymentTest ? " · chế độ thử: có nút giả lập đút tiền" : ""}
+            {roomInfo?.kind === "polaroid" ? "Phòng Polaroid (không thu tiền tại máy, máy đọc tiền không dùng)" : "Phòng Photobooth"}
+            {roomInfo?.kind !== "polaroid" && roomInfo?.paymentTest ? " · chế độ thử: có nút giả lập đút tiền" : ""}
           </b>{" "}
           — đổi ở Quản trị → Quản lý máy.
         </p>

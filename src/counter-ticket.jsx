@@ -56,10 +56,6 @@ export function CounterTicket({ onClose, onCreated, initialDraft = null, assigne
     paymentMethod: settings.bankAccount || settings.bankQrImage ? "transfer" : "cash",
   });
   const [ticket, setTicket] = useState(initialDraft);
-  // Phòng đút tiền mở màn chọn khổ ảnh trước, khách có mã bấm "Đã có mã chụp" (Quản lý máy → Loại phòng).
-  const cashRooms = rooms
-    .filter((r) => ticket?.room ? String(r._id) === String(ticket.room) : r.branch === (ticket?.branch || form.branch))
-    .some((r) => r.payment === "cash");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -201,10 +197,10 @@ export function CounterTicket({ onClose, onCreated, initialDraft = null, assigne
             <p>
               {ticket.packageName} · {printsText(ticket)}
             </p>
-            {/* Phòng đút tiền mở màn chọn khổ ảnh trước: khách có mã bấm "Đã có mã chụp". */}
+            {/* Phòng photobooth: chạm → chọn cách thanh toán → "Nhập mã" → nhập 6 số. */}
             <p className="ticket-steps">
               Trên máy chụp: chạm <b>“Chạm để bắt đầu”</b> →{" "}
-              {cashRooms ? <>bấm <b>“Đã có mã chụp”</b> → </> : null}nhập 6 số → bắt đầu chụp.
+              bấm <b>“Nhập mã”</b> → nhập 6 số → bắt đầu chụp.
             </p>
             <p className="soft-note">
               Mã dùng một lần trong 2 giờ từ lúc xác nhận đã thu, ở phòng nào cũng được. Chụp xong, máy chụp
@@ -269,7 +265,7 @@ export function CounterTicket({ onClose, onCreated, initialDraft = null, assigne
                   onChange={(e) => change("package", e.target.value)}
                 >
                   <option value="">Chọn gói</option>
-                  {packages.map((p) => (
+                  {packages.filter((p) => p.printSize !== "instax").map((p) => (
                     <option key={p._id} value={p._id}>
                       {p.name} — {money(p.price)}
                     </option>

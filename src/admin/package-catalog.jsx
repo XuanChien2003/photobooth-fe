@@ -15,7 +15,7 @@ import { includedSheets, isInstax, isStrip, piecesLabel, printSizeOf } from "../
 const SIZE_GROUPS = [
   ["strip", "Khổ nhỏ", "khổ nhỏ", "1 tờ 10 × 15 cm cắt đôi thành 2 tờ nhỏ (5 × 15 cm) · khách in tối thiểu 2 tờ nhỏ"],
   ["full", "Khổ to", "khổ to", "Ảnh 10 × 15 cm nguyên tờ · khách in tối thiểu 2 tờ"],
-  ["instax", "Khổ Instax mini", "Instax mini", "Thẻ Instax mini 5,4 × 8,6 cm, in bằng máy Instax mini Link 3 cạnh máy chụp · khách in tối thiểu 2 tấm"],
+  ["instax", "Layout Polaroid", "layout Polaroid", "Phòng Polaroid: mỗi layout là số ảnh ghép trên thẻ Instax mini 5,4 × 8,6 cm (in ở máy Instax mini Link 3), khách chọn layout rồi chụp, trả tiền ở quầy"],
 ];
 const ART = { strip: 2, full: 2, instax: 1 };
 
@@ -85,7 +85,9 @@ export function PackageCatalog({
               <PackageCards items={group} onEdit={onEdit} onDeactivate={onDeactivate} />
             ) : (
               <p className="package-size-empty">
-                Chưa có gói {short} — máy chụp chỉ hiện khổ ảnh có gói đang bán.
+                {size === "instax"
+                  ? "Chưa có layout Polaroid — phòng Polaroid hiện các layout đang bán ở màn Chọn layout."
+                  : `Chưa có gói ${short} — máy chụp chỉ hiện khổ ảnh có gói đang bán.`}
               </p>
             )}
           </section>

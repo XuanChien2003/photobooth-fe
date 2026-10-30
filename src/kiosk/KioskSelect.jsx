@@ -28,6 +28,7 @@ import {
   stickersReady,
 } from "./decor.js";
 import { useObjectUrl } from "./KioskShoot.jsx";
+import { useKioskText } from "./use-kiosk-text.js";
 
 // Ảnh xem nhanh của các tấm đã chụp, giải mã một lần cho cả bước chọn ảnh và chọn khung.
 export function useShotBitmaps(shots, token) {
@@ -311,6 +312,7 @@ export function KioskSelect({
   filters = [], decor, onDecor, shopStickers = [],
 }) {
   const toast = useToast();
+  const t = useKioskText();
   const frame = frames[index];
   const ready = selected.filter((key) => bitmaps.has(key));
   const images = ready.map((key) => bitmaps.get(key));
@@ -400,7 +402,13 @@ export function KioskSelect({
     <section className="kiosk-flow select-screen">
       <header className="flow-head">
         <h1>
-          Bạn có <u>{secondsLeft}s</u> để {tabs.length > 1 ? "chọn ảnh & trang trí" : "chọn ảnh yêu thích"}
+          {/* Tiêu đề sửa ở quản trị; {s} là số giây còn lại (gạch chân). */}
+          {(() => {
+            const [before, after] = t("select.title").split("{s}");
+            return after === undefined
+              ? <>{before} · <u>{secondsLeft}s</u></>
+              : <>{before}<u>{secondsLeft}</u>{after}</>;
+          })()}
         </h1>
         <p>{lead}</p>
       </header>

@@ -7,11 +7,13 @@ import {
   PiMinusBold,
   PiPlusBold,
   PiTicketBold,
+  PiTicketDuotone,
   PiWarningCircleBold,
 } from "react-icons/pi";
 import { money } from "../api";
 import { Brand, Button, ErrorBox } from "../studio";
 import { billAcceptor } from "./bill-acceptor.js";
+import { useKioskText } from "./use-kiosk-text.js";
 import {
   extraSheets,
   includedSheets,
@@ -30,14 +32,47 @@ const IDLE_SECONDS = 120;
 const SIM_BILLS = [10000, 20000, 50000, 100000];
 const FOLDER_NOTE = "Máy chụp chưa đọc được thư mục ảnh của máy ảnh — nhờ nhân viên mở “Cài đặt máy chụp” để chọn / cho phép thư mục.";
 
+// Phòng photobooth: Chạm để bắt đầu → chọn cách thanh toán. Nhập mã: khách đã chuyển khoản ở quầy,
+// nhập mã rồi vào chụp luôn. Tiền mặt: chọn loại tờ → số lượng → đút tiền → vào chụp.
+export function KioskPayChoice({ onCode, onCash, onBack }) {
+  const t = useKioskText();
+  return (
+    <section className="kiosk-flow method-screen">
+      <header className="flow-head">
+        <Brand />
+        <h1>{t("method.title")}</h1>
+        <p>{t("method.subtitle")}</p>
+      </header>
+      <div className="kiosk-method-grid" role="group" aria-label={t("method.title")}>
+        <button type="button" className="kiosk-method is-code" onClick={onCode}>
+          <PiTicketDuotone aria-hidden="true" />
+          <strong>{t("method.code")}</strong>
+          <small>{t("method.codeHint")}</small>
+        </button>
+        <button type="button" className="kiosk-method is-cash" onClick={onCash}>
+          <PiMoneyWavyDuotone aria-hidden="true" />
+          <strong>{t("method.cash")}</strong>
+          <small>{t("method.cashHint")}</small>
+        </button>
+      </div>
+      <footer className="flow-foot">
+        <Button className="outline" onClick={onBack}>
+          <PiArrowLeftBold aria-hidden="true" /> Quay lại
+        </Button>
+      </footer>
+    </section>
+  );
+}
+
 // Mã chụp nhân viên tạo ở quầy sau khi khách chuyển khoản: mã đã gồm gói, khổ ảnh và số bản in.
 export function KioskCode({ code, setCode, onSubmit, onBack, busy, error, device, cameraReady }) {
+  const t = useKioskText();
   return (
     <section className="kiosk-flow code-screen">
       <header className="flow-head">
         <Brand />
-        <h1>Nhập mã chụp</h1>
-        <p>Mã 6 số nhân viên đưa sau khi bạn chuyển khoản tại quầy. Gói chụp và số bản in đã có sẵn trong mã.</p>
+        <h1>{t("code.title")}</h1>
+        <p>{t("code.subtitle")}</p>
       </header>
       <ErrorBox error={error} />
       {!device && (
@@ -58,7 +93,7 @@ export function KioskCode({ code, setCode, onSubmit, onBack, busy, error, device
           )}
         </div>
         <Button type="submit" disabled={busy || !device || !cameraReady || code.length !== 6}>
-          {busy ? "Đang kiểm tra…" : "Bắt đầu chụp"} <PiArrowRightBold aria-hidden="true" />
+          {busy ? "Đang kiểm tra…" : t("code.submit")} <PiArrowRightBold aria-hidden="true" />
         </Button>
       </form>
       <footer className="flow-foot">
@@ -74,6 +109,7 @@ export function KioskCode({ code, setCode, onSubmit, onBack, busy, error, device
 // ở quầy vẫn nhập được mã (nút phụ), ví dụ khi máy đọc tiền đang hỏng. Khổ Instax khóa khi máy
 // Instax chưa sẵn sàng (instax: tình trạng máy in máy chủ báo về).
 export function KioskPackages({ packages, instax, onPick, onCode, onBack }) {
+  const t = useKioskText();
   const [selectedId, setSelectedId] = useState("");
   const blocked = (pack) => isInstax(pack) && !instax?.ready;
   const selected = packages.find((pack) => pack._id === selectedId && !blocked(pack));
@@ -81,8 +117,8 @@ export function KioskPackages({ packages, instax, onPick, onCode, onBack }) {
     <section className="kiosk-flow package-screen size-screen">
       <header className="flow-head">
         <Brand />
-        <h1>Chọn khổ ảnh</h1>
-        <p>Chạm vào khổ ảnh bạn muốn. Giá nằm ngay dưới mỗi lựa chọn.</p>
+        <h1>{t("package.title")}</h1>
+        <p>{t("package.subtitle")}</p>
       </header>
       <div className="kiosk-size-grid" role="group" aria-label="Chọn khổ ảnh và gói chụp">
         {packages.map((pack) => (
@@ -134,6 +170,7 @@ const PRINT_NOTES = {
   instax: "ảnh Instax mini (thẻ 5,4 × 8,6 cm) in ngay ở máy cạnh bạn",
 };
 export function KioskPrintCount({ pack, sheets, extraPrintPrice, film = null, onChange, onNext, onBack }) {
+  const t = useKioskText();
   const strip = isStrip(pack);
   const perSheet = piecesPerSheet(pack);
   const least = minSheets(pack);
@@ -146,7 +183,7 @@ export function KioskPrintCount({ pack, sheets, extraPrintPrice, film = null, on
     <section className="kiosk-flow print-screen">
       <header className="flow-head">
         <Brand />
-        <h1>Chọn số bản in</h1>
+        <h1>{t("print.title")}</h1>
         <p>
           {pack.name} · {PRINT_NOTES[printSizeOf(pack)]}
         </p>
@@ -176,7 +213,7 @@ export function KioskPrintCount({ pack, sheets, extraPrintPrice, film = null, on
       </div>
       <footer className="flow-foot kiosk-step-nav">
         <Button className="outline" onClick={onBack}><PiArrowLeftBold aria-hidden="true" /> Quay lại</Button>
-        <Button onClick={onNext}>Thanh toán tiền mặt <PiArrowRightBold aria-hidden="true" /></Button>
+        <Button onClick={onNext}>{t("print.next")} <PiArrowRightBold aria-hidden="true" /></Button>
       </footer>
     </section>
   );
@@ -186,6 +223,7 @@ export function KioskPrintCount({ pack, sheets, extraPrintPrice, film = null, on
 // Đủ tiền thì tự mở lượt chụp. Chế độ thử (chưa lắp máy nhận tiền) có nút bỏ qua và các nút giả
 // lập đút tiền — lượt thử không tính tiền.
 export function KioskPayment({ pack, total, sheets, bills, onBill, onPaid, onSkip, onBack, onIdle, testMode, busy, error, cameraReady, cashReady }) {
+  const t = useKioskText();
   const [status, setStatus] = useState(billAcceptor.status);
   const [idle, setIdle] = useState(IDLE_SECONDS);
   const [simulated, setSimulated] = useState(0);
@@ -232,7 +270,7 @@ export function KioskPayment({ pack, total, sheets, bills, onBill, onPaid, onSki
   return (
     <section className="kiosk-flow pay-screen">
       <header className="flow-head">
-        <h1>Đút tiền để bắt đầu chụp</h1>
+        <h1>{t("pay.title")}</h1>
         <p>{pack.name} · {piecesLabel(pack, sheets)} · đưa tờ tiền thẳng, không gấp</p>
       </header>
       <ErrorBox error={error} />

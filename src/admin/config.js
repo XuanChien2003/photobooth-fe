@@ -12,6 +12,7 @@ import {
   Sticker,
   SlidersHorizontal,
   ClipboardList,
+  Type,
 } from "lucide-react";
 import {
   custom,
@@ -93,6 +94,7 @@ export const NAV_TREE = [
     ["packages", "Khổ ảnh & bảng giá", Package],
     ["stickers", "Nhãn dán", Sticker],
     ["filters", "Quản lý filter", SlidersHorizontal],
+    ["kiosk-texts", "Chữ trên máy chụp", Type],
   ]],
   ["users", "Tài khoản", Users],
   ["reconciliation", "Đối soát", Scale],
@@ -143,15 +145,18 @@ export const NAV_DESCRIPTIONS = {
   packages: "Các khổ ảnh khách chọn ở máy chụp: sửa hoặc thêm gói (giá, số lần chụp, số tờ in), chi nhánh áp dụng và giá in thêm.",
   stickers: "Nhãn dán khách dán lên khung ở màn chọn ảnh của máy chụp.",
   filters: "Màu ảnh khách chọn ở màn chọn ảnh của máy chụp: bộ lọc có sẵn và filter riêng của tiệm.",
+  "kiosk-texts": "Sửa chữ trên màn hình máy chụp: phòng photobooth, phòng Polaroid và các màn chung.",
   users: "Tài khoản nhân viên, chi nhánh phụ trách và phân quyền truy cập.",
   reconciliation: "Mở, đóng ca và đối soát tiền theo ca, theo tháng và từng chi nhánh.",
 };
 
-// Loại phòng: chọn ở bước đầu của "Cài máy chụp" (Quản lý máy), trước khi lấy liên kết / QR.
-export const ROOM_TYPES = [
-  ["counter", "Phòng nhập mã", "Khách chuyển khoản trước tại quầy, nhân viên đưa mã 6 số. Khách chạm màn hình → nhập mã → chụp."],
-  ["cash", "Phòng đút tiền", "Khách chọn khổ ảnh, số bản in rồi đút tiền vào máy đọc tiền. Đủ tiền là vào chụp. Cần lắp máy đọc tiền."],
+// Loại hình chụp của phòng: chọn ở bước đầu của "Cài máy chụp" (Quản lý máy), trước khi lấy liên
+// kết / QR. Đầu ca nhân viên mở máy chụp từng phòng.
+export const ROOM_KINDS = [
+  ["photobooth", "Photobooth", "Khách chọn Nhập mã (đã chuyển khoản ở quầy) hoặc Tiền mặt (chọn loại tờ, số lượng rồi đút tiền). Chụp xong chọn ảnh, khung rồi in ở máy DNP."],
+  ["polaroid", "Polaroid", "Khách chọn layout (số ảnh, giá) → “vào chụp nha” → chụp có đếm ngược, tối đa số lần chụp của layout → chọn khung. Trả tiền ở quầy, in ở máy Instax mini."],
 ];
+export const ROOM_KIND_NAMES = { photobooth: "Phòng Photobooth", polaroid: "Phòng Polaroid" };
 
 export const definitions = {
   rooms: [

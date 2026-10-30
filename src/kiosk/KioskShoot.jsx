@@ -10,6 +10,7 @@ import {
 } from "react-icons/pi";
 import { Button } from "../studio";
 import { CameraPreview } from "./CameraPreview.jsx";
+import { useKioskText } from "./use-kiosk-text.js";
 
 // Ảnh trên máy (Blob) hoặc trên máy chủ (URL).
 export function useObjectUrl(source) {
@@ -53,6 +54,7 @@ export function KioskShoot({
   onReopenCamera,
   webcam = null,
 }) {
+  const t = useKioskText();
   const shooting = phase === "shoot" && !ending;
   const full = Boolean(quota) && taken >= quota;
   const testing = Boolean(webcam?.on && ready);
@@ -112,7 +114,7 @@ export function KioskShoot({
         ) : (
           <div className="shoot-press" role="status">
             <PiHandTapBold aria-hidden="true" />
-            <strong>Nhấn nút trên dây bấm để chụp</strong>
+            <strong>{t("shoot.press")}</strong>
           </div>
         ))}
         {flash > 0 && <div className="camera-flash" key={flash} aria-hidden="true" />}
@@ -124,7 +126,8 @@ export function KioskShoot({
       </div>
 
       <aside className="shoot-rail" aria-label="Thời gian và ảnh đã chụp">
-          <div className="shoot-timer" role="timer">
+          {/* Còn dưới 1 phút: đồng hồ đỏ, nhấp nháy (như Selfbooth). */}
+          <div className={`shoot-timer${phase === "shoot" && sessionLeft < 60 ? " is-urgent" : ""}`} role="timer">
             <span>THỜI GIAN CÒN LẠI</span>
             <strong>{phase === "ready" ? "—" : clock(sessionLeft)}</strong>
             <div className="shoot-progress">

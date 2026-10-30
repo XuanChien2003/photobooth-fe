@@ -14,11 +14,16 @@ const fixture = `
   const packs = [
     { _id: 'pack-strip', name: 'Khung nhỏ', printSize: 'strip', price: 70000, prints: 1, shots: 4 },
     { _id: 'pack-full', name: 'Khung to', printSize: 'full', price: 100000, prints: 2, shots: 4 },
+    // Layout của phòng Polaroid (gói khổ Instax): số ảnh trong layout, giá.
+    { _id: 'pack-polaroid-6', name: 'Polaroid sáu ô', printSize: 'instax', price: 120000, prints: 2, shots: 10, selectCount: 6 },
+    { _id: 'pack-polaroid-2', name: 'Polaroid đôi', printSize: 'instax', price: 110000, prints: 2, shots: 10, selectCount: 2 },
   ];
+  // Chữ trên máy chụp tiệm đã sửa (Thiết lập → Chữ trên máy chụp).
+  const kioskTexts = { 'layout.confirm': 'Chốt layout này, vào chụp nha!' };
   createRoot(document.getElementById('root')).render(React.createElement(MemoryRouter,
     { initialEntries: ['/kiosk?device=fixture-device'] },
     React.createElement(StudioContext.Provider,
-      { value: { settings: { extraPrintPrice: 20000 }, screens: [], packages: packs, frames: [] } },
+      { value: { settings: { extraPrintPrice: 20000, kioskTexts }, screens: [], packages: packs, frames: [] } },
       React.createElement(ToastProvider, null, React.createElement(Kiosk)))));
 `;
 
@@ -84,9 +89,9 @@ async function openKiosk(room, handlers = {}, { sale = null } = {}) {
   return { page, errors };
 }
 
-test("code room: touch to start → enter the code from the counter → straight to the shoot screen", async () => {
+test("photobooth room: touch → pay by code → enter the code from the counter → straight to the shoot screen", async () => {
   const claims = [];
-  const { page, errors } = await openKiosk({ _id: "room-1", flip: "device" }, {
+  const { page, errors } = await openKiosk({ _id: "room-1", flip: "device", kind: "photobooth" }, {
     "/kiosk/claim": (route, body) => {
       claims.push(body);
       if (body.code !== "123456") return route.fulfill({ status: 400, json: { message: "Mã chụp không đúng." } });
@@ -94,8 +99,9 @@ test("code room: touch to start → enter the code from the counter → straight
     },
   });
   try {
+    await page.getByRole("heading", { name: "Chọn cách thanh toán" }).waitFor();
+    await page.getByRole("button", { name: /Nhập mã/ }).click();
     await page.getByRole("heading", { name: "Nhập mã chụp" }).waitFor();
-    assert.equal(await page.getByRole("heading", { name: "Chọn khổ ảnh" }).count(), 0, "a code room sells nothing at the kiosk");
     await page.getByRole("textbox", { name: "Mã chụp" }).fill("000000");
     await page.getByRole("button", { name: "Bắt đầu chụp" }).click();
     await page.getByText("Mã chụp không đúng.").first().waitFor();
@@ -108,10 +114,10 @@ test("code room: touch to start → enter the code from the counter → straight
   } finally { await page.close(); }
 });
 
-test("cash room: touch to start → size → print count → bill reader; enough money opens the session", async () => {
+test("photobooth room: touch → cash → sheet type → count → bill reader; enough money opens the session", async () => {
   const sales = [];
   const { page, errors } = await openKiosk(
-    { _id: "room-1", flip: "device", payment: "cash", paymentTest: true, cashCheckoutReady: true },
+    { _id: "room-1", flip: "device", kind: "photobooth", paymentTest: true, cashCheckoutReady: true },
     {
       "/kiosk/sale": (route, body) => {
         sales.push(body);
@@ -120,10 +126,14 @@ test("cash room: touch to start → size → print count → bill reader; enough
     },
   );
   try {
-    await page.getByRole("heading", { name: "Chọn khổ ảnh" }).waitFor();
+    await page.getByRole("heading", { name: "Chọn cách thanh toán" }).waitFor();
+    await page.getByRole("button", { name: /Tiền mặt/ }).click();
+    await page.getByRole("heading", { name: "Chọn loại tờ" }).waitFor();
+    // Phòng photobooth chỉ bán tờ bé / tờ to; layout Instax là của phòng Polaroid.
+    assert.equal(await page.getByRole("button", { name: /Polaroid/ }).count(), 0);
     await page.getByRole("button", { name: /Khung nhỏ/ }).click();
     await page.getByRole("button", { name: /Tiếp tục/ }).click();
-    await page.getByRole("heading", { name: "Chọn số bản in" }).waitFor();
+    await page.getByRole("heading", { name: "Chọn số lượng" }).waitFor();
     assert.equal(await page.locator(".kiosk-counter output").innerText(), "2");
     await page.getByRole("button", { name: "Tăng số bản in" }).click();
     assert.equal(await page.locator(".kiosk-counter output").innerText(), "4");
@@ -149,23 +159,58 @@ const staleSale = (bills = []) => ({
   prints: 4, extraPrintPrice: 20000, stage: "pay", requestKey: "stale-key", bills,
 });
 
-test("a code room drops a sale left from when it was a cash room and asks for the code", async () => {
-  const { page, errors } = await openKiosk({ _id: "room-1", flip: "device", payment: "counter" }, {}, { sale: staleSale() });
+test("a polaroid room drops a cash sale left from the photobooth flow and opens the layouts", async () => {
+  const { page, errors } = await openKiosk({ _id: "room-1", flip: "device", kind: "polaroid" }, {}, { sale: staleSale() });
   try {
-    await page.getByRole("heading", { name: "Nhập mã chụp" }).waitFor();
+    await page.getByRole("heading", { name: "Chọn layout" }).waitFor();
     assert.equal(await page.getByRole("heading", { name: "Đút tiền để bắt đầu chụp" }).count(), 0);
     assert.equal(await page.evaluate(() => localStorage.getItem("kiosk-sale")), null, "the stale sale is gone");
     assert.deepEqual(errors, []);
   } finally { await page.close(); }
 });
 
-test("money already inserted is never dropped: the bill screen comes back even in a code room", async () => {
+test("money already inserted is never dropped: the bill screen comes back even in a polaroid room", async () => {
   const bills = [{ amount: 50000, at: "2026-10-30T13:00:00.000Z" }];
-  const { page, errors } = await openKiosk({ _id: "room-1", flip: "device", payment: "counter" }, {}, { sale: staleSale(bills) });
+  const { page, errors } = await openKiosk({ _id: "room-1", flip: "device", kind: "polaroid" }, {}, { sale: staleSale(bills) });
   try {
     await page.getByRole("heading", { name: "Đút tiền để bắt đầu chụp" }).waitFor();
     assert.match(await page.locator(".pay-board").innerText(), /50\.000/);
     assert.notEqual(await page.evaluate(() => localStorage.getItem("kiosk-sale")), null);
+    assert.deepEqual(errors, []);
+  } finally { await page.close(); }
+});
+
+test("polaroid room: touch → layout cards (photos, price) → “vào chụp nha” notice → shoot; payment at the counter", async () => {
+  const opened = [];
+  const polaroidBooking = { ...booking, packageName: "Polaroid đôi", printSize: "instax", selectCount: 2, shots: 10 };
+  const { page, errors } = await openKiosk({ _id: "room-1", flip: "device", kind: "polaroid" }, {
+    "/kiosk/polaroid": (route, body) => {
+      opened.push(body);
+      return route.fulfill({ status: 201, json: { booking: polaroidBooking, captureToken: "fixture-capture", accessToken: "fixture-album" } });
+    },
+  });
+  try {
+    await page.getByRole("heading", { name: "Chọn layout" }).waitFor();
+    assert.equal(await page.getByRole("heading", { name: "Chọn cách thanh toán" }).count(), 0, "a polaroid room takes no payment");
+    const cards = page.getByRole("group", { name: "Chọn layout" }).getByRole("button");
+    // Chỉ layout Instax, xếp theo số ảnh: 2 ảnh trước 6 ảnh; mỗi thẻ có số ảnh và giá.
+    const texts = await cards.allInnerTexts();
+    assert.equal(texts.length, 2);
+    assert.match(texts[0], /2 ảnh[\s\S]*Polaroid đôi[\s\S]*110\.000/i);
+    assert.match(texts[1], /6 ảnh[\s\S]*Polaroid sáu ô[\s\S]*120\.000/i);
+    assert.equal(await cards.nth(0).locator(".layout-art i").count(), 2);
+    assert.equal(await cards.nth(1).locator(".layout-art i").count(), 6);
+    await cards.nth(0).click();
+    const notice = page.getByRole("dialog", { name: "Chốt layout này, vào chụp nha!" });
+    await notice.waitFor();
+    await notice.getByRole("button", { name: "Chọn lại" }).click();
+    assert.equal(await notice.count(), 0);
+    await cards.nth(0).click();
+    await notice.getByRole("button", { name: /Vào chụp/ }).click();
+    await page.locator(".shoot-screen").waitFor();
+    assert.equal(opened.length, 1);
+    assert.equal(opened[0].package, "pack-polaroid-2");
+    assert.match(opened[0].requestKey, /^[0-9a-f-]{36}$/);
     assert.deepEqual(errors, []);
   } finally { await page.close(); }
 });

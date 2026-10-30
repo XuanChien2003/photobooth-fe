@@ -275,6 +275,16 @@
     color: var(--mellow-muted, #7a5a48);
     font-size: 12px;
   }
+  .shoot-timer.is-urgent strong {
+    color: #c0392b;
+    animation: shoot-timer-pulse 0.8s ease-in-out infinite alternate;
+  }
+  @keyframes shoot-timer-pulse {
+    to { opacity: 0.45; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .shoot-timer.is-urgent strong { animation: none; }
+  }
   .shoot-progress {
     display: grid;
     gap: 6px;
@@ -832,6 +842,171 @@
     background: #4caf6e;
     color: #fff;
     font-weight: 700;
+  }
+
+  /* ── Phòng photobooth: chọn cách thanh toán (Nhập mã / Tiền mặt) ── */
+  .kiosk-method-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(16px, 2.6vw, 32px);
+    width: min(980px, 100%);
+    margin: auto;
+  }
+  .kiosk-method {
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 10px;
+    min-height: clamp(220px, 34vh, 340px);
+    padding: 28px 24px;
+    border: 3px solid transparent;
+    border-radius: 26px;
+    background: #fffaf3;
+    color: var(--mellow-ink, #3f2c25);
+    font-family: inherit;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 10px 28px rgb(74 50 38 / 16%);
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+  .kiosk-method:hover,
+  .kiosk-method:focus-visible {
+    border-color: var(--mellow-cocoa, #522e22);
+  }
+  .kiosk-method:active {
+    transform: scale(0.98);
+  }
+  .kiosk-method svg {
+    font-size: clamp(56px, 7vw, 84px);
+  }
+  .kiosk-method.is-code svg {
+    color: #6d5bd0;
+  }
+  .kiosk-method.is-cash svg {
+    color: #3d8a5a;
+  }
+  .kiosk-method strong {
+    font: 700 clamp(26px, 3.2vw, 38px) / 1.15 var(--mellow-display, Georgia, serif);
+  }
+  .kiosk-method small {
+    max-width: 340px;
+    color: var(--mellow-muted, #7a5a48);
+    font-size: clamp(15px, 1.5vw, 18px);
+    line-height: 1.45;
+  }
+  @media (max-width: 700px) {
+    .kiosk-method-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* ── Phòng Polaroid: chọn layout (số ảnh + giá) và thông báo "vào chụp nha" ── */
+  .kiosk-layout-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 280px));
+    justify-content: center;
+    gap: clamp(14px, 2vw, 24px);
+    width: min(1180px, 100%);
+    margin: 0 auto;
+  }
+  .kiosk-layout {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    padding: 22px 18px 20px;
+    border: 3px solid transparent;
+    border-radius: 22px;
+    background: #fffaf3;
+    color: var(--mellow-ink, #3f2c25);
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 8px 22px rgb(74 50 38 / 14%);
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+  .kiosk-layout:hover,
+  .kiosk-layout:focus-visible {
+    border-color: var(--mellow-cocoa, #522e22);
+  }
+  .kiosk-layout:active {
+    transform: scale(0.98);
+  }
+  .kiosk-layout strong {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .kiosk-layout small {
+    color: var(--mellow-muted, #7a5a48);
+    font-size: 14px;
+  }
+  .kiosk-layout b {
+    color: var(--mellow-cocoa, #522e22);
+    font: 700 26px / 1.1 var(--mellow-display, Georgia, serif);
+  }
+  /* Hình layout: thẻ Instax (viền trắng, đáy dày) chia ô theo số ảnh */
+  .layout-art {
+    display: grid;
+    gap: 4px;
+    width: 104px;
+    aspect-ratio: 54 / 86;
+    padding: 7px 7px 20px;
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 3px 10px rgb(74 50 38 / 18%), inset 0 0 0 1px #eadfd3;
+  }
+  .layout-art i {
+    border-radius: 2px;
+    background: linear-gradient(160deg, #c9a88f, #8a6450);
+  }
+  .layout-printer-note {
+    text-align: center;
+  }
+  .layout-confirm {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgb(33 23 19 / 55%);
+    animation: layout-confirm-in 0.18s ease-out both;
+  }
+  @keyframes layout-confirm-in {
+    from { opacity: 0; }
+  }
+  .layout-confirm-card {
+    display: grid;
+    justify-items: center;
+    gap: 14px;
+    width: min(560px, 100%);
+    padding: 34px 32px 28px;
+    border-radius: 28px;
+    background: #fffaf3;
+    text-align: center;
+    box-shadow: 0 24px 60px rgb(0 0 0 / 35%);
+  }
+  .layout-confirm-card .layout-art {
+    width: 120px;
+  }
+  .layout-confirm-card h2 {
+    margin: 4px 0 0;
+    font: 700 clamp(26px, 3vw, 34px) / 1.2 var(--mellow-display, Georgia, serif);
+  }
+  .layout-confirm-card p {
+    margin: 0;
+    color: var(--mellow-muted, #7a5a48);
+    font-size: 17px;
+  }
+  .layout-confirm-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 6px;
+  }
+  .layout-confirm-actions .button {
+    min-width: 160px;
   }
 
   /* ── Màn chọn ảnh: 3 mục Chọn ảnh / Màu ảnh / Nhãn dán bên phải khung xem trước ── */

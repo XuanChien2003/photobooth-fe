@@ -438,6 +438,16 @@
     padding: 3px 7px;
     color: var(--muted);
   }
+  /* Đơn Polaroid chưa thu tiền: nút ghi nhận nổi rõ hơn các nút phụ */
+  .admin-shell .order-more-actions button.order-collect {
+    border-color: var(--mellow-cocoa, #522e22);
+    color: var(--mellow-cocoa, #522e22);
+    font-weight: 700;
+  }
+  .admin-shell .badge.unpaid {
+    background: #fdf1dc;
+    color: #8a5a10;
+  }
   .admin-shell .order-print-dialog {
     width: min(520px, calc(100vw - 30px));
   }

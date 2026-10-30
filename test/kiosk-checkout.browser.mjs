@@ -10,7 +10,7 @@ const fixture = `
   import React, { useState } from 'react';
   import { createRoot } from 'react-dom/client';
   import { StudioContext, ToastProvider } from '/src/studio.jsx';
-  import { KioskCode, KioskPackages, KioskPrintCount, KioskPayment } from '/src/kiosk/KioskSale.jsx';
+  import { KioskCode, KioskPackages, KioskPayChoice, KioskPrintCount, KioskPayment } from '/src/kiosk/KioskSale.jsx';
   import { isInstax, minSheets, saleTotal } from '/src/kiosk/print-count.js';
   import { billAcceptor } from '/src/kiosk/bill-acceptor.js';
   import '/src/tailwind.css';
@@ -23,7 +23,7 @@ const fixture = `
   const extraFor = (pack) => isInstax(pack) ? 30000 : 20000;
   window.billEnabled = () => billAcceptor.enabled;
   function App() {
-    const [step, setStep] = useState('size');
+    const [step, setStep] = useState(new URLSearchParams(location.search).get('step') || 'size');
     const [pack, setPack] = useState(null);
     const [sheets, setSheets] = useState(0);
     const [code, setCode] = useState('');
@@ -31,8 +31,9 @@ const fixture = `
     const [instax, setInstax] = useState({ ready: false, film: null, message: 'Máy in Instax chưa kết nối với máy tính.' });
     window.setInstaxFixture = setInstax;
     return <>
+      {step === 'method' && <KioskPayChoice onCode={() => setStep('code')} onCash={() => setStep('size')} onBack={() => {}} />}
       {step === 'code' && <KioskCode code={code} setCode={setCode} onSubmit={(e) => { e.preventDefault(); setVoucher(code); }}
-        onBack={() => setStep('size')} busy={false} error='' device='fixture-device' cameraReady={true} />}
+        onBack={() => setStep('method')} busy={false} error='' device='fixture-device' cameraReady={true} />}
       {step === 'size' && <KioskPackages packages={packs} instax={instax} onPick={(p) => { setPack(p); setSheets(minSheets(p)); setStep('print'); }}
         onCode={() => setStep('code')} onBack={() => {}} />}
       {step === 'print' && <KioskPrintCount pack={pack} sheets={sheets} extraPrintPrice={extraFor(pack)}
@@ -81,14 +82,18 @@ after(async () => { await browser?.close(); await new Promise((resolve) => serve
 const shot = (page, name) =>
   process.env.KIOSK_SCREENSHOT && page.screenshot({ path: `${process.env.KIOSK_SCREENSHOT}-${name}.png` });
 
-test("a cash room still takes a code from the counter; the code screen submits six digits", async () => {
+test("photobooth: the guest picks how to pay — the code from the counter or cash at the kiosk", async () => {
   const page = await browser.newPage({ viewport: { width: 1328, height: 639 } });
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   try {
-    await page.goto(base);
-    await page.getByRole("heading", { name: "Chọn khổ ảnh" }).waitFor();
-    await page.getByRole("button", { name: /Đã có mã chụp/ }).click();
+    await page.goto(base + "/?step=method");
+    await page.getByRole("heading", { name: "Chọn cách thanh toán" }).waitFor();
+    await shot(page, "method");
+    await page.getByRole("button", { name: /Tiền mặt/ }).click();
+    await page.getByRole("heading", { name: "Chọn loại tờ" }).waitFor();
+    await page.goto(base + "/?step=method");
+    await page.getByRole("button", { name: /Nhập mã/ }).click();
     await page.getByRole("heading", { name: "Nhập mã chụp" }).waitFor();
     await shot(page, "code");
     assert.equal(await page.getByRole("button", { name: /Bắt đầu chụp/ }).isDisabled(), true);
@@ -98,7 +103,7 @@ test("a cash room still takes a code from the counter; the code screen submits s
     assert.equal(await page.getByTestId("voucher-result").innerText(), "123456");
     assert.equal(await page.evaluate(() => window.billEnabled()), false, "a code never opens the bill acceptor");
     await page.getByRole("button", { name: /Quay lại/ }).click();
-    await page.getByRole("heading", { name: "Chọn khổ ảnh" }).waitFor();
+    await page.getByRole("heading", { name: "Chọn cách thanh toán" }).waitFor();
     assert.deepEqual(errors, []);
   } finally { await page.close(); }
 });
@@ -110,14 +115,14 @@ test("prints are counted in pieces from a minimum of two; paying goes straight t
   const count = () => page.locator(".kiosk-counter output").innerText();
   const total = () => page.locator(".kiosk-price strong").innerText();
   const pick = async (name) => {
-    await page.getByRole("heading", { name: "Chọn khổ ảnh" }).waitFor();
+    await page.getByRole("heading", { name: "Chọn loại tờ" }).waitFor();
     await page.getByRole("button", { name }).click();
     await page.getByRole("button", { name: /Tiếp tục/ }).click();
-    await page.getByRole("heading", { name: "Chọn số bản in" }).waitFor();
+    await page.getByRole("heading", { name: "Chọn số lượng" }).waitFor();
   };
   try {
     await page.goto(base);
-    await page.getByRole("heading", { name: "Chọn khổ ảnh" }).waitFor();
+    await page.getByRole("heading", { name: "Chọn loại tờ" }).waitFor();
     assert.match(await page.getByRole("button", { name: /2 ảnh nhỏ/ }).innerText(), /kèm 2 tờ nhỏ/);
     await shot(page, "size");
     // Khổ nhỏ: 1 tờ 10 × 15 cắt đôi = 2 tờ nhỏ (đã gồm trong gói), mỗi lần + thêm 2 tờ nhỏ.
@@ -168,7 +173,7 @@ test("Instax is locked while its printer is not ready and never sells more piece
     await shot(page, "size-instax");
     await card.click();
     await page.getByRole("button", { name: /Tiếp tục/ }).click();
-    await page.getByRole("heading", { name: "Chọn số bản in" }).waitFor();
+    await page.getByRole("heading", { name: "Chọn số lượng" }).waitFor();
     const count = () => page.locator(".kiosk-counter output").innerText();
     assert.equal(await count(), "2");
     assert.match(await page.locator(".print-unit").innerText(), /tấm Instax · mỗi người một tấm/);

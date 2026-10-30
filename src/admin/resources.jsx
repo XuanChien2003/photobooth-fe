@@ -20,7 +20,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { api, money } from "../api";
 import { Button, ErrorBox, useStudio, useToast } from "../studio";
 import { useValidation } from "../validate";
-import { RESOURCE_LABELS, RESOURCE_RULES, ROOM_TYPES, definitions, DEFAULT_STAFF_PERMISSIONS, PERMISSION_GROUPS, can } from "./config";
+import { RESOURCE_LABELS, RESOURCE_RULES, ROOM_KIND_NAMES, ROOM_KINDS, definitions, DEFAULT_STAFF_PERMISSIONS, PERMISSION_GROUPS, can } from "./config";
 import { PriceEditor } from "../extra-prints";
 import { TableHeading } from "./table-heading";
 import { Guide } from "../guide";
@@ -87,7 +87,8 @@ function PrinterStatus({ printers }) {
         );
       })}
       <small className="muted">
-        Máy chụp chỉ bán khổ Instax khi máy in sẵn sàng và còn ít nhất 2 tấm phim; không cho chọn quá số phim còn lại.
+        Phòng Photobooth in ở máy DNP; phòng Polaroid in Instax mini. Máy Instax chưa sẵn sàng hay hết phim thì lệnh in
+        Polaroid chờ trong hàng và tự in khi máy in kết nối lại.
         In lỗi (hết phim, mất kết nối) sẽ báo ngay trên trang quản trị.
       </small>
     </section>
@@ -158,11 +159,11 @@ export function ResourceManager({ resource, notify, me }) {
             ? key === "duration"
               ? 15
               : key === "shots"
-                ? 12
+                ? printSize === "instax" ? 10 : 12
                 : key === "countdownSeconds"
                   ? 10
                   : key === "selectCount"
-                    ? 4
+                    ? printSize === "instax" ? 2 : 4
                     : key === "prints"
                       ? printSize === "strip" ? 1 : 2
               : 0
@@ -231,14 +232,14 @@ export function ResourceManager({ resource, notify, me }) {
       toast.error(e.message);
     }
   }
-  // Cài máy chụp: bước 1 chọn loại phòng (nhập mã / đút tiền), bước 2 lưu loại phòng và lấy
+  // Cài máy chụp (đầu ca, từng phòng): bước 1 chọn loại phòng (Photobooth / Polaroid), bước 2 lưu và lấy
   // liên kết + QR mở máy chụp.
   const setup = (item) =>
     setDevice({
       room: item,
       name: item.name,
       step: "type",
-      payment: item.payment || "counter",
+      kind: item.kind || "photobooth",
       paymentTest: Boolean(item.paymentTest),
     });
   async function issueDevice() {
@@ -247,7 +248,7 @@ export function ResourceManager({ resource, notify, me }) {
     try {
       const d = await api(`/admin/rooms/${device.room._id}/device`, {
         method: "POST",
-        body: { payment: device.payment, paymentTest: device.payment === "cash" && device.paymentTest },
+        body: { kind: device.kind, paymentTest: device.kind === "photobooth" && device.paymentTest },
       });
       setDevice({
         ...device,
@@ -270,7 +271,7 @@ export function ResourceManager({ resource, notify, me }) {
           id="rooms-kiosk"
           title="cài máy chụp cho phòng"
           steps={[
-            "Bấm “Cài máy chụp” ở dòng phòng → chọn loại phòng (nhập mã / đút tiền) → mở liên kết (hoặc quét QR) trên máy tính trong phòng bằng Chrome / Edge.",
+            "Bấm “Cài máy chụp” ở dòng phòng → chọn loại phòng (Photobooth / Polaroid) → mở liên kết (hoặc quét QR) trên máy tính trong phòng bằng Chrome / Edge.",
             "Trên máy chụp: mở “Cài đặt máy chụp (nhân viên)”, làm theo hướng dẫn kết nối máy ảnh.",
             "Muốn bật máy tính là tự mở máy chụp: trong hộp “Cài máy chụp” tải “File cài cho Windows / Mac”, chạy 1 lần trên máy trong phòng.",
           ]}
@@ -394,8 +395,8 @@ export function ResourceManager({ resource, notify, me }) {
                       <>
                         {item.branch || "Chưa đặt chi nhánh"}
                         <small className="room-flip">
-                          {item.payment === "cash" ? "Phòng đút tiền" : "Phòng nhập mã"}
-                          {item.payment === "cash" && item.paymentTest ? " (đang bật chế độ thử)" : ""} ·{" "}
+                          {ROOM_KIND_NAMES[item.kind || "photobooth"]}
+                          {(item.kind || "photobooth") === "photobooth" && item.paymentTest ? " (đang bật chế độ thử đút tiền)" : ""} ·{" "}
                           Chế độ lật ảnh: {FLIP_LABELS[item.flip || "device"]}
                         </small>
                       </>
@@ -511,30 +512,30 @@ export function ResourceManager({ resource, notify, me }) {
             <h2>Cài máy chụp: {device.name}</h2>
             {device.step === "type" ? (
               <>
-                <p className="setup-step">Bước 1/2 · Chọn loại phòng cho máy chụp này</p>
+                <p className="setup-step">Bước 1/2 · Chọn loại hình chụp của phòng này</p>
                 <div className="room-type-options" role="radiogroup" aria-label="Loại phòng">
-                  {ROOM_TYPES.map(([value, title, detail]) => (
-                    <label key={value} className={`room-type-option${device.payment === value ? " is-selected" : ""}`}>
+                  {ROOM_KINDS.map(([value, title, detail]) => (
+                    <label key={value} className={`room-type-option${device.kind === value ? " is-selected" : ""}`}>
                       <input
                         type="radio"
-                        name="setup-payment"
+                        name="setup-kind"
                         value={value}
-                        checked={device.payment === value}
-                        onChange={() => setDevice({ ...device, payment: value })}
+                        checked={device.kind === value}
+                        onChange={() => setDevice({ ...device, kind: value })}
                       />
                       <strong>{title}</strong>
                       <small>{detail}</small>
                     </label>
                   ))}
                 </div>
-                {device.payment === "cash" && (
+                {device.kind === "photobooth" && (
                   <label className="checkbox setup-test">
                     <input
                       type="checkbox"
                       checked={device.paymentTest}
                       onChange={(e) => setDevice({ ...device, paymentTest: e.target.checked })}
                     />
-                    Chế độ thử: chưa lắp máy đọc tiền — máy chụp có nút giả lập đút tiền (không tính doanh thu)
+                    Chế độ thử tiền mặt: chưa lắp máy đọc tiền — máy chụp có nút giả lập đút tiền (không tính doanh thu)
                   </label>
                 )}
                 <Button className="full" disabled={device.busy} onClick={issueDevice}>
@@ -544,8 +545,8 @@ export function ResourceManager({ resource, notify, me }) {
             ) : (
             <>
             <p className="setup-step">
-              Bước 2/2 · {device.payment === "cash" ? "Phòng đút tiền" : "Phòng nhập mã"}
-              {device.payment === "cash" && device.paymentTest ? " (chế độ thử)" : ""}{" "}
+              Bước 2/2 · {ROOM_KIND_NAMES[device.kind]}
+              {device.kind === "photobooth" && device.paymentTest ? " (chế độ thử đút tiền)" : ""}{" "}
               <button type="button" className="link-button" onClick={() => setDevice({ ...device, step: "type" })}>
                 Đổi loại phòng
               </button>
