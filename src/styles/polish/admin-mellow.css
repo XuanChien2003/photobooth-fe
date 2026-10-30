@@ -217,7 +217,11 @@
   .admin-content .revenue-day.is-today .revenue-bar {
     background: #c98a96;
   }
+  /* Nền thanh nhạt, phần đã đầy tô nâu (0 lượt = thanh trống). */
   .admin-content .occupancy-bar {
+    background: #eadfd3;
+  }
+  .admin-content .occupancy-bar i {
     background: var(--mellow-cocoa);
   }
 

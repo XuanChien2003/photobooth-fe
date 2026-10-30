@@ -137,7 +137,7 @@ export function Statistics({ assignedBranch }) {
               </div>
               <div>
                 <dt>{data.unit === "month" ? "Tháng cao nhất" : "Ngày cao nhất"}</dt>
-                <dd>{best ? `${label(data.unit, best.key)} · ${metric === "revenue" ? compact(value(best)) : value(best)}` : "—"}</dd>
+                <dd>{best ? `${label(data.unit, best.key)} · ${metric === "revenue" ? money(value(best)) : `${value(best)} đơn`}` : "—"}</dd>
               </div>
             </dl>
             <div className="chart-legend" aria-hidden="true">

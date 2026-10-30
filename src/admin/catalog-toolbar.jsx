@@ -21,8 +21,8 @@ export function CatalogToolbar({
           <Package size={24} aria-hidden="true" />
         </span>
         <div className="catalog-intro-copy">
-          <h3>Gói chụp dành cho khách</h3>
-          <p>Giá, thời gian chụp và quyền lợi của từng gói trong một góc nhìn.</p>
+          <h3>Khổ ảnh & gói chụp trên máy chụp</h3>
+          <p>Mỗi gói đang bán là một thẻ ở màn “Chọn khổ ảnh”: sửa khổ, giá, số lần chụp, số tờ in hoặc thêm gói mới.</p>
         </div>
         <Button onClick={onCreate}>
           <Plus size={17} aria-hidden="true" />

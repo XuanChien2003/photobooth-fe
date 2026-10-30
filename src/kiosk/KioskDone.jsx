@@ -16,12 +16,20 @@ const PRINT_TEXT = {
   manual: "Nhờ nhân viên in ảnh giúp bạn",
   failed: "Chưa in được — nhờ nhân viên in lại giúp bạn",
 };
+// Khổ Instax: máy Instax mini Link 3 đặt cạnh máy chụp, ảnh ra ngay tại đó.
+const INSTAX_TEXT = {
+  sent: "Đang chờ máy Instax nhận lệnh…",
+  stalled: "Máy Instax chưa nhận lệnh — nhờ nhân viên kiểm tra giúp bạn",
+  printing: "Máy Instax cạnh bạn đang in — mỗi tấm khoảng 15 giây",
+  printed: "Lấy ảnh ở máy Instax cạnh bạn — ảnh hiện màu dần sau ít phút",
+};
 const PRINT_WARN = new Set(["stalled", "manual", "failed"]);
 
 // Màn cuối: ảnh đã ghép khung (trái), mã QR tải ảnh & video (giữa), video tua nhanh (phải).
 export function KioskDone({ done, pending, left, nextGuest }) {
   const print = done.print?.status;
   const framed = done.framed !== false;
+  const instax = done.printSize === "instax";
   return (
     <section className="kiosk-flow done-screen">
       <header className="flow-head">
@@ -52,13 +60,18 @@ export function KioskDone({ done, pending, left, nextGuest }) {
           <figcaption>Video</figcaption>
         </figure>
       </div>
-      <h1 className="done-title">Quét QR để tải ảnh & video. Lấy ảnh tại khay ảnh.</h1>
+      {/* Chỉ hứa "lấy ảnh" khi ảnh đang in; in trục trặc thì dòng trạng thái bên dưới mời nhân viên giúp. */}
+      <h1 className="done-title">
+        Quét QR để tải ảnh & video.
+        {done.prints > 0 && framed && !PRINT_WARN.has(print) &&
+          (instax ? " Lấy ảnh ở máy Instax cạnh bạn." : " Lấy ảnh tại khay ảnh.")}
+      </h1>
       <p className={`done-print ${PRINT_WARN.has(print) ? "is-warn" : ""}`} role="status">
         {PRINT_WARN.has(print) ? <PiWarningCircleDuotone aria-hidden="true" /> : <PiPrinterDuotone aria-hidden="true" />}
         {!done.prints
           ? "Gói của bạn không kèm tờ in — tải ảnh bằng mã QR."
           : framed
-            ? PRINT_TEXT[print] || PRINT_TEXT.sending
+            ? (instax && INSTAX_TEXT[print]) || PRINT_TEXT[print] || PRINT_TEXT.sending
             : "Chưa có khung ảnh để in — nhờ nhân viên in giúp bạn."}
         {" · "}Vé {done.code} · ảnh lưu 24 giờ
       </p>

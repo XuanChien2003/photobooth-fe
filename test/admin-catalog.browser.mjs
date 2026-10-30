@@ -470,6 +470,38 @@ test("adding a package validates required fields and sends numeric values", asyn
   assertClean();
 });
 
+test("packages are grouped by photo size; a small-size package starts with one sheet cut in half", async () => {
+  await mount("packages");
+  const small = page.getByRole("region", { name: "Khổ nhỏ" });
+  const large = page.getByRole("region", { name: "Khổ to" });
+  assert.match(await page.getByRole("region", { name: "Khổ Instax mini" }).innerText(), /Chưa có gói Instax mini/);
+  assert.equal(await large.locator(".package-card").count(), 3);
+  assert.match(await small.innerText(), /Chưa có gói khổ nhỏ/);
+  // Khổ to kèm 1 tờ: dưới mức tối thiểu 2 tờ, không gửi lên máy chủ.
+  await large.locator(".package-card").filter({ hasText: "Chụp một mình" })
+    .getByRole("button", { name: /Chỉnh sửa/ }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Lưu thay đổi", exact: true }).click();
+  await dialog.getByText(/khổ to kèm ít nhất 2 tờ/).first().waitFor();
+  assert.deepEqual(mutations(), []);
+  await dialog.getByRole("button", { name: "Huỷ" }).click();
+
+  await small.getByRole("button", { name: "Thêm gói khổ nhỏ" }).click();
+  assert.equal(await dialog.locator('select[name="printSize"]').inputValue(), "strip");
+  assert.equal(await dialog.locator('input[name="prints"]').inputValue(), "1");
+  assert.match(await dialog.locator(".kiosk-size-preview").innerText(), /kèm 2 tờ nhỏ/);
+  await dialog.locator('input[name="name"]').fill("Gói 70.000đ · 2 ảnh nhỏ");
+  await dialog.locator('input[name="price"]').fill("70000");
+  await dialog.getByRole("button", { name: "Lưu thay đổi", exact: true }).click();
+  await dialog.waitFor({ state: "hidden" });
+  const [created] = mutations();
+  assert.equal(created.method, "POST");
+  assert.equal(created.body.printSize, "strip");
+  assert.equal(created.body.prints, 1);
+  assert.equal(await small.locator(".package-card").count(), 1);
+  assertClean();
+});
+
 test("a package can be limited to chosen branches", async () => {
   await mount("packages");
   const card = () => cards("packages").filter({ hasText: "Cặp đôi" });

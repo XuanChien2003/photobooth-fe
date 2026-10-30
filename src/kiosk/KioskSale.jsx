@@ -12,14 +12,71 @@ import {
 import { money } from "../api";
 import { Brand, Button, ErrorBox } from "../studio";
 import { billAcceptor } from "./bill-acceptor.js";
+import {
+  extraSheets,
+  includedSheets,
+  isInstax,
+  isStrip,
+  MIN_PIECES,
+  minSheets,
+  pieceUnit,
+  piecesLabel,
+  piecesPerSheet,
+  printSizeOf,
+  saleTotal,
+} from "./print-count.js";
 
 const IDLE_SECONDS = 120;
 const SIM_BILLS = [10000, 20000, 50000, 100000];
+const FOLDER_NOTE = "Máy chụp chưa đọc được thư mục ảnh của máy ảnh — nhờ nhân viên mở “Cài đặt máy chụp” để chọn / cho phép thư mục.";
 
-// Chọn khổ ảnh từ những gói thật trong Bảng giá, giữ đúng giá đã cấu hình.
-export function KioskPackages({ packages, onPick, onBack }) {
+// Mã chụp nhân viên tạo ở quầy sau khi khách chuyển khoản: mã đã gồm gói, khổ ảnh và số bản in.
+export function KioskCode({ code, setCode, onSubmit, onBack, busy, error, device, cameraReady }) {
+  return (
+    <section className="kiosk-flow code-screen">
+      <header className="flow-head">
+        <Brand />
+        <h1>Nhập mã chụp</h1>
+        <p>Mã 6 số nhân viên đưa sau khi bạn chuyển khoản tại quầy. Gói chụp và số bản in đã có sẵn trong mã.</p>
+      </header>
+      <ErrorBox error={error} />
+      {!device && (
+        <p className="soft-note">Máy chụp chưa được gán phòng. Mở liên kết Cài máy chụp trong Quản trị → Quản lý máy.</p>
+      )}
+      {!cameraReady && <p className="soft-note">{FOLDER_NOTE}</p>}
+      <form className="payment-voucher code-card" onSubmit={onSubmit}>
+        <label htmlFor="kiosk-code">Mã chụp</label>
+        <input id="kiosk-code" type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength={6}
+          autoComplete="one-time-code" placeholder="••••••" value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} />
+        <div className="voucher-keypad" aria-label="Bàn phím nhập mã">
+          {["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"].map((key) =>
+            <button type="button" key={key} aria-label={key === "clear" ? "Xóa hết mã" : key === "back" ? "Xóa một số" : key}
+              onClick={() => setCode((value) => key === "clear" ? "" : key === "back" ? value.slice(0, -1) : (value + key).slice(0, 6))}>
+              {key === "clear" ? "Xóa" : key === "back" ? <PiBackspaceBold /> : key}
+            </button>
+          )}
+        </div>
+        <Button type="submit" disabled={busy || !device || !cameraReady || code.length !== 6}>
+          {busy ? "Đang kiểm tra…" : "Bắt đầu chụp"} <PiArrowRightBold aria-hidden="true" />
+        </Button>
+      </form>
+      <footer className="flow-foot">
+        <Button className="outline" disabled={busy} onClick={onBack}>
+          <PiArrowLeftBold aria-hidden="true" /> Quay lại
+        </Button>
+      </footer>
+    </section>
+  );
+}
+
+// Chọn khổ ảnh từ những gói thật trong Bảng giá, giữ đúng giá đã cấu hình. Khách đã chuyển khoản
+// ở quầy vẫn nhập được mã (nút phụ), ví dụ khi máy đọc tiền đang hỏng. Khổ Instax khóa khi máy
+// Instax chưa sẵn sàng (instax: tình trạng máy in máy chủ báo về).
+export function KioskPackages({ packages, instax, onPick, onCode, onBack }) {
   const [selectedId, setSelectedId] = useState("");
-  const selected = packages.find((pack) => pack._id === selectedId);
+  const blocked = (pack) => isInstax(pack) && !instax?.ready;
+  const selected = packages.find((pack) => pack._id === selectedId && !blocked(pack));
   return (
     <section className="kiosk-flow package-screen size-screen">
       <header className="flow-head">
@@ -28,28 +85,38 @@ export function KioskPackages({ packages, onPick, onBack }) {
         <p>Chạm vào khổ ảnh bạn muốn. Giá nằm ngay dưới mỗi lựa chọn.</p>
       </header>
       <div className="kiosk-size-grid" role="group" aria-label="Chọn khổ ảnh và gói chụp">
-        {packages.map((pack) => {
-          const strip = pack.printSize === "strip" || (!pack.printSize && /strip|mini|nhỏ|bé/i.test(pack.name));
-          return <button
+        {packages.map((pack) => (
+          <button
             type="button"
             key={pack._id}
-            className={`kiosk-size ${strip ? "strip" : "full"} ${selectedId === pack._id ? "active" : ""}`}
+            className={`kiosk-size ${printSizeOf(pack)} ${selectedId === pack._id ? "active" : ""}`}
             aria-pressed={selectedId === pack._id}
+            disabled={blocked(pack)}
             onClick={() => setSelectedId(pack._id)}
           >
-            <span className="kiosk-size-art" aria-hidden="true"><i /><i /></span>
+            <span className="kiosk-size-art" aria-hidden="true">{isInstax(pack) ? <i /> : <><i /><i /></>}</span>
             <strong>{pack.name}</strong>
-            <small>{pack.shots} lần chụp · kèm {Number(pack.prints) || 0} bản in</small>
+            <small>{pack.shots} lần chụp · kèm {piecesLabel(pack, includedSheets(pack))}</small>
             <b>{money(pack.price)}</b>
             {pack.description && <small>{pack.description}</small>}
-          </button>;
-        })}
-        {!packages.length && <p className="soft-note">Chưa có gói chụp cho máy này. Nhờ nhân viên kiểm tra mục Bảng giá.</p>}
+            {blocked(pack) && (
+              <em className="kiosk-size-off">
+                {(instax?.message || "Máy in Instax chưa sẵn sàng").replace(/\.$/, "")} — nhờ nhân viên hỗ trợ.
+              </em>
+            )}
+          </button>
+        ))}
+        {!packages.length && <p className="soft-note">Chưa có gói chụp cho máy này. Nhờ nhân viên kiểm tra mục Khổ ảnh & bảng giá.</p>}
       </div>
       <footer className="flow-foot kiosk-step-nav">
         <Button className="outline" onClick={onBack}>
           <PiArrowLeftBold aria-hidden="true" /> Quay lại
         </Button>
+        {onCode && (
+          <Button className="outline" onClick={onCode}>
+            <PiTicketBold aria-hidden="true" /> Đã có mã chụp
+          </Button>
+        )}
         <Button disabled={!selected} onClick={() => onPick(selected)}>
           Tiếp tục <PiArrowRightBold aria-hidden="true" />
         </Button>
@@ -58,96 +125,67 @@ export function KioskPackages({ packages, onPick, onBack }) {
   );
 }
 
-// Giá gói đã gồm số bản in của gói; chỉ bản in thêm mới cộng vào tổng tiền.
-export function KioskPrintCount({ pack, prints, extraPrintPrice, onChange, onNext, onBack }) {
-  const included = Number(pack.prints) || 0;
-  const extra = Math.max(0, prints - included);
+// Khách đếm theo tờ cầm trên tay (khổ nhỏ: 1 tờ 10 × 15 cắt đôi = 2 tờ nhỏ; Instax: mỗi tấm một
+// thẻ), tối thiểu 2. Giá gói đã gồm số tờ của gói; chỉ tờ in thêm mới cộng vào tổng tiền.
+// film: số tấm phim máy Instax còn — không bán quá số phim.
+const PRINT_NOTES = {
+  strip: "ảnh nhỏ: 1 tờ 10 × 15 cm cắt đôi thành 2 tờ",
+  full: "ảnh lớn 10 × 15 cm nguyên tờ",
+  instax: "ảnh Instax mini (thẻ 5,4 × 8,6 cm) in ngay ở máy cạnh bạn",
+};
+export function KioskPrintCount({ pack, sheets, extraPrintPrice, film = null, onChange, onNext, onBack }) {
+  const strip = isStrip(pack);
+  const perSheet = piecesPerSheet(pack);
+  const least = minSheets(pack);
+  const extra = extraSheets(pack, sheets);
   const canAdd = Number.isFinite(extraPrintPrice) && extraPrintPrice >= 0;
-  const total = (Number(pack.price) || 0) + extra * (extraPrintPrice || 0);
+  const unit = pieceUnit(pack);
+  const word = isInstax(pack) ? "tấm" : "tờ";
+  const outOfFilm = isInstax(pack) && Number.isInteger(film) && sheets >= film;
   return (
     <section className="kiosk-flow print-screen">
       <header className="flow-head">
         <Brand />
         <h1>Chọn số bản in</h1>
-        <p>Gói {pack.name} đã kèm {included} bản in.</p>
+        <p>
+          {pack.name} · {PRINT_NOTES[printSizeOf(pack)]}
+        </p>
       </header>
       <div className="print-choice">
-        <div className="kiosk-counter" aria-label="Số bản in">
-          <button type="button" aria-label="Giảm số bản in" disabled={prints <= included} onClick={() => onChange(prints - 1)}><PiMinusBold /></button>
-          <output aria-live="polite">{prints}</output>
-          <button type="button" aria-label="Tăng số bản in" disabled={!canAdd || extra >= 20} onClick={() => onChange(prints + 1)}><PiPlusBold /></button>
+        <div className="kiosk-counter" role="group" aria-label="Số bản in">
+          <button type="button" aria-label="Giảm số bản in" disabled={sheets <= least} onClick={() => onChange(sheets - 1)}><PiMinusBold /></button>
+          <output aria-live="polite">{sheets * perSheet}</output>
+          <button type="button" aria-label="Tăng số bản in" disabled={!canAdd || extra >= 20 || outOfFilm} onClick={() => onChange(sheets + 1)}><PiPlusBold /></button>
         </div>
+        <p className="print-unit">
+          {unit} · mỗi người một {word}: đi {MIN_PIECES} người chọn {MIN_PIECES} {word}
+          {strip && <small>{sheets} tờ 10 × 15 cm cắt đôi · mỗi lần bấm + thêm 2 tờ nhỏ</small>}
+          {outOfFilm && <small>Máy Instax còn {film} tấm phim — chọn tối đa {film} tấm.</small>}
+        </p>
         <div className="kiosk-price">
           <span>Tổng tiền</span>
-          <strong>{money(total)}</strong>
-          <small>{extra ? `${money(pack.price)} tiền gói + ${extra} × ${money(extraPrintPrice)} bản in thêm` : `Đã gồm ${included} bản in trong gói`}</small>
+          <strong>{money(saleTotal(pack, sheets, extraPrintPrice))}</strong>
+          <small>
+            {extra
+              ? `${money(pack.price)} tiền gói + ${extra * perSheet} ${unit} in thêm (${money(extra * (Number(extraPrintPrice) || 0))})`
+              : `Đã gồm ${piecesLabel(pack, sheets)} trong gói`}
+          </small>
+          {includedSheets(pack) < least && <small>In tối thiểu {MIN_PIECES} {word} — gói này kèm {piecesLabel(pack, includedSheets(pack))}.</small>}
           {!canAdd && <small>Nhân viên cần đặt “Giá in thêm” trong quản trị để khách chọn thêm bản in.</small>}
         </div>
       </div>
       <footer className="flow-foot kiosk-step-nav">
         <Button className="outline" onClick={onBack}><PiArrowLeftBold aria-hidden="true" /> Quay lại</Button>
-        <Button onClick={onNext}>Chọn thanh toán <PiArrowRightBold aria-hidden="true" /></Button>
+        <Button onClick={onNext}>Thanh toán tiền mặt <PiArrowRightBold aria-hidden="true" /></Button>
       </footer>
     </section>
   );
 }
 
-// Mã trả trước được nhập ngay tại bước thanh toán. Máy nhận tiền chỉ mở sau khi chọn tiền mặt.
-export function KioskPayment({ pack, total, prints, code, setCode, onVoucher, bills, onBack, cashReady = false, ...cashProps }) {
-  const [method, setMethod] = useState(() => bills.length ? "cash" : "choice");
-  const { busy, error, cameraReady } = cashProps;
-  if (method === "cash")
-    return <CashPayment
-      {...cashProps}
-      cashReady={cashReady}
-      pack={pack}
-      total={total}
-      prints={prints}
-      bills={bills}
-      onBack={() => setMethod("choice")}
-    />;
-  return (
-    <section className="kiosk-flow pay-screen payment-choice-screen">
-      <header className="flow-head">
-        <Brand />
-        <h1>Chọn cách thanh toán</h1>
-        <p>{pack.name} · {prints} bản in · tổng {money(total)}</p>
-      </header>
-      <ErrorBox error={error} />
-      {!cameraReady && <p className="soft-note">Nhân viên cần chọn thư mục ảnh trong Cài đặt máy chụp trước khi thanh toán.</p>}
-      <div className="payment-choices">
-        <form className="payment-voucher" onSubmit={onVoucher}>
-          <PiTicketBold className="payment-icon" aria-hidden="true" />
-          <h2>Đã thanh toán tại quầy</h2>
-          <p>Nhập mã voucher 6 số nhân viên đã cấp.</p>
-          <label htmlFor="voucher-code">Mã voucher</label>
-          <input id="voucher-code" aria-label="Mã voucher" type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="••••••" />
-          <div className="voucher-keypad" aria-label="Bàn phím nhập mã voucher">
-            {["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"].map((key) =>
-              <button type="button" key={key} aria-label={key === "clear" ? "Xóa hết mã" : key === "back" ? "Xóa một số" : key}
-                onClick={() => setCode((value) => key === "clear" ? "" : key === "back" ? value.slice(0, -1) : (value + key).slice(0, 6))}>
-                {key === "clear" ? "Xóa" : key === "back" ? <PiBackspaceBold /> : key}
-              </button>
-            )}
-          </div>
-          <Button type="submit" disabled={busy || !cameraReady || code.length !== 6}>{busy ? "Đang kiểm tra…" : "Dùng mã voucher"}</Button>
-          <small>Voucher áp dụng gói và số bản in đã thanh toán tại quầy{prints > (Number(pack.prints) || 0) ? "; bản thêm chọn ở đây chỉ tính khi trả tiền mặt" : ""}.</small>
-        </form>
-        <div className="payment-cash">
-          <PiMoneyWavyDuotone className="payment-icon" aria-hidden="true" />
-          <h2>Tiền mặt</h2>
-          <p>{cashReady ? `Đút tiền vào máy nhận tiền. Khi đủ ${money(total)}, lượt chụp sẽ tự mở.` : "Đang chờ kết nối máy nhận tiền và máy chủ để mở phương thức này."}</p>
-          <Button type="button" disabled={busy || !cameraReady || !cashReady} onClick={() => setMethod("cash")}>Chọn tiền mặt <PiArrowRightBold aria-hidden="true" /></Button>
-        </div>
-      </div>
-      <footer className="flow-foot"><Button className="outline" disabled={busy} onClick={onBack}><PiArrowLeftBold aria-hidden="true" /> Quay lại số bản in</Button></footer>
-    </section>
-  );
-}
-
-// Trả tiền: máy nhận tiền chỉ nhận tờ tiền ở màn này. Đủ tiền thì tự mở lượt chụp. Chế độ thử
-// (chưa lắp máy nhận tiền) có nút bỏ qua và các nút giả lập đút tiền — lượt thử không tính tiền.
-function CashPayment({ pack, total, prints, bills, onBill, onPaid, onSkip, onBack, testMode, busy, error, cameraReady, cashReady }) {
+// Màn đọc tiền: máy nhận tiền chỉ nhận tờ tiền ở màn này, mỗi tờ được cộng ngay trên màn hình.
+// Đủ tiền thì tự mở lượt chụp. Chế độ thử (chưa lắp máy nhận tiền) có nút bỏ qua và các nút giả
+// lập đút tiền — lượt thử không tính tiền.
+export function KioskPayment({ pack, total, sheets, bills, onBill, onPaid, onSkip, onBack, onIdle, testMode, busy, error, cameraReady, cashReady }) {
   const [status, setStatus] = useState(billAcceptor.status);
   const [idle, setIdle] = useState(IDLE_SECONDS);
   const [simulated, setSimulated] = useState(0);
@@ -189,23 +227,23 @@ function CashPayment({ pack, total, prints, bills, onBill, onPaid, onSkip, onBac
     return () => clearInterval(timer);
   }, []);
   useEffect(() => {
-    if (!idle && !bills.length && !busy) onBack();
+    if (!idle && !bills.length && !busy) onIdle();
   }, [idle]);
   return (
     <section className="kiosk-flow pay-screen">
       <header className="flow-head">
         <h1>Đút tiền để bắt đầu chụp</h1>
-        <p>{pack.name} · {prints} bản in · đưa tờ tiền thẳng, không gấp</p>
+        <p>{pack.name} · {piecesLabel(pack, sheets)} · đưa tờ tiền thẳng, không gấp</p>
       </header>
       <ErrorBox error={error} />
-      {!cameraReady && <p className="soft-note">Chưa đọc được thư mục ảnh máy ảnh. Máy nhận tiền đang khóa; nhờ nhân viên vào Cài đặt máy chụp để cấp quyền thư mục.</p>}
+      {!cameraReady && <p className="soft-note">{FOLDER_NOTE} Máy nhận tiền đang khóa.</p>}
       <div className="pay-board">
         <div>
           <span>Tổng tiền</span>
           <strong>{money(total)}</strong>
         </div>
         <div>
-          <span>Đã nhận</span>
+          <span>Đã nhận{bills.length ? ` · ${bills.length} tờ tiền` : ""}</span>
           <strong className="pay-received">{money(received)}</strong>
         </div>
         <div className={remaining ? "pay-due" : "pay-done"}>
@@ -217,7 +255,7 @@ function CashPayment({ pack, total, prints, bills, onBill, onPaid, onSkip, onBac
         <PiMoneyWavyDuotone aria-hidden="true" />
         <p>
           {busy
-            ? "Đang mở lượt chụp…"
+            ? "Đã đủ tiền — đang mở lượt chụp…"
             : received > total
               ? `Bạn đã đút dư ${money(received - total)} — máy không trả tiền thừa, nhờ nhân viên hỗ trợ nhé.`
               : "Máy nhận tiền ở phía dưới màn hình. Máy nhận các tờ 10.000 – 500.000 đ."}
@@ -246,7 +284,7 @@ function CashPayment({ pack, total, prints, bills, onBill, onPaid, onSkip, onBac
       )}
       <footer className="flow-foot">
         <Button className="outline" disabled={busy || bills.length > 0} onClick={onBack}>
-          <PiArrowLeftBold aria-hidden="true" /> {bills.length ? `Đã nhận tiền (${idle}s)` : `Đổi cách thanh toán (${idle}s)`}
+          <PiArrowLeftBold aria-hidden="true" /> {bills.length ? `Đã nhận tiền (${idle}s)` : `Quay lại (${idle}s)`}
         </Button>
         {testMode && (
           <Button className="kiosk-next" disabled={busy} onClick={onSkip}>

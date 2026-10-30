@@ -8,6 +8,7 @@ import {
   frameCapacity,
   sharpenRect,
   frameOutputSize,
+  instaxPrint,
   loadFrameImage,
   packPrintSheets,
   photoLayout,
@@ -17,6 +18,7 @@ import { qrImage } from "../qr-image.js";
 import { fetchMediaBlob } from "../media-delivery.js";
 import { jpegDataUrl } from "../album/encode-jpeg.js";
 import { printPackUpload } from "../album/print-upload.js";
+import { drawStickers, filterPhotos, loadStickers, stickerArea } from "./decor.js";
 
 // Ghép khung và in ngay tại máy chụp (khách chọn ảnh → chọn khung → lấy ảnh ở khay in).
 // Một "tấm" (shot): { key, preview: Blob | URL, image?: Blob gốc chưa lật, mirrored, serverId? }.
@@ -67,6 +69,7 @@ const release = (image) => {
 // Khung hợp với số ảnh khách chọn: đúng số ô và đúng khổ in của gói; không có thì nới dần
 // (đúng số ô mọi khổ → mọi khung, ảnh được lặp lại cho đủ ô). Xếp theo thứ tự chủ đề.
 export function frameCandidates(frames, { count, printSize, themeOrder = [] }) {
+  const size = (f) => f.printSize || "full";
   const usable = frames.filter((f) => frameCapacity(f) > 0);
   const rank = (f) => {
     const index = themeOrder.indexOf(f.themeName?.trim());
@@ -76,29 +79,36 @@ export function frameCandidates(frames, { count, printSize, themeOrder = [] }) {
     rank(a) - rank(b) ||
     String(a.themeName || "").localeCompare(String(b.themeName || ""), "vi") ||
     compareFrameOrder(a, b));
-  const exact = sorted.filter((f) => frameCapacity(f) === count && (f.printSize || "full") === (printSize || "full"));
+  const sameSize = sorted.filter((f) => size(f) === (printSize || "full"));
+  const exact = sameSize.filter((f) => frameCapacity(f) === count);
   if (exact.length) return exact;
+  // Instax có tỉ lệ riêng (3 : 4): dùng khung Instax khác số ô trước khung 10 × 15.
+  if (printSize === "instax" && sameSize.length) return sameSize;
   const sameCount = sorted.filter((f) => frameCapacity(f) === count);
   return sameCount.length ? sameCount : sorted;
 }
 
 // Ghép nhanh để xem trên màn hình (ảnh 1600 px), ảnh lặp lại khi khung nhiều số ảnh hơn số ảnh đã
 // chọn. qrUrl: link album của khách (vùng QR trên khung). placeholders: đang chọn ảnh — ô chưa có ảnh
-// để trống, hiện số thứ tự (không lặp ảnh).
-export async function composePreview(frame, images, width = 900, qrUrl = "", { placeholders = false } = {}) {
+// để trống, hiện số thứ tự (không lặp ảnh). filter: công thức màu ảnh, stickers: nhãn dán (decor.js).
+export async function composePreview(frame, images, width = 900, qrUrl = "",
+  { placeholders = false, filter = null, stickers = [] } = {}) {
   const layout = photoLayout(frame);
   const [background, qr] = await Promise.all([
     loadFrameImage(frame.image),
     layout.marks.some((m) => m.kind === "qr") && qrUrl ? qrImage(qrUrl).catch(() => null) : null,
+    loadStickers(stickers),
   ]);
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = Math.round((width * background.naturalHeight) / background.naturalWidth);
   const filled = layout.slots.map((_, i) =>
     placeholders ? images[i] || null : images.length ? images[i % images.length] : null);
-  composeLayout(canvas, background, layout.slots, filled, [], [], { frame: layout, qr });
+  // Ảnh trong ô → màu ảnh → mã QR / ngày in → nhãn dán (nhãn dán không bị đổi màu).
+  composeLayout(canvas, background, layout.slots, filled, [], [], { frame: { ...layout, marks: [] } });
+  const ctx = canvas.getContext("2d");
+  filterPhotos(ctx, layout, filter, canvas.width, canvas.height);
   if (placeholders) {
-    const ctx = canvas.getContext("2d");
     const empty = (slot, number) => {
       const r = slotRect(slot, canvas.width, canvas.height);
       ctx.fillStyle = "#f6e9ec";
@@ -115,12 +125,15 @@ export async function composePreview(frame, images, width = 900, qrUrl = "", { p
       for (const copy of layout.copies) if (copy.of === i) empty(copy.slot, i + 1);
     });
   }
+  drawMarks(ctx, layout, qr, canvas.width, canvas.height);
+  drawStickers(ctx, stickers, stickerArea(layout), canvas.width, canvas.height);
   return canvas;
 }
 
 // Ghép bản in: đúng kích thước in của khung, mỗi ô vẽ từ ảnh chất lượng cao, lần lượt từng ảnh
-// (ảnh 26 MP giải mã ~100 MB nên không giữ nhiều ảnh cùng lúc).
-export async function renderPrintFrame(frame, shots, token, qrUrl = "") {
+// (ảnh 26 MP giải mã ~100 MB nên không giữ nhiều ảnh cùng lúc). filter / stickers: màu ảnh và nhãn
+// dán khách chọn, vẽ giống hệt ảnh xem trước.
+export async function renderPrintFrame(frame, shots, token, qrUrl = "", { filter = null, stickers = [] } = {}) {
   const layout = photoLayout(frame);
   const background = await loadFrameImage(frame.image);
   const canvas = document.createElement("canvas");
@@ -147,6 +160,7 @@ export async function renderPrintFrame(frame, shots, token, qrUrl = "") {
       for (const copy of layout.copies)
         if (copy.of === index) drawSlot(ctx, source, slotRect(copy.slot, canvas.width, canvas.height));
     }
+    filterPhotos(ctx, layout, filter, canvas.width, canvas.height);
     // Làm nét nhẹ các ô ảnh (bản in 300 dpi), trước khi vẽ mã QR / ngày in.
     for (const slot of [...layout.slots, ...layout.copies.map((c) => c.slot)])
       sharpenRect(ctx, slotRect(slot, canvas.width, canvas.height));
@@ -154,6 +168,10 @@ export async function renderPrintFrame(frame, shots, token, qrUrl = "") {
       const qr = layout.marks.some((m) => m.kind === "qr") && qrUrl
         ? await qrImage(qrUrl).catch(() => null) : null;
       drawMarks(ctx, layout, qr, canvas.width, canvas.height);
+    }
+    if (stickers.length) {
+      await loadStickers(stickers);
+      drawStickers(ctx, stickers, stickerArea(layout), canvas.width, canvas.height);
     }
   } finally {
     for (const image of sources.values()) release(image);
@@ -163,11 +181,18 @@ export async function renderPrintFrame(frame, shots, token, qrUrl = "") {
 
 // Tờ in 10 × 15 cm cho cả lượt: khung nguyên tờ (kể cả khung nhỏ phủ cả tờ — 2 dải, máy in cắt đôi)
 // in `prints` tờ; khung dải cũ (một dải) ghép 2 dải / tờ.
-export async function printSheets(frameCanvas, frame, prints) {
+// Khổ Instax (printSize của vé): mỗi tấm là một ảnh 600 × 800 riêng, máy Instax in từng tấm.
+export async function printSheets(frameCanvas, frame, prints, printSize = frame.printSize) {
   if (!prints) return [];
-  const printSize = frame.sheet ? "full" : frame.printSize || "full";
-  const copies = printSize === "strip" ? prints * 2 : prints;
-  const outputs = Array.from({ length: copies }, () => ({ canvas: frameCanvas, printSize }));
+  if (printSize === "instax") {
+    const image = instaxPrint(frameCanvas);
+    const data = await jpegDataUrl(image, 0.95);
+    image.width = image.height = 0;
+    return Array.from({ length: prints }, () => data);
+  }
+  const layout = frame.sheet ? "full" : frame.printSize || "full";
+  const copies = layout === "strip" ? prints * 2 : prints;
+  const outputs = Array.from({ length: copies }, () => ({ canvas: frameCanvas, printSize: layout }));
   const sheets = packPrintSheets(outputs);
   const images = [];
   for (const sheet of sheets) {

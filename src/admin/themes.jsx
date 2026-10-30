@@ -4,7 +4,7 @@ import { api, assetUrl, formatDate } from "../api";
 import { Button, ErrorBox, useStudio, useToast } from "../studio";
 import { TableHeading } from "./table-heading";
 
-const SIZES = { full: "10 × 15", strip: "5 × 15" };
+const SIZES = { full: "10 × 15 cm", strip: "5 × 15 cm", instax: "Instax mini" };
 const searchable = (value) =>
   String(value || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/đ/gi, "d").toLowerCase();
 
@@ -168,7 +168,7 @@ export function ThemesManager({ notify, onOpenFrames }) {
                     <strong>{theme.frames}</strong> khung
                     <small>
                       {theme.slots} ô ảnh
-                      {theme.sizes.length > 0 && ` · ${theme.sizes.map((s) => SIZES[s] || s).join(", ")} cm`}
+                      {theme.sizes.length > 0 && ` · ${theme.sizes.map((s) => SIZES[s] || s).join(", ")}`}
                       {theme.activeFrames < theme.frames && ` · ${theme.frames - theme.activeFrames} khung đang tắt`}
                     </small>
                   </td>

@@ -137,6 +137,8 @@ function adminPage(path) {
     case "/api/admin/themes":
     case "/api/admin/stickers":
     case "/api/admin/users":
+    // Quản lý máy: chưa có print agent Instax nào báo về.
+    case "/api/admin/print-jobs/printers":
       return [];
     case "/api/admin/screens":
       return [
@@ -876,7 +878,7 @@ const ADMIN_PAGES = [
   "Màn hình chờ",
   "Chủ đề",
   "Khung ảnh",
-  "Bảng giá",
+  "Khổ ảnh & bảng giá",
   "Nhãn dán",
   "Quản lý filter",
   "Tài khoản",

@@ -61,6 +61,16 @@ dải ảnh nhỏ bên dưới gồm ảnh đã ghép khung, video tua nhanh r�
 khung và in đều làm ở máy chụp. Album tự làm mới 10 giây/lần khi đang mở để nhận ảnh đồng bộ muộn;
 nút **Làm mới ảnh** cập nhật ngay. Giao diện dùng nâu espresso **#4b332a** trên nền kem sáng.
 
+Màn chọn ảnh của máy chụp (150 giây) có 3 mục bên cạnh khung xem trước:
+
+- **Chọn ảnh**: chọn đủ số ảnh của gói. Khi đã đủ, máy tự mở mục **Màu ảnh**.
+- **Màu ảnh**: một filter áp cho mọi ảnh trong khung, lấy từ **Quản lý filter** (gồm "Gốc", filter của tiệm, rồi bộ lọc có sẵn đang bật).
+- **Nhãn dán**: nhãn dán của tiệm trước, rồi bộ biểu tượng có sẵn. Khách kéo nhãn dán trên khung, chụm/mở 2 ngón hoặc bấm **Nhỏ hơn / To hơn** để đổi cỡ.
+
+Màu chỉ áp lên ô ảnh, không áp lên nền khung, mã QR và nhãn dán. Ảnh ở màn QR, ảnh ghép trong album và tờ in vẽ cùng một cách (`src/kiosk/decor.js`).
+Khung khổ nhỏ có 2 dải giống nhau trên một tờ thì nhãn dán tự lặp sang dải thứ hai, để 2 dải cắt ra giống nhau.
+Lựa chọn được lưu cùng phiên chụp, nên tải lại trang vẫn giữ.
+
 Quản trị khung: ảnh xem trước gọn hơn, nút **↑ / ↓** lưu thứ tự ngay trong bộ mà không mở hộp sửa.
 Xóa từ khóa và chọn tất cả trạng thái để sắp xếp toàn bộ; vẫn lọc được theo chủ đề.
 Khung trùng tên cùng bộ có nhãn `pink · 01`, `pink · 02` ổn định qua lọc/sắp xếp;
@@ -134,18 +144,30 @@ React. Cách triển khai và cấu hình: `CLOUDFLARE.md`.
 Máy chụp: nên mở trình duyệt ở chế độ toàn màn hình (nút “Bật / tắt toàn màn hình” trong
 “Cài đặt máy chụp (nhân viên)” ở màn chờ) và cho phép dùng camera.
 
-Luồng khách: **Chạm để bắt đầu → chọn khổ ảnh/gói → chọn số bản in → chọn cách thanh toán**.
-Gói đã kèm số bản in ghi trong Bảng giá; mỗi bản thêm cộng theo “Giá in thêm” trong quản trị.
-Mã voucher 6 số do nhân viên tạo sau khi đã thu tiền tại quầy được nhập ngay ở màn thanh toán;
-gói và số bản in trên mã đã thanh toán là dữ liệu áp dụng khi chụp. Lựa chọn tiền mặt được hiển
-thị nhưng đang khóa vì backend hiện chưa có API `/api/kiosk/sale` để xác nhận và mở lượt chụp.
+Luồng khách theo **loại phòng** (Quản trị → Quản lý máy → Loại phòng):
+
+- **Phòng nhập mã**: khách chuyển khoản tại quầy, nhân viên tạo mã 6 số và đưa cho khách.
+  Chạm để bắt đầu → nhập mã → vào màn chụp luôn; gói và số bản in lấy từ mã.
+- **Phòng đút tiền**: Chạm để bắt đầu → chọn khổ ảnh/gói → chọn số bản in → **Thanh toán tiền
+  mặt** mở ngay màn đọc tiền. Mỗi tờ tiền máy nhận được cộng ngay trên màn hình; đủ tiền là vào
+  màn chụp. Màn chọn khổ ảnh có nút phụ “Đã có mã chụp” cho khách đã chuyển khoản ở quầy.
+  Chưa lắp máy đọc tiền thì bật “Chế độ thử” của phòng để thử bằng nút giả lập.
+
+Máy in đi theo khổ ảnh của gói: khổ to / khổ nhỏ in ra DNP DS-RX1, khổ **Instax mini** in ra máy
+Instax mini Link 3 cạnh máy chụp (qua print agent, xem README của `photobooth-be`). Khổ Instax chỉ mở
+khi máy in còn kết nối và đủ phim; khung Instax là ảnh dọc 1200 × 1600, mỗi tấm in 600 × 800.
+
+Số bản in đếm theo tờ khách cầm trên tay, tối thiểu 2 tờ: khổ nhỏ là 1 tờ 10 × 15 cắt đôi
+(= 2 tờ nhỏ, mỗi lần bấm + thêm 2 tờ nhỏ), khổ to tối thiểu 2 tờ. Gói đã kèm số tờ ghi trong
+Quản trị → Khổ ảnh & bảng giá; tờ thêm cộng theo “Giá in thêm”. Máy chủ tính lại tổng tiền khi
+mở lượt chụp (`/api/kiosk/sale`).
 
 ## Fujifilm X-T3 / X-S10 / X-S20: chụp bằng dây bấm
 
 Kiosk nhận JPEG từ thư mục trên máy tính khi khách bấm dây remote. USB dùng để truyền ảnh qua
 FUJIFILM X Acquire; micro-HDMI + thẻ ghi hình USB dùng cho hình xem trước. Kiosk không bật nguồn
-máy ảnh và không phát lệnh chụp. Khi khách nhập mã voucher đã thanh toán ở quầy, phần mềm mở
-lượt chụp, sau đó khách bấm dây để chụp.
+máy ảnh và không phát lệnh chụp. Khi khách nhập mã chụp đã thanh toán ở quầy (hoặc đút đủ tiền
+mặt), phần mềm mở lượt chụp, sau đó khách bấm dây để chụp.
 
 [Hướng dẫn Fujifilm X-T3](https://fujifilm-dsc.com/en/manual/x-t3/connections/computer/index.html)
 và [bảng tương thích X Acquire](https://www.fujifilm-x.com/en-gb/support/compatibility/software/x-acquire/)
@@ -194,9 +216,8 @@ phiên bản và phần mềm Fujifilm đang cài, nên cần thử trên đúng
 Nhân viên bật PC, đăng nhập Windows, kiểm tra máy Fujifilm ON và cáp USB/HDMI/dây bấm, sau đó
 kiểm tra FUJIFILM X Acquire đã kết nối, Chrome mở kiosk và chụp thử một tấm. Windows Startup
 chỉ chạy sau khi đăng nhập; trước khi mở X Acquire, tác vụ này đặt thư mục lưu ảnh về
-`C:\PhotoBooth\Fujifilm`. Máy nhận tiền cần được cài đúng cổng/giao thức và backend cần xác nhận
-được số tiền trước khi mở phương thức tiền mặt. Hiện nhân viên có thể thu tiền tại quầy và cấp
-voucher; kiosk chỉ nhận tiền thật sau khi đường ảnh, máy nhận tiền và API bán lượt đều qua bài thử.
+`C:\PhotoBooth\Fujifilm`. Máy nhận tiền cần được cài đúng cổng/giao thức; khi chưa lắp máy nhận
+tiền, bật chế độ thử của phòng để thử luồng tiền mặt bằng các nút giả lập (không tính doanh thu).
 
 X-T3, X-S10 và X-S20 dùng cùng phần mềm và thư mục ảnh trong kiosk; khi đổi thân máy, kiểm tra
 lại chế độ USB tether, đầu dây remote, hình HDMI và chụp thử. Việc dây bấm, USB, HDMI và flash

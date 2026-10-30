@@ -14,6 +14,7 @@ import {
   Download,
   LoaderCircle,
   Monitor,
+  Printer,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { api, money } from "../api";
@@ -52,6 +53,52 @@ const RESOURCE_ICONS = {
   users: Users,
 };
 
+const clock = (value) =>
+  new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+// Hộp phim Instax mini có 10 tấm: còn ≤ 3 tấm thì nhắc thay phim.
+const FILM_LOW = 3;
+const AGENT_SIZES = { full: "DNP", strip: "DNP", instax: "Instax" };
+// Chương trình in tự động (print agent) và máy Instax của từng chi nhánh.
+function PrinterStatus({ printers }) {
+  return (
+    <section className="panel printer-status" aria-label="Máy in">
+      <h3>
+        <Printer size={17} aria-hidden="true" /> Máy in tự động
+      </h3>
+      {printers.map(({ branch, at, instax, agent }) => {
+        const low = instax?.ready && Number.isInteger(instax.film) && instax.film <= FILM_LOW;
+        const kinds = [...new Set((agent?.printSizes || []).map((s) => AGENT_SIZES[s]))].join(" + ");
+        return (
+          <div key={branch} className="printer-status-branch">
+            {agent && (
+              <p className={agent.running ? "is-ready" : "is-warn"}>
+                <strong>{branch}</strong> · Chương trình in tự động{" "}
+                {agent.running
+                  ? `đang chạy${kinds ? ` (${kinds})` : ""}`
+                  : "không chạy — lệnh in sẽ không tự in, bật lại print-agent trên máy cạnh máy in"}
+                <small> · báo lúc {clock(agent.at)}</small>
+              </p>
+            )}
+            {instax && (
+              <p className={instax.ready && !low ? "is-ready" : "is-warn"}>
+                <strong>{agent ? "Máy Instax mini Link 3" : branch}</strong> ·{" "}
+                {instax.ready ? (low ? "Sắp hết phim — chuẩn bị hộp phim mới" : "Sẵn sàng") : instax.message}
+                {Number.isInteger(instax.film) && ` · còn ${instax.film} tấm phim`}
+                {Number.isInteger(instax.battery) && ` · pin ${instax.battery}%${instax.charging ? " (đang sạc)" : ""}`}
+                {at && <small> · báo lúc {clock(at)}</small>}
+              </p>
+            )}
+          </div>
+        );
+      })}
+      <small className="muted">
+        Máy chụp chỉ bán khổ Instax khi máy in sẵn sàng và còn ít nhất 2 tấm phim; không cho chọn quá số phim còn lại.
+        In lỗi (hết phim, mất kết nối) sẽ báo ngay trên trang quản trị.
+      </small>
+    </section>
+  );
+}
+
 export function ResourceManager({ resource, notify, me }) {
   const toast = useToast();
   const { settings = {}, reload: reloadCatalog } = useStudio();
@@ -65,6 +112,8 @@ export function ResourceManager({ resource, notify, me }) {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
+  // Máy in Instax cạnh máy chụp (print agent báo về mỗi phút): sẵn sàng, số phim, pin.
+  const [printers, setPrinters] = useState([]);
   // Khung ảnh có trang riêng (admin/frames.jsx); đây là máy, gói chụp và tài khoản.
   const isCatalog = resource === "packages";
   const canManage = me?.role === "admin";
@@ -78,6 +127,8 @@ export function ResourceManager({ resource, notify, me }) {
   );
   const load = async () => {
     setLoading(true);
+    if (resource === "rooms")
+      api("/admin/print-jobs/printers").then(setPrinters, () => setPrinters([]));
     try {
       setItems(await api(`/admin/${resource}`));
     } catch (e) {
@@ -102,7 +153,8 @@ export function ResourceManager({ resource, notify, me }) {
     setEdit(item);
   };
   const fields = definitions[resource];
-  function newItem() {
+  // Gói mới theo khổ ảnh: khổ nhỏ kèm 1 tờ (cắt đôi = 2 tờ nhỏ), khổ to kèm 2 tờ.
+  function newItem(printSize = "full") {
     openEditor(
       Object.fromEntries([
         ...fields.map(([key, , type]) => [
@@ -116,6 +168,8 @@ export function ResourceManager({ resource, notify, me }) {
                   ? 10
                   : key === "selectCount"
                     ? 4
+                    : key === "prints"
+                      ? printSize === "strip" ? 1 : 2
               : 0
             : type === "color"
               ? key === "color"
@@ -136,7 +190,7 @@ export function ResourceManager({ resource, notify, me }) {
                       : type === "role"
                   ? "staff"
                   : type === "printSize"
-                    ? "full"
+                    ? printSize
                     : "",
         ]),
         ["active", true],
@@ -210,6 +264,7 @@ export function ResourceManager({ resource, notify, me }) {
           note="Liên kết máy chụp có hạn 1 năm, chỉ gửi cho nhân viên."
         />
       )}
+      {resource === "rooms" && printers.length > 0 && <PrinterStatus printers={printers} />}
       {isCatalog ? (
         <CatalogToolbar
           resource={resource}
@@ -219,7 +274,7 @@ export function ResourceManager({ resource, notify, me }) {
           onQueryChange={setQuery}
           status={status}
           onStatusChange={setStatus}
-          onCreate={newItem}
+          onCreate={() => newItem()}
           loading={loading}
         />
       ) : (
@@ -230,7 +285,7 @@ export function ResourceManager({ resource, notify, me }) {
               : `${items.length} mục trong danh sách`}
           </p>
           {canManage && (
-            <Button onClick={newItem}>
+            <Button onClick={() => newItem()}>
               <Plus size={16} /> Thêm mới
             </Button>
           )}
@@ -247,9 +302,15 @@ export function ResourceManager({ resource, notify, me }) {
           <section className="panel extra-price-panel">
             <div>
               <h3>Giá in thêm tờ ảnh</h3>
-              <p className="muted">Khách mua thêm tờ in 10 × 15 cm tại quầy (Đơn hàng → In ảnh → Thêm lượt in).</p>
+              <p className="muted">
+                Giá mỗi tờ 10 × 15 cm (khổ nhỏ: mỗi tờ = 2 tờ nhỏ) và mỗi tấm Instax khi khách chọn thêm
+                bản in ở máy chụp hoặc mua thêm tại quầy (Đơn hàng → In ảnh → Thêm lượt in).
+              </p>
             </div>
-            <PriceEditor price={settings.extraPrintPrice || 0} onSaved={() => reloadCatalog?.()} />
+            <div className="extra-price-pair">
+              <PriceEditor price={settings.extraPrintPrice || 0} onSaved={() => reloadCatalog?.()} />
+              <PriceEditor instax price={settings.extraInstaxPrice || 0} onSaved={() => reloadCatalog?.()} />
+            </div>
           </section>
         )}
         <PackageCatalog
@@ -320,9 +381,9 @@ export function ResourceManager({ resource, notify, me }) {
                             .join(" · ") || "Chưa nhập thông tin máy"}
                         </small>
                         <small className="room-flip">
-                          Chế độ lật ảnh: {FLIP_LABELS[item.flip || "device"]} ·{" "}
-                          {item.payment === "cash" ? "Khách đút tiền tại máy" : "Khách mua mã ở quầy"}
-                          {item.paymentTest ? " · đang bật chế độ thử" : ""}
+                          {item.payment === "cash" ? "Phòng đút tiền" : "Phòng nhập mã"}
+                          {item.payment === "cash" && item.paymentTest ? " (đang bật chế độ thử)" : ""} ·{" "}
+                          Chế độ lật ảnh: {FLIP_LABELS[item.flip || "device"]}
                         </small>
                       </>
                     ) : (

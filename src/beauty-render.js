@@ -84,7 +84,7 @@ export const filterCss = (a) =>
   a?.custom && String(a.filter).startsWith(CUSTOM_FILTER)
     ? customCss(a.custom)
     : FILTER_CSS[a?.filter];
-const filterSteps = (a) =>
+export const filterSteps = (a) =>
   a?.custom && String(a.filter).startsWith(CUSTOM_FILTER)
     ? customSteps(a.custom)
     : FILTER_STEPS[a?.filter];
@@ -160,6 +160,21 @@ function colorFilter(data, steps) {
     data[o] = r;
     data[o + 1] = g;
     data[o + 2] = b;
+  }
+}
+// Áp filter màu lên một vùng của canvas (vd. từng ô ảnh trong khung, chừa nền khung và nhãn dán).
+// Đọc theo từng dải 256 dòng để ảnh lớn không cần thêm một bản RGBA cả ảnh.
+export function filterRegion(ctx, x, y, w, h, steps) {
+  if (!steps?.length) return;
+  const left = Math.max(0, Math.floor(x)),
+    top = Math.max(0, Math.floor(y));
+  const width = Math.min(ctx.canvas.width, Math.ceil(x + w)) - left,
+    bottom = Math.min(ctx.canvas.height, Math.ceil(y + h));
+  if (width <= 0) return;
+  for (let row = top; row < bottom; row += 256) {
+    const pixels = ctx.getImageData(left, row, width, Math.min(256, bottom - row));
+    colorFilter(pixels.data, steps);
+    ctx.putImageData(pixels, left, row);
   }
 }
 export const isNeutral = (a) =>
@@ -409,15 +424,8 @@ export function applyBeauty(source, faces, adjust) {
       ctx.restore();
     }
   }
-  const steps = filterSteps(a);
-  if (steps?.length) {
-    // Colour filters are per-pixel operations. Bounded row buffers preserve
-    // their exact formula while avoiding another 104 MB RGBA readback.
-    for (let y = 0; y < h; y += 256) {
-      const pixels = ctx.getImageData(0, y, w, Math.min(256, h - y));
-      colorFilter(pixels.data, steps);
-      ctx.putImageData(pixels, 0, y);
-    }
-  }
+  // Colour filters are per-pixel operations. Bounded row buffers preserve
+  // their exact formula while avoiding another 104 MB RGBA readback.
+  filterRegion(ctx, 0, 0, w, h, filterSteps(a));
   return out;
 }

@@ -432,4 +432,14 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
+  /* Các bước khách bấm trên máy chụp, để lễ tân đọc lại cho khách. */
+  .admin-shell .ticket-steps {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #f6ebe1;
+    color: var(--wine);
+    font-size: 13px;
+    line-height: 1.6;
+  }
 }

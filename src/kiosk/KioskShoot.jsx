@@ -111,6 +111,7 @@ export function KioskShoot({
           {phase === "shoot" && !ending && taken > 0 && (
             <button type="button" className="shoot-end" onClick={onEnd} aria-label="Chụp xong, chọn ảnh">
               <PiCheckBold aria-hidden="true" />
+              <span>Chụp xong</span>
             </button>
           )}
       </aside>

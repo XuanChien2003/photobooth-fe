@@ -10,6 +10,10 @@ import { Button, ErrorBox, useToast } from "../studio";
 import { CounterTicket } from "../counter-ticket";
 import { ExtraPrints } from "../extra-prints";
 
+// Khổ in của đơn: DNP 10 × 15 (to / nhỏ cắt đôi) hoặc Instax mini.
+const SIZE_NAMES = { full: "Lớn", strip: "Nhỏ", instax: "Instax" };
+const SIZE_CM = { full: "10 × 15 cm", strip: "5 × 15 cm", instax: "Instax mini" };
+
 const paymentLabel = (method) => method === "cash" ? "Tiền mặt" : method === "transfer" ? "Chuyển khoản" : "—";
 const albumUrl = (booking) => booking.accessToken ? `${window.location.origin}/album/${booking.accessToken}` : "";
 
@@ -130,7 +134,7 @@ function PrintOrderDialog({ booking, onClose, onExtra, onPrinted }) {
             <img src={assetUrl(`${job.image}?size=thumbnail`)} alt={`Ảnh in của đơn ${booking.code}`} />
             <dl>
               <div><dt>Khung ảnh</dt><dd>{job.frameName || "Khung đã ghép"}</dd></div>
-              <div><dt>Kích thước</dt><dd>{booking.printSize === "strip" ? "5 × 15 cm" : "10 × 15 cm"}</dd></div>
+              <div><dt>Kích thước</dt><dd>{SIZE_CM[booking.printSize] || SIZE_CM.full}</dd></div>
               <div><dt>Số tờ trong file</dt><dd>{job.sheetCount || 1}</dd></div>
             </dl>
             <label>Số bản in lại
@@ -211,7 +215,7 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
     const rows = [
       ["Mã đơn", "Khách", "Điện thoại", "Thời gian", "Gói", "Chủ đề", "Máy", "Kích thước", "Đã gửi in", "Tổng tiền", "Thực nhận", "Thanh toán", "Trạng thái"],
       ...filtered.map((booking) => [booking.code, booking.name, booking.phone, formatDateTime(booking.createdAt), booking.packageName,
-        booking.latestPrint?.frameName || booking.frameName || "", booking.roomName, booking.printSize === "strip" ? "Nhỏ" : "Lớn",
+        booking.latestPrint?.frameName || booking.frameName || "", booking.roomName, SIZE_NAMES[booking.printSize] || SIZE_NAMES.full,
         booking.printSheets || 0, canSeeMoney ? booking.total : "", canSeeMoney ? (booking.paid ? booking.total : 0) : "",
         paymentLabel(booking.paymentMethod), labels[booking.status]]),
     ];
@@ -262,7 +266,7 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
           </div>
           <dl className="order-details">
             <div><dt>Gói:</dt><dd>{booking.packageName || "—"}</dd></div><div><dt>Chủ đề:</dt><dd>{job?.frameName || booking.frameName || "—"}</dd></div>
-            <div><dt>Kích thước:</dt><dd>{booking.printSize === "strip" ? "Nhỏ" : "Lớn"}</dd></div><div><dt>Số lượng:</dt><dd>{booking.printSheets || 0}/{booking.prints ?? 1} tờ</dd></div>
+            <div><dt>Kích thước:</dt><dd>{SIZE_NAMES[booking.printSize] || SIZE_NAMES.full}</dd></div><div><dt>Số lượng:</dt><dd>{booking.printSheets || 0}/{booking.prints ?? 1} {booking.printSize === "instax" ? "tấm" : "tờ"}</dd></div>
           </dl>
           {canSeeMoney && <dl className="order-pricing"><div><dt>Đơn giá:</dt><dd>{money((booking.total || 0) + (booking.discount || 0))}</dd></div>
             <div><dt>Giảm giá:</dt><dd>{money(booking.discount || 0)}</dd></div><div><dt>Tổng đơn:</dt><dd>{money(booking.total)}</dd></div></dl>}

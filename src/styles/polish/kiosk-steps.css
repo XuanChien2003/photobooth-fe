@@ -249,6 +249,21 @@
   }
   .kiosk-size.full .kiosk-size-art i { width: 44px; }
   .kiosk-size.strip .kiosk-size-art i { width: 24px; }
+  /* Thẻ Instax mini: ảnh nhỏ trên thẻ trắng, lề dưới dày */
+  .kiosk-size.instax .kiosk-size-art {
+    padding: 8px 14px;
+  }
+  .kiosk-size.instax .kiosk-size-art i {
+    width: 62px;
+    border: 6px solid #fffaf3;
+    border-bottom-width: 22px;
+  }
+  .kiosk-size-off {
+    color: #8a3b2c;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 600;
+  }
 
   /* Số bản in: nút tròn kiểu sticker, số lớn serif */
   .kiosk-counter {
@@ -303,10 +318,31 @@
     gap: 22px;
     margin: auto;
   }
+  /* Đơn vị dưới bộ đếm: "tờ nhỏ · mỗi người một tờ…" */
+  .print-unit {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    margin: -12px 0 0;
+    color: var(--mellow-ink);
+    font-size: 18px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .print-unit small {
+    color: var(--mellow-muted);
+    font-size: 14px;
+    font-weight: 400;
+  }
   .size-screen .kiosk-step-nav,
   .print-screen .kiosk-step-nav {
     width: min(550px, 100%);
     margin-inline: auto;
+  }
+  /* Phòng đút tiền: Quay lại · Đã có mã chụp · Tiếp tục */
+  .size-screen .kiosk-step-nav:has(> :nth-child(3)) {
+    grid-template-columns: 1fr 1.2fr 1.6fr;
+    width: min(820px, 100%);
   }
 
   /* Back / Next */

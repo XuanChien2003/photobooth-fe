@@ -77,7 +77,7 @@ function FilterEditor({ filter, sample, onSample, busy, onClose, onSave }) {
             </div>
             <label className="checkbox">
               <input type="checkbox" checked={edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked })} />
-              Kích hoạt (khách thấy filter này khi chỉnh ảnh)
+              Kích hoạt (khách thấy filter này ở mục “Màu ảnh” trên máy chụp)
             </label>
           </div>
           <Compare src={sample} css={customCss(edit)} />
@@ -167,7 +167,7 @@ export function FiltersManager({ notify }) {
         <div className="section-title-row">
           <div>
             <h3>Filter tự tạo của tiệm</h3>
-            <p className="muted">Khách thấy các filter đang kích hoạt ở mục “Màu ảnh” khi chỉnh ảnh. Ảnh xem trước, ảnh tải về và ảnh in cùng một màu.</p>
+            <p className="muted">Khách thấy các filter đang kích hoạt ở mục “Màu ảnh” trên màn chọn ảnh của máy chụp. Màu chỉ áp lên ảnh trong khung; ảnh xem trước, ảnh trong album và ảnh in cùng một màu.</p>
           </div>
           <Button onClick={() => setEdit({ id: newId(), name: "", ...NEUTRAL_CUSTOM, active: true, isNew: true })}>
             <Plus size={16} /> Thêm mới
@@ -207,7 +207,7 @@ export function FiltersManager({ notify }) {
       </section>
       <section className="panel kiosk-content-section">
         <h3>Bộ lọc có sẵn</h3>
-        <p className="muted">Chọn các bộ lọc có sẵn khách được phép dùng.</p>
+        <p className="muted">Chọn các bộ lọc có sẵn khách được phép dùng. Chỉ bật “Gốc” và không có filter tự tạo thì máy chụp ẩn mục “Màu ảnh”.</p>
         {!enabled ? (
           <p className="muted">Đang tải…</p>
         ) : (

@@ -284,6 +284,10 @@ export function composeLayout(canvas, frameImage, slots, images, transforms, dec
 
 // ─── Bộ chủ đề (nhiều khung cùng themeName) & xuất tờ in DNP 10 × 15 cm ───
 export const SHEET = { w: 1200, h: 1800 }; // 4 × 6 inch @ 300 pixels/inch
+// Khung Instax mini thiết kế ở 1200 × 1600 (3 : 4, ảnh ghép trong album nét hơn); máy Instax mini
+// Link 3 in ảnh dọc 600 × 800.
+export const INSTAX_FRAME = { w: 1200, h: 1600 };
+export const INSTAX_PRINT = { w: 600, h: 800 };
 
 // themeOrder: tên chủ đề theo thứ tự quản trị sắp ở Thiết lập → Chủ đề (chủ đề khác xếp sau).
 export function groupFramePacks(frames, themeOrder = []) {
@@ -313,8 +317,9 @@ export function groupFramePacks(frames, themeOrder = []) {
 // Kích thước xuất của một khung: giữ đúng tỉ lệ thiết kế, vừa khổ in.
 export function frameOutputSize(frame, image) {
   // Khung phủ cả tờ (khung nhỏ = 2 dải trên một tờ) in nguyên tờ; khung dải cũ chỉ nửa tờ.
-  const box =
-    frame.printSize === "strip" && !frame.sheet ? { w: SHEET.w / 2, h: SHEET.h } : SHEET;
+  const box = frame.printSize === "instax"
+    ? INSTAX_FRAME
+    : frame.printSize === "strip" && !frame.sheet ? { w: SHEET.w / 2, h: SHEET.h } : SHEET;
   const landscape = image.naturalWidth > image.naturalHeight;
   const [bw, bh] = landscape ? [box.h, box.w] : [box.w, box.h];
   const { width, height } = imageRect(
@@ -349,6 +354,18 @@ function placeOn(ctx, source, x, y, w, h) {
     source.height * scale,
   );
   ctx.restore();
+}
+
+// Một tấm Instax: ảnh dọc 600 × 800, khung ngang được xoay cho vừa.
+export function instaxPrint(canvas) {
+  const out = document.createElement("canvas");
+  out.width = INSTAX_PRINT.w;
+  out.height = INSTAX_PRINT.h;
+  const ctx = out.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, out.width, out.height);
+  placeOn(ctx, canvas, 0, 0, out.width, out.height);
+  return out;
 }
 
 // Xếp khung lên tờ 10 × 15: khung nguyên tờ chiếm 1 tờ (khung ngang → tờ ngang

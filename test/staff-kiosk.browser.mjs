@@ -194,6 +194,13 @@ before(async () => {
         send([]);
         return;
       }
+      // Print agent cạnh máy Instax đã báo về: còn 2 tấm phim.
+      if (path === "/api/admin/print-jobs/printers") {
+        send([{ branch: "Chi nhánh Nguyễn Trãi", at: new Date().toISOString(),
+          instax: { ready: true, film: 2, battery: 70, charging: false, message: "" },
+          agent: { running: true, at: new Date().toISOString(), printSizes: ["full", "instax", "strip"] } }]);
+        return;
+      }
       if (path === "/api/admin/rooms" && entry.method === "GET") {
         // Match the permission-scoped API: staff receives active rooms only.
         send(role === "admin" ? rooms : rooms.filter((room) => room.active));
@@ -558,6 +565,9 @@ test("admin keeps inactive rooms, create/edit/deactivate controls, and room edit
   await mount("admin");
   await openRooms();
   assert.equal(await page.getByRole("row").count(), 4);
+  const printers = await page.getByRole("region", { name: "Máy in" }).innerText();
+  assert.match(printers, /Chi nhánh Nguyễn Trãi · Chương trình in tự động đang chạy \(DNP \+ Instax\)/);
+  assert.match(printers, /Máy Instax mini Link 3 · Sắp hết phim — chuẩn bị hộp phim mới · còn 2 tấm phim · pin 70%/);
   assert.equal(
     await page.getByRole("button", { name: "Thêm mới", exact: true }).count(),
     1,
@@ -584,6 +594,14 @@ test("admin keeps inactive rooms, create/edit/deactivate controls, and room edit
   await dialog
     .getByLabel("Tên máy / phòng", { exact: true })
     .fill("Phòng 01 cập nhật");
+  // Hai loại phòng: nhập mã (mặc định) hoặc đút tiền; chế độ thử chỉ có ở phòng đút tiền.
+  const testMode = dialog.getByRole("checkbox", { name: /Chế độ thử/ });
+  assert.equal(await dialog.getByRole("radio", { name: /Phòng nhập mã/ }).isChecked(), true);
+  assert.equal(await testMode.count(), 0);
+  await dialog.getByRole("radio", { name: /Phòng đút tiền/ }).check();
+  await testMode.check();
+  await mkdir(screenshots, { recursive: true });
+  await page.screenshot({ path: join(screenshots, "room-type-editor-1440.png") });
   await dialog
     .getByRole("button", { name: "Lưu thay đổi", exact: true })
     .click();
@@ -593,7 +611,8 @@ test("admin keeps inactive rooms, create/edit/deactivate controls, and room edit
   assert.equal(mutation.path, "/api/admin/rooms/room-1");
   assert.equal(mutation.body.branch, "Chi nhánh Nguyễn Trãi");
   assert.equal(mutation.body.name, "Phòng 01 cập nhật");
-  await mkdir(screenshots, { recursive: true });
+  assert.equal(mutation.body.payment, "cash");
+  assert.equal(mutation.body.paymentTest, true);
   await page.screenshot({
     path: join(screenshots, "rooms-admin-1440.png"),
     fullPage: true,

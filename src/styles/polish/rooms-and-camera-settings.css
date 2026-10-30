@@ -141,3 +141,83 @@
 .kiosk-autostart small {
   color: var(--muted);
 }
+
+/* Quản lý máy → thêm / sửa phòng: hai thẻ chọn loại phòng */
+.room-type-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
+.room-type-option {
+  position: relative;
+  display: grid !important;
+  align-content: start;
+  gap: 4px;
+  padding: 14px 14px 14px 42px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  background: #fffaf6;
+  cursor: pointer;
+}
+.room-type-option.is-selected {
+  border-color: var(--wine);
+  background: #f6ebe1;
+  box-shadow: inset 0 0 0 1px var(--wine);
+}
+.room-type-option input {
+  position: absolute;
+  top: 16px;
+  left: 14px;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--wine);
+}
+.room-type-option strong {
+  color: var(--wine);
+  font-size: 15px;
+}
+.room-type-option small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.55;
+}
+@media (max-width: 560px) {
+  .room-type-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Quản lý máy: tình trạng máy in Instax cạnh máy chụp */
+.printer-status {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.printer-status h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+}
+.printer-status p {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 3px solid #6f9a6a;
+  border-radius: 8px;
+  background: #f3f7f1;
+  font-size: 13px;
+}
+.printer-status p.is-warn {
+  border-left-color: #b4562f;
+  background: #fbefe8;
+}
+.printer-status p small {
+  color: var(--muted);
+}
+.printer-status-branch {
+  display: grid;
+  gap: 6px;
+}

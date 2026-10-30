@@ -81,7 +81,8 @@ export function StickersManager({ notify }) {
           <div>
             <h3>Quản lý nhãn dán</h3>
             <p className="muted">
-              Khách thấy các nhãn dán này đầu tiên ở bước trang trí khung. Nên dùng ảnh PNG nền trong suốt; chọn được nhiều ảnh một lần.
+              Khách thấy các nhãn dán này đầu tiên ở mục “Nhãn dán” trên màn chọn ảnh của máy chụp, sau đó là bộ biểu tượng
+              có sẵn. Nên dùng ảnh PNG nền trong suốt; chọn được nhiều ảnh một lần.
             </p>
           </div>
         </div>
@@ -110,7 +111,7 @@ export function StickersManager({ notify }) {
               <div className="empty-state">
                 <Sticker />
                 <h3>Chưa có nhãn dán riêng</h3>
-                <p>Khách đang dùng bộ nhãn dán biểu tượng có sẵn.</p>
+                <p>Khách đang dùng bộ nhãn dán biểu tượng có sẵn (⭐ 💖 🌸 🎀…).</p>
               </div>
             )}
           </>

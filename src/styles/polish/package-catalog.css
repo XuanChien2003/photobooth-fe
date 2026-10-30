@@ -312,6 +312,136 @@
     background: #3c2018;
   }
 
+  /* Khổ ảnh: nhóm gói theo khổ nhỏ / khổ to như màn “Chọn khổ ảnh” của máy chụp */
+  /* Các khổ đứng cạnh nhau như màn “Chọn khổ ảnh” của máy chụp; màn hẹp thì xếp dọc. */
+  .admin-shell .package-size-groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr));
+    align-items: start;
+    gap: 24px;
+  }
+  .admin-shell .package-size-group {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+  }
+  .admin-shell .package-size-group .package-catalog-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-shell .package-size-head .package-size-add {
+    flex: 1 0 100%;
+  }
+  .admin-shell .package-size-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--line);
+  }
+  .admin-shell .package-size-head > div {
+    flex: 1;
+    min-width: 220px;
+  }
+  .admin-shell .package-size-head h3 {
+    margin: 0;
+    color: var(--wine);
+    font: 700 22px / 1.2 var(--mellow-display);
+  }
+  .admin-shell .package-size-head h3 small {
+    margin-left: 6px;
+    color: var(--muted);
+    font: 500 12px / 1 var(--sans, inherit);
+  }
+  .admin-shell .package-size-head p {
+    min-height: 3.2em; /* 2 dòng: nút "Thêm gói" của các cột thẳng hàng */
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .admin-shell .package-size-art {
+    display: flex;
+    gap: 3px;
+    height: 46px;
+    padding: 4px;
+    background: var(--mellow-kraft-deep);
+  }
+  .admin-shell .package-size-art i {
+    display: block;
+    background: linear-gradient(160deg, #c9a88f, #8a6450);
+  }
+  .admin-shell .package-size-art.is-full i { width: 15px; }
+  .admin-shell .package-size-art.is-strip i { width: 8px; }
+  .admin-shell .package-size-art.is-instax i {
+    width: 26px;
+    border: 3px solid #fffaf3;
+    border-bottom-width: 9px;
+  }
+  .admin-shell .package-size-add {
+    border-color: var(--line);
+    background: #f8f2ec;
+    color: var(--wine);
+  }
+  .admin-shell .package-size-add:hover {
+    border-color: var(--wine);
+  }
+  .admin-shell .package-size-empty {
+    margin: 0;
+    padding: 18px;
+    border: 1px dashed var(--line);
+    border-radius: 14px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .admin-shell .package-card-details dd small {
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  /* Trình sửa gói: khổ ảnh chiếm cả dòng, giá và số tờ in đứng cạnh nhau */
+  .admin-shell .catalog-editor-packages .resource-field-printSize {
+    grid-column: 1 / -1;
+  }
+  .admin-shell .catalog-editor-packages .resource-field-price {
+    grid-column: auto;
+  }
+  .admin-shell .catalog-editor .field-hint {
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  /* Xem trước đúng thẻ ở màn “Chọn khổ ảnh” (kiểu .kiosk-size của máy chụp), thu nhỏ cho vừa khung */
+  .admin-shell .kiosk-size-preview {
+    display: grid;
+    margin: 22px 6px 4px;
+  }
+  .admin-shell .kiosk-size-preview .kiosk-size {
+    rotate: -1.5deg;
+    cursor: default;
+    text-align: center;
+  }
+  .admin-shell .kiosk-size-preview .kiosk-size strong {
+    font-size: 20px;
+  }
+  .admin-shell .kiosk-size-preview .kiosk-size small {
+    font-size: 12px;
+  }
+  .admin-shell .kiosk-size-preview .kiosk-size b {
+    font-size: 18px;
+  }
+  .admin-shell .kiosk-size-preview .kiosk-size-art {
+    height: 92px;
+  }
+  .admin-shell .kiosk-size-preview .kiosk-size.full .kiosk-size-art i { width: 32px; }
+  .admin-shell .kiosk-size-preview .kiosk-size.strip .kiosk-size-art i { width: 17px; }
+  .admin-shell .kiosk-size-preview .kiosk-size.instax .kiosk-size-art i { width: 46px; border-width: 4px 4px 14px; }
+  .admin-shell .extra-price-pair {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
   @media (max-width: 600px) {
     .admin-shell .package-catalog-grid {
       grid-template-columns: minmax(0, 1fr);

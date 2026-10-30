@@ -23,7 +23,19 @@ import { detectSlots, frameCapacity, isPhotoRegion, printDate } from "../frame-u
 
 const PAGE_SIZE = 12;
 const MAX_BYTES = 10 * 1024 * 1024;
-const SIZES = { full: "Size lớn", strip: "Size nhỏ" };
+const SIZES = { full: "Size lớn", strip: "Size nhỏ", instax: "Size Instax" };
+const SIZE_NOTES = {
+  full: "In nguyên tờ 10 × 15 cm",
+  strip: "2 dải 5 × 15 cm trên một tờ, máy in cắt đôi",
+  instax: "Thẻ Instax mini, ảnh dọc 3 : 4 (máy Instax mini Link 3)",
+};
+const FRAME_TITLES = { full: "size lớn", strip: "size nhỏ", instax: "Instax mini" };
+// Cỡ ảnh khung theo khổ: tờ 10 × 15 là 1200 × 1800, Instax mini là 1200 × 1600 (dọc).
+const FRAME_PIXELS = { full: [1200, 1800], strip: [1200, 1800], instax: [1200, 1600] };
+const pixelsText = (printSize) => {
+  const [w, h] = FRAME_PIXELS[printSize] || FRAME_PIXELS.full;
+  return `${w} × ${h} hoặc ${h} × ${w}`;
+};
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 
 // ─── Danh sách khung (như Snapbox /setting/frame): lọc chủ đề, kích thước, phân trang ──────
@@ -130,6 +142,7 @@ export function FramesManager({ notify }) {
             <option value="all">Tất cả</option>
             <option value="full">Size lớn</option>
             <option value="strip">Size nhỏ</option>
+            <option value="instax">Size Instax</option>
           </select>
         </label>
         <div className="frames-add">
@@ -144,7 +157,7 @@ export function FramesManager({ notify }) {
                   setEditing(newFrame(key, theme !== "all" && theme !== "none" ? theme : themes[0] || "", frames || []));
                 }}>
                   {label}
-                  <small>{key === "full" ? "In nguyên tờ 10 × 15 cm" : "2 dải 5 × 15 cm trên một tờ, máy in cắt đôi"}</small>
+                  <small>{SIZE_NOTES[key]}</small>
                 </button>
               ))}
             </div>
@@ -213,9 +226,9 @@ function newFrame(printSize, themeName, frames) {
   };
 }
 
-// Ảnh khung: PNG / JPG ≤ 10 MB, đúng 1200 × 1800 hoặc 1800 × 1200 (ảnh cùng tỉ lệ 2 : 3 được đưa về
-// đúng cỡ, giữ nền trong suốt).
-async function readFrameFile(file) {
+// Ảnh khung: PNG / JPG ≤ 10 MB, đúng 1200 × 1800 hoặc 1800 × 1200 (Instax: 1200 × 1600 hoặc
+// 1600 × 1200); ảnh cùng tỉ lệ được đưa về đúng cỡ, giữ nền trong suốt.
+async function readFrameFile(file, printSize = "full") {
   if (!/^image\/(png|jpeg|webp)$/.test(file.type)) throw new Error("Vui lòng chọn ảnh khung PNG (hoặc JPG).");
   if (file.size > MAX_BYTES) throw new Error("Ảnh khung tối đa 10 MB.");
   const url = URL.createObjectURL(file);
@@ -227,10 +240,11 @@ async function readFrameFile(file) {
       im.src = url;
     });
     const portrait = image.naturalHeight >= image.naturalWidth;
-    const [w, h] = portrait ? [1200, 1800] : [1800, 1200];
+    const [short, long] = FRAME_PIXELS[printSize] || FRAME_PIXELS.full;
+    const [w, h] = portrait ? [short, long] : [long, short];
     const ratio = image.naturalWidth / image.naturalHeight;
     if (Math.abs(ratio - w / h) > 0.01)
-      throw new Error(`Ảnh khung ${image.naturalWidth} × ${image.naturalHeight} px không đúng tỉ lệ tờ in. Cần 1200 × 1800 hoặc 1800 × 1200 px.`);
+      throw new Error(`Ảnh khung ${image.naturalWidth} × ${image.naturalHeight} px không đúng tỉ lệ ${SIZES[printSize] || SIZES.full}. Cần ${pixelsText(printSize)} px.`);
     let data;
     if (image.naturalWidth === w && image.naturalHeight === h)
       data = await new Promise((resolve, reject) => {
@@ -254,6 +268,22 @@ async function readFrameFile(file) {
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+// Ảnh khung đã tải có đúng tỉ lệ của khổ đang chọn không ("" = đúng).
+async function frameRatioError(src, printSize) {
+  const image = await new Promise((resolve, reject) => {
+    const im = new Image();
+    if (!/^(data|blob):/.test(src)) im.crossOrigin = "anonymous";
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error("Không đọc được ảnh khung."));
+    im.src = src;
+  });
+  const [short, long] = FRAME_PIXELS[printSize] || FRAME_PIXELS.full;
+  const ratio = Math.min(image.naturalWidth, image.naturalHeight) / Math.max(image.naturalWidth, image.naturalHeight);
+  return Math.abs(ratio - short / long) > 0.01
+    ? `Ảnh khung không đúng tỉ lệ ${SIZES[printSize]} (cần ${pixelsText(printSize)} px) — tải lại ảnh khung khác.`
+    : "";
 }
 
 // Tự nhận các ô trong suốt / trắng làm vùng ảnh. Khung nhỏ: ô ở dải phải trùng hàng với ô dải trái
@@ -333,7 +363,7 @@ function FrameEditor({ frame: initial, themes, frames, onClose, onSaved }) {
     if (!file) return;
     setError("");
     try {
-      const { data } = await readFrameFile(file);
+      const { data } = await readFrameFile(file, frame.printSize);
       const regions = slots.length ? slots : await autoRegions(data, frame.printSize).catch(() => []);
       set({ image: data, sheet: true, slots: regions });
       setSelected(-1);
@@ -409,6 +439,9 @@ function FrameEditor({ frame: initial, themes, frames, onClose, onSaved }) {
     if (frame.themeName === "__new" && !themeName) return toast.error("Vui lòng nhập tên chủ đề mới.");
     if (!frame.image) return toast.error("Vui lòng tải ảnh khung lên.");
     if (!capacity) return toast.error("Khung cần ít nhất 1 vùng ảnh — bấm “Thêm vùng ảnh”.");
+    // Đổi kích thước sau khi đã tải ảnh: ảnh phải đúng tỉ lệ của khổ mới.
+    const mismatch = await frameRatioError(imageSrc, frame.printSize).catch(() => "");
+    if (mismatch) return toast.error(mismatch);
     const count = frames.filter((f) => (f.themeName?.trim() || "") === themeName && f.printSize === frame.printSize).length;
     const name = frame.name.trim() || `${themeName || "Khung"} · ${SIZES[frame.printSize]} ${String(count + (frame._id ? 0 : 1)).padStart(2, "0")}`;
     setBusy(true);
@@ -434,7 +467,7 @@ function FrameEditor({ frame: initial, themes, frames, onClose, onSaved }) {
     <div className="frame-editor-page">
       <header className="frame-editor-head">
         <button type="button" className="icon-button" aria-label="Quay lại danh sách khung" onClick={onClose}><ArrowLeft size={18} /></button>
-        <h3>{frame._id ? "Cập nhật frame" : "Thêm mới frame"} {SIZES[frame.printSize].toLowerCase()}</h3>
+        <h3>{frame._id ? "Cập nhật frame" : "Thêm mới frame"} {FRAME_TITLES[frame.printSize] || FRAME_TITLES.full}</h3>
       </header>
       <ErrorBox error={error} />
       <div className="frame-editor-layout">
@@ -462,6 +495,7 @@ function FrameEditor({ frame: initial, themes, frames, onClose, onSaved }) {
             <select value={frame.printSize} onChange={(e) => set({ printSize: e.target.value })}>
               <option value="full">Size lớn — in nguyên tờ 10 × 15</option>
               <option value="strip">Size nhỏ — 2 dải trên một tờ, cắt đôi</option>
+              <option value="instax">Size Instax — thẻ Instax mini, ảnh dọc 3 : 4</option>
             </select>
           </label>
           <label className="frame-color">
@@ -505,7 +539,7 @@ function FrameEditor({ frame: initial, themes, frames, onClose, onSaved }) {
             >
               <Upload size={26} aria-hidden="true" />
               <strong>Kéo thả frame ở đây để upload</strong>
-              <small>PNG – max 10 MB – size 1200 × 1800 hoặc 1800 × 1200</small>
+              <small>PNG – max 10 MB – size {pixelsText(frame.printSize)}</small>
               <span className="button outline small">Chọn frame</span>
               <small>Thiết kế trên Canva → để trong suốt các ô ảnh → tải PNG lên đây.</small>
             </div>

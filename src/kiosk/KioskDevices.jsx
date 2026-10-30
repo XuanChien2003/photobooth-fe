@@ -45,12 +45,12 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
       <fieldset className="kiosk-device-box">
         <legend>Máy đọc tiền (ICT)</legend>
         <p className="kiosk-device-note">
-          Trả tiền tại máy:{" "}
+          Loại phòng:{" "}
           <b>
-            {roomInfo?.payment === "cash" ? "đang bật" : "đang tắt (khách nhập mã từ quầy)"}
-            {roomInfo?.paymentTest ? " · chế độ thử: có nút bỏ qua đút tiền" : ""}
+            {roomInfo?.payment === "cash" ? "Phòng đút tiền" : "Phòng nhập mã (máy đọc tiền không dùng)"}
+            {roomInfo?.payment === "cash" && roomInfo?.paymentTest ? " · chế độ thử: có nút giả lập đút tiền" : ""}
           </b>{" "}
-          — bật / tắt ở Quản trị → Quản lý máy.
+          — đổi ở Quản trị → Quản lý máy.
         </p>
         <label>
           Kiểu kết nối

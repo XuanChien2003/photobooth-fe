@@ -239,18 +239,32 @@
     background: #e5d6c8;
     box-shadow: 0 2px 6px rgb(74 50 38 / 18%);
   }
+  /* Kết thúc sớm: nút có chữ, đủ lớn để chạm trên màn hình cảm ứng */
   .shoot-end {
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 56px;
     margin: 0 auto;
-    border: 1px solid #d9c6b6;
-    border-radius: 50%;
-    background: #fffaf3;
-    color: var(--mellow-cocoa, #522e22);
-    font-size: 20px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--mellow-cocoa, #522e22);
+    color: #fffaf3;
+    font-family: inherit;
+    font-size: 17px;
+    font-weight: 700;
     cursor: pointer;
+    box-shadow: 0 4px 0 #2f1a12;
+  }
+  .shoot-end svg {
+    font-size: 22px;
+  }
+  .shoot-end:active {
+    translate: 0 3px;
+    box-shadow: 0 1px 0 #2f1a12;
   }
   .shoot-error {
     position: fixed;
@@ -410,22 +424,20 @@
     color: var(--mellow-muted, #7a5a48);
   }
 
-  .payment-choice-screen {
-    gap: 12px;
-    padding-block: 18px;
-  }
-  .payment-choice-screen .flow-head .brand {
-    display: none;
-  }
-  .payment-choices {
-    display: grid;
-    grid-template-columns: 1.05fr 0.95fr;
-    gap: 20px;
-    width: min(950px, 100%);
+  /* Nhập mã chụp: ô mã + bàn phím số */
+  .code-card {
+    width: min(460px, 100%);
     margin: auto;
   }
-  .payment-voucher,
-  .payment-cash {
+  .code-card .button {
+    width: 100%;
+    margin-top: 6px;
+  }
+  .code-screen .soft-note {
+    width: min(600px, 100%);
+    margin: 0 auto;
+  }
+  .payment-voucher {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -435,20 +447,6 @@
     border-radius: 20px;
     background: #fffaf3;
     box-shadow: 0 8px 22px rgb(74 50 38 / 12%);
-  }
-  .payment-voucher h2,
-  .payment-cash h2 {
-    margin: 0;
-    font: 700 clamp(22px, 2.5vw, 30px) / 1.15 var(--mellow-display, Georgia, serif);
-  }
-  .payment-voucher p,
-  .payment-cash p {
-    margin: 0;
-    color: var(--mellow-muted, #7a5a48);
-  }
-  .payment-choices .payment-icon {
-    color: var(--mellow-cocoa, #522e22);
-    font-size: 36px;
   }
   .payment-voucher label {
     font-size: 14px;
@@ -486,25 +484,11 @@
     cursor: pointer;
   }
   .voucher-keypad button:active { background: #ecdbcc; }
-  .payment-choices .button { width: 100%; min-height: 48px; }
-  .payment-voucher small { color: var(--mellow-muted, #7a5a48); }
-  .payment-cash {
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-  }
-  .payment-cash .payment-icon { font-size: 72px; }
-  .payment-cash .button { margin-top: 20px; }
-  .payment-choice-screen .flow-foot { margin-top: 0; }
   @media (max-height: 700px) and (min-width: 901px) {
     .payment-voucher { gap: 4px; padding-block: 12px; }
-    .payment-voucher .payment-icon { display: none; }
-    .payment-voucher h2 { font-size: 24px; }
-    .payment-voucher p { font-size: 14px; }
     .payment-voucher input { height: 40px; }
     .voucher-keypad button { min-height: 40px; }
     .payment-voucher .button { min-height: 44px; }
-    .payment-voucher small { font-size: 12px; }
   }
 
   .pay-board {
@@ -690,6 +674,192 @@
     font-weight: 700;
   }
 
+  /* ── Màn chọn ảnh: 3 mục Chọn ảnh / Màu ảnh / Nhãn dán bên phải khung xem trước ── */
+  .select-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-self: stretch;
+    min-height: 0;
+  }
+  .select-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+    border-radius: 18px;
+    background: rgb(255 250 243 / 72%);
+    box-shadow: inset 0 0 0 1.5px #d9c6b6;
+  }
+  .select-tabs button {
+    display: inline-flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 58px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 13px;
+    background: transparent;
+    color: var(--mellow-ink, #3f2c25);
+    font-family: inherit;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .select-tabs button svg {
+    flex: none;
+    font-size: 22px;
+  }
+  .select-tabs button[aria-selected="true"] {
+    background: var(--mellow-cocoa, #522e22);
+    color: #fff;
+    box-shadow: 0 4px 12px rgb(47 26 18 / 28%);
+  }
+  .select-tabs small {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgb(82 46 34 / 12%);
+    font-size: 13px;
+  }
+  .select-tabs [aria-selected="true"] small {
+    background: rgb(255 255 255 / 22%);
+  }
+  .select-tab-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+    min-height: 0;
+  }
+  .select-tab-panel .select-grid {
+    max-height: 60dvh;
+  }
+  /* Màu ảnh: ảnh khách đã chọn hiện với từng màu */
+  .select-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    align-content: start;
+    gap: 14px;
+    max-height: 60dvh;
+    overflow-y: auto;
+    padding: 4px;
+  }
+  .select-filters button {
+    display: grid;
+    gap: 8px;
+    padding: 8px 8px 10px;
+    border: 4px solid transparent;
+    border-radius: 14px;
+    background: #fffaf3;
+    color: inherit;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgb(74 50 38 / 14%);
+  }
+  .select-filters img,
+  .select-filters i {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    border-radius: 8px;
+    background: #e9d8c8;
+    object-fit: cover;
+  }
+  .select-filters button[aria-checked="true"] {
+    border-color: #4caf6e;
+  }
+  /* Nhãn dán: nút chỉnh nhãn dán đang chọn, bảng nhãn dán, dòng ghi chú */
+  .sticker-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 58px;
+  }
+  .sticker-tools p {
+    margin: 0;
+    color: var(--mellow-muted, #7a5a48);
+    font-size: 16px;
+    text-align: center;
+  }
+  .sticker-tools button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 52px;
+    padding: 0 18px;
+    border: 2px solid var(--mellow-cocoa, #522e22);
+    border-radius: 999px;
+    background: #fffaf3;
+    color: var(--mellow-cocoa, #522e22);
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .sticker-tools button.is-danger {
+    border-color: #b4483c;
+    color: #b4483c;
+  }
+  .sticker-tools button:disabled {
+    cursor: default;
+    opacity: 0.4;
+  }
+  .sticker-palette {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    align-content: start;
+    gap: 10px;
+    flex: 1;
+    max-height: 50dvh;
+    overflow-y: auto;
+    padding: 4px;
+  }
+  .sticker-palette button {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    padding: 8px;
+    border: 0;
+    border-radius: 14px;
+    background: #fffaf3;
+    font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+    font-size: 40px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgb(74 50 38 / 12%);
+  }
+  .sticker-palette button:active {
+    transform: scale(0.94);
+  }
+  .sticker-palette img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .sticker-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 16px;
+    color: var(--mellow-muted, #7a5a48);
+  }
+  .sticker-foot .text-link {
+    margin-left: auto;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  /* Khung xem trước nhận thao tác kéo / chụm 2 ngón trên nhãn dán */
+  .decor-canvas {
+    touch-action: none;
+    user-select: none;
+  }
+
   .frame-stage {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
@@ -829,10 +999,6 @@
     .done-cards,
     .pay-board {
       grid-template-columns: 1fr;
-    }
-    .payment-choices {
-      grid-template-columns: 1fr;
-      max-width: 560px;
     }
   }
 

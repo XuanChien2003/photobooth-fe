@@ -11,7 +11,10 @@ const fixture = `
   import { MemoryRouter } from 'react-router-dom';
   import { StudioContext, ToastProvider } from '/src/studio.jsx';
   import { Kiosk } from '/src/kiosk/Kiosk.jsx';
-  const packs = [{ _id: 'pack-full', name: 'Khung to', printSize: 'full', price: 80000, prints: 1, shots: 4 }];
+  const packs = [
+    { _id: 'pack-strip', name: 'Khung nhỏ', printSize: 'strip', price: 70000, prints: 1, shots: 4 },
+    { _id: 'pack-full', name: 'Khung to', printSize: 'full', price: 100000, prints: 2, shots: 4 },
+  ];
   createRoot(document.getElementById('root')).render(React.createElement(MemoryRouter,
     { initialEntries: ['/kiosk?device=fixture-device'] },
     React.createElement(StudioContext.Provider,
@@ -48,46 +51,90 @@ before(async () => {
 
 after(async () => { await browser?.close(); await new Promise((resolve) => server?.close(resolve)); });
 
-test("voucher on payment screen rejects wrong code and opens a paid session with valid code", async () => {
+const booking = { _id: "booking-1", code: "123456", status: "checked_in", packageName: "Khung to", prints: 2,
+  shots: 4, captureDuration: 10, photos: [] };
+
+// Máy chụp có thư mục ảnh (OPFS giả lập) và API giả: ping trả phòng, claim / sale mở lượt chụp.
+async function openKiosk(room, handlers = {}) {
   const page = await browser.newPage();
-  const errors = [], claims = [];
-  const booking = { _id: "booking-1", code: "123456", status: "checked_in", packageName: "Khung to", prints: 1,
-    shots: 4, captureDuration: 10, photos: [] };
+  const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.addInitScript(() => {
     window.showDirectoryPicker = async () => navigator.storage.getDirectory();
   });
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
-    if (path.endsWith("/kiosk/claim")) {
-      const body = JSON.parse(route.request().postData());
-      claims.push(body);
-      if (body.code !== "123456") return route.fulfill({ status: 400, json: { message: "Mã voucher không hợp lệ." } });
-      return route.fulfill({ json: { booking, captureToken: "fixture-capture", accessToken: "fixture-album" } });
-    }
-    return route.fulfill({ json: path.endsWith("/kiosk/ping") ? { room: { _id: "room-1", flip: "device" } }
+    const handler = Object.entries(handlers).find(([end]) => path.endsWith(end));
+    if (handler) return handler[1](route, JSON.parse(route.request().postData()));
+    return route.fulfill({ json: path.endsWith("/kiosk/ping") ? { room }
       : path.endsWith("/health") ? { ok: true } : { booking } });
   });
+  // Màn đầu tiên sau “Chạm để bắt đầu” theo loại phòng máy chủ báo về.
+  const pinged = page.waitForResponse((r) => r.url().endsWith("/api/kiosk/ping"));
+  await page.goto(base);
+  await pinged;
+  await page.getByText("Cài đặt máy chụp (nhân viên)").click();
+  await page.getByRole("button", { name: "Chọn thư mục ảnh" }).click();
+  await page.getByRole("button", { name: "Chạm để bắt đầu" }).click();
+  return { page, errors };
+}
+
+test("code room: touch to start → enter the code from the counter → straight to the shoot screen", async () => {
+  const claims = [];
+  const { page, errors } = await openKiosk({ _id: "room-1", flip: "device" }, {
+    "/kiosk/claim": (route, body) => {
+      claims.push(body);
+      if (body.code !== "123456") return route.fulfill({ status: 400, json: { message: "Mã chụp không đúng." } });
+      return route.fulfill({ json: { booking, captureToken: "fixture-capture", accessToken: "fixture-album" } });
+    },
+  });
   try {
-    await page.goto(base);
-    await page.getByText("Cài đặt máy chụp (nhân viên)").click();
-    await page.getByRole("button", { name: "Chọn thư mục ảnh" }).click();
-    await page.getByRole("button", { name: "Chạm để bắt đầu" }).click();
-    await page.getByRole("heading", { name: "Chọn khổ ảnh" }).waitFor();
-    await page.getByRole("button", { name: /Khung to/ }).click();
-    await page.getByRole("button", { name: /Tiếp tục/ }).click();
-    await page.getByRole("heading", { name: "Chọn số bản in" }).waitFor();
-    await page.getByRole("button", { name: /Chọn thanh toán/ }).click();
-    await page.getByRole("heading", { name: "Chọn cách thanh toán" }).waitFor();
-    assert.equal(await page.getByRole("button", { name: /Chọn tiền mặt/ }).isDisabled(), true);
-    await page.getByRole("textbox", { name: "Mã voucher" }).fill("000000");
-    await page.getByRole("button", { name: "Dùng mã voucher" }).click();
-    await page.getByText("Mã voucher không hợp lệ.").first().waitFor();
-    assert.equal(await page.getByRole("textbox", { name: "Mã voucher" }).inputValue(), "");
-    await page.getByRole("textbox", { name: "Mã voucher" }).fill("123456");
-    await page.getByRole("button", { name: "Dùng mã voucher" }).click();
+    await page.getByRole("heading", { name: "Nhập mã chụp" }).waitFor();
+    assert.equal(await page.getByRole("heading", { name: "Chọn khổ ảnh" }).count(), 0, "a code room sells nothing at the kiosk");
+    await page.getByRole("textbox", { name: "Mã chụp" }).fill("000000");
+    await page.getByRole("button", { name: "Bắt đầu chụp" }).click();
+    await page.getByText("Mã chụp không đúng.").first().waitFor();
+    assert.equal(await page.getByRole("textbox", { name: "Mã chụp" }).inputValue(), "");
+    await page.getByRole("textbox", { name: "Mã chụp" }).fill("123456");
+    await page.getByRole("button", { name: "Bắt đầu chụp" }).click();
     await page.locator(".shoot-screen").waitFor();
     assert.deepEqual(claims.map((c) => c.code), ["000000", "123456"]);
+    assert.deepEqual(errors, []);
+  } finally { await page.close(); }
+});
+
+test("cash room: touch to start → size → print count → bill reader; enough money opens the session", async () => {
+  const sales = [];
+  const { page, errors } = await openKiosk(
+    { _id: "room-1", flip: "device", payment: "cash", paymentTest: true, cashCheckoutReady: true },
+    {
+      "/kiosk/sale": (route, body) => {
+        sales.push(body);
+        return route.fulfill({ status: 201, json: { booking, captureToken: "fixture-capture", accessToken: "fixture-album" } });
+      },
+    },
+  );
+  try {
+    await page.getByRole("heading", { name: "Chọn khổ ảnh" }).waitFor();
+    await page.getByRole("button", { name: /Khung nhỏ/ }).click();
+    await page.getByRole("button", { name: /Tiếp tục/ }).click();
+    await page.getByRole("heading", { name: "Chọn số bản in" }).waitFor();
+    assert.equal(await page.locator(".kiosk-counter output").innerText(), "2");
+    await page.getByRole("button", { name: "Tăng số bản in" }).click();
+    assert.equal(await page.locator(".kiosk-counter output").innerText(), "4");
+    await page.getByRole("button", { name: /Thanh toán tiền mặt/ }).click();
+    await page.getByRole("heading", { name: "Đút tiền để bắt đầu chụp" }).waitFor();
+    assert.match(await page.locator(".pay-board").innerText(), /90\.000/);
+    // Chế độ thử: giả lập đút 2 tờ 50.000 — đủ 90.000 thì tự mở lượt chụp.
+    await page.getByRole("button", { name: /50\.000/ }).click();
+    assert.equal(sales.length, 0);
+    await page.getByRole("button", { name: /50\.000/ }).click();
+    await page.locator(".shoot-screen").waitFor();
+    assert.equal(sales.length, 1);
+    assert.equal(sales[0].package, "pack-strip");
+    assert.equal(sales[0].prints, 2, "two 10 × 15 sheets = four small prints");
+    assert.equal(sales[0].expectedTotal, 90000);
+    assert.equal(sales[0].skip, true);
     assert.deepEqual(errors, []);
   } finally { await page.close(); }
 });

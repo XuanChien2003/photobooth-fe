@@ -64,14 +64,17 @@ import { KioskEntry } from "./KioskEntry.jsx";
 import { KioskSettings } from "./KioskSettings.jsx";
 import { KioskShoot } from "./KioskShoot.jsx";
 import { KioskSelect, useShotBitmaps } from "./KioskSelect.jsx";
-import { KioskPackages, KioskPayment, KioskPrintCount } from "./KioskSale.jsx";
+import { NO_DECOR, filterChoices, filterStepsFor } from "./decor.js";
+import { KioskCode, KioskPackages, KioskPayment, KioskPrintCount } from "./KioskSale.jsx";
+import { extraPriceFor, isInstax, minSheets, saleTotal } from "./print-count.js";
 
 // Các chỗ báo lỗi mạng ở màn chụp: mỗi lần mất kết nối chỉ báo một lần, có mạng lại thì xoá.
 const NET_SLOTS = ["poll", "sync", "start", "finish"];
 const PING_MS = 60_000;
 // Thời gian chuẩn bị trước khi khách bấm dây, chọn ảnh & khung.
 const READY_SECONDS = 3;
-const SELECT_SECONDS = 90;
+// Chọn ảnh, màu ảnh và nhãn dán trên cùng một màn.
+const SELECT_SECONDS = 150;
 const SALE_KEY = "kiosk-sale";
 // Phòng của máy chụp đọc ngay từ liên kết cài máy (phần giữa của mã), trước khi máy chủ trả lời.
 function deviceRoom(token) {
@@ -97,7 +100,7 @@ function readSale() {
 export function Kiosk() {
   const [params] = useSearchParams(),
     toast = useToast();
-  const { packages = [], frames: catalogFrames = [], settings = {} } = useStudio();
+  const { packages = [], frames: catalogFrames = [], settings = {}, stickers: shopStickers = [] } = useStudio();
   const device =
     params.get("device") || localStorage.getItem("harrod-device") || "";
   const [code, setCode] = useState(""),
@@ -165,18 +168,19 @@ export function Kiosk() {
     if (next) localStorage.setItem(SALE_KEY, JSON.stringify(next));
     else localStorage.removeItem(SALE_KEY);
   };
-  // Khách rời máy giữa các bước: trở về màn chờ. Đã nhận tiền thật thì giữ nguyên để nhân viên xử lý.
+  // Khách bỏ đi giữa chừng: về màn chờ. Đã nhận tiền thật thì giữ nguyên để nhân viên xử lý.
+  const backToStart = () => {
+    setSale(null);
+    setCode("");
+    setError("");
+    transition(() => setStep("start"), "fade");
+  };
   useEffect(() => {
-    if (!["package", "print", "pay"].includes(step) || sale?.bills?.length || busy) return;
+    if (!["code", "package", "print", "pay"].includes(step) || sale?.bills?.length || busy) return;
     let timer;
     const reset = () => {
       clearTimeout(timer);
-      timer = setTimeout(() => {
-        setSale(null);
-        setCode("");
-        setError("");
-        setStep("start");
-      }, 120_000);
+      timer = setTimeout(backToStart, 120_000);
     };
     reset();
     window.addEventListener("pointerdown", reset);
@@ -225,14 +229,10 @@ export function Kiosk() {
     }, 5000);
     runKioskPrints();
     runKioskComposites();
+    // Trạng thái in hiện ở màn cuối cho khách (lời nhắn thân thiện); lỗi kỹ thuật (print agent,
+    // hết phim…) báo cho nhân viên ở trang quản trị, không hiện trên màn hình của khách.
     const stopPrint = watchKioskPrint((token, state) => {
       if (token === current.current?.accessToken || token === doneRef.current?.token) setPrint(state);
-      if (state.status === "manual")
-        notifyOnce("print-manual", "warning", "Máy chủ chưa bật in tự động (PRINT_AGENT_TOKEN trên Render) — in ảnh thủ công từ trang Đơn hàng.", 15000);
-      if (state.status === "stalled")
-        notifyOnce("print-stalled", "warning", "Máy in ở quầy chưa nhận lệnh in — kiểm tra chương trình in tự động (print-agent) đang chạy và máy in DNP đã bật.", 15000);
-      if (state.status === "failed" && state.message)
-        notifyOnce("print-failed", "error", `Máy in báo lỗi: ${state.message}`, 15000);
     });
     return () => {
       clearInterval(reconnectBill);
@@ -611,14 +611,14 @@ export function Kiosk() {
     setBusy(true);
     setError("");
     try {
+      const sheets = sheetsOf(s);
       const opened = await api("/kiosk/sale", {
         method: "POST",
         retry: 2,
         body: {
           device, package: s.pack._id, requestKey: s.requestKey, skip, bills: s.bills,
-          prints: s.prints,
-          expectedTotal: (Number(s.pack.price) || 0) +
-            Math.max(0, (Number(s.prints) || 0) - (Number(s.pack.prints) || 0)) * (Number(s.extraPrintPrice) || 0),
+          prints: sheets,
+          expectedTotal: saleTotal(s.pack, sheets, s.extraPrintPrice),
         },
       });
       setSale(null);
@@ -636,10 +636,15 @@ export function Kiosk() {
     () => packages.filter((p) => !p.branches?.length || p.branches.includes(roomInfo?.branch)),
     [packages, roomInfo?.branch],
   );
-  const extraPrintPrice = settings.extraPrintPrice === undefined ? undefined : Number(settings.extraPrintPrice);
-  const salePrints = Math.max(Number(sale?.pack?.prints) || 0, Number(sale?.prints) || 0);
-  const saleTotal = (Number(sale?.pack?.price) || 0) +
-    Math.max(0, salePrints - (Number(sale?.pack?.prints) || 0)) * (Number(sale?.extraPrintPrice) || 0);
+  // Máy Instax cạnh máy chụp (print agent báo về qua máy chủ): khổ Instax chỉ bán khi sẵn sàng.
+  const instax = roomInfo?.printers?.instax || null;
+  // Số tờ 10 × 15 khách mua (khổ nhỏ: 1 tờ = 2 tờ nhỏ), không dưới mức tối thiểu của gói.
+  const sheetsOf = (s) => Math.max(minSheets(s.pack), Number(s.prints) || 0);
+  const saleSheets = sale?.pack ? sheetsOf(sale) : 0;
+  const cameraReady = Boolean(folder && folderAccess === "granted");
+  // Loại phòng (Quản lý máy): phòng đút tiền bán lượt chụp tại máy, phòng nhập mã chỉ nhận mã từ quầy.
+  const cashRoom = roomInfo?.payment === "cash";
+  const cashReady = Boolean(roomInfo?.cashCheckoutReady);
 
   // ─── Chụp ────────────────────────────────────────────────────────────────
   // Hình trực tiếp mở khi chuẩn bị chụp, tắt khi chuyển sang chọn ảnh.
@@ -900,6 +905,10 @@ export function Kiosk() {
     if (choosing && (session.selectEndsAt || session.frameEndsAt) && !selectLeft && !composing) confirmFrame();
   }, [phase, selectLeft]);
   const frameIndex = Math.min(session?.frameIndex || 0, Math.max(0, frames.length - 1));
+  // Màu ảnh (filter) và nhãn dán khách chọn, lưu cùng phiên để tải lại trang vẫn giữ.
+  const filters = useMemo(() => filterChoices(settings), [settings]);
+  const changeDecor = (changes) =>
+    current.current && patch({ decor: { ...NO_DECOR, ...current.current.decor, ...changes } });
   // Bấm "In ảnh": hiện màn QR ngay với ảnh ghép xem trước; bản in chất lượng cao ghép và gửi máy in
   // ở phía sau.
   async function confirmFrame() {
@@ -911,13 +920,18 @@ export function Kiosk() {
     for (const shot of all) if (keys.length < need && !keys.includes(shot.key)) keys.push(shot.key);
     const chosenShots = keys.map((k) => all.find((x) => x.key === k)).filter(Boolean);
     const frame = frames[Math.min(s.frameIndex || 0, Math.max(0, frames.length - 1))];
+    // Ảnh xem trước ở màn QR, ảnh trong album và ảnh in cùng màu ảnh và nhãn dán khách đã chọn.
+    const look = {
+      filter: filterStepsFor(s.decor?.filter, settings),
+      stickers: s.decor?.stickers || [],
+    };
     setComposing(true);
     try {
       let composite = "";
       const albumLink = `${window.location.origin}/album/${s.accessToken}`;
       const images = chosenShots.map((x) => bitmaps.get(x.key)).filter(Boolean);
       if (frame) {
-        const canvas = await composePreview(frame, images, 700, albumLink);
+        const canvas = await composePreview(frame, images, 700, albumLink, look);
         composite = canvas.toDataURL("image/jpeg", 0.9);
         canvas.width = canvas.height = 0;
       } else {
@@ -941,7 +955,7 @@ export function Kiosk() {
         (async () => {
           let printFrame = null;
           try {
-            printFrame = await renderPrintFrame(frame, chosenShots, s.accessToken, albumLink);
+            printFrame = await renderPrintFrame(frame, chosenShots, s.accessToken, albumLink, look);
             await queueKioskComposite({
               token: s.accessToken,
               captureToken: s.captureToken,
@@ -951,7 +965,7 @@ export function Kiosk() {
             if (printsCount)
               await queueKioskPrint({
                 token: s.accessToken,
-                images: await printSheets(printFrame, frame, printsCount),
+                images: await printSheets(printFrame, frame, printsCount, s.booking.printSize),
                 frameName,
               });
           } catch (e) {
@@ -972,6 +986,7 @@ export function Kiosk() {
       token: accessToken,
       url: `${window.location.origin}/album/${accessToken}`,
       code: booking.code,
+      printSize: booking.printSize,
       photos: booking.photos.filter((p) => p.kind === "original").length,
       composite,
       framed,
@@ -1191,6 +1206,10 @@ export function Kiosk() {
         busy={composing}
         prints={Number(session.booking.prints) || 0}
         qrUrl={`${window.location.origin}/album/${session.accessToken}`}
+        filters={filters}
+        decor={session.decor || NO_DECOR}
+        onDecor={changeDecor}
+        shopStickers={shopStickers}
       />
     );
   if (session)
@@ -1219,47 +1238,69 @@ export function Kiosk() {
         )}
       </>
     );
+  const goTo = (next) => {
+    setError("");
+    transition(() => setStep(next), "fade");
+  };
+  // Phòng nhập mã: Chạm để bắt đầu → nhập mã (khách đã chuyển khoản ở quầy) → vào chụp luôn.
+  if (step === "code")
+    return (
+      <KioskCode
+        code={code}
+        setCode={setCode}
+        onSubmit={claim}
+        onBack={cashRoom ? () => goTo("package") : backToStart}
+        busy={busy}
+        error={error}
+        device={device}
+        cameraReady={cameraReady}
+      />
+    );
+  // Phòng đút tiền: Chạm để bắt đầu → khổ ảnh → số bản in → màn đọc tiền → đủ tiền là vào chụp.
   if (step === "package")
     return (
       <KioskPackages
         packages={roomPackages}
+        instax={instax}
         onPick={(pack) => {
           if (!checkFolder()) return;
-          setSale({ pack, prints: Number(pack.prints) || 0, extraPrintPrice, stage: "print", requestKey: crypto.randomUUID(), bills: [] });
-          transition(() => setStep("print"), "fade");
+          setSale({ pack, prints: minSheets(pack), extraPrintPrice: extraPriceFor(pack, settings), stage: "print", requestKey: crypto.randomUUID(), bills: [] });
+          goTo("print");
         }}
-        onBack={() => transition(() => setStep("start"), "fade")}
+        onCode={() => {
+          setCode("");
+          goTo("code");
+        }}
+        onBack={backToStart}
       />
     );
   if (step === "print" && sale?.pack)
     return (
       <KioskPrintCount
         pack={sale.pack}
-        prints={salePrints}
+        sheets={saleSheets}
         extraPrintPrice={sale.extraPrintPrice}
+        film={isInstax(sale.pack) ? instax?.film ?? null : null}
         onChange={(prints) => setSale({ ...sale, prints })}
         onNext={() => {
           setSale({ ...sale, stage: "pay" });
-          transition(() => setStep("pay"), "fade");
+          goTo("pay");
         }}
-        onBack={() => transition(() => setStep("package"), "fade")}
+        onBack={() => goTo("package")}
       />
     );
   if (step === "pay" && sale?.pack)
     return (
       <KioskPayment
         pack={sale.pack}
-        total={saleTotal}
-        prints={salePrints}
-        code={code}
-        setCode={setCode}
-        onVoucher={claim}
+        total={saleTotal(sale.pack, saleSheets, sale.extraPrintPrice)}
+        sheets={saleSheets}
         bills={sale.bills}
         testMode={Boolean(roomInfo?.paymentTest)}
         busy={busy}
         error={error}
-        cameraReady={Boolean(folder && folderAccess === "granted")}
-        cashReady={Boolean(roomInfo?.cashCheckoutReady)}
+        cameraReady={cameraReady}
+        cashReady={cashReady}
         onBill={(amount) => {
           const latest = readSale() || sale;
           setSale({ ...latest, bills: [...latest.bills, { amount, at: new Date().toISOString() }] });
@@ -1267,17 +1308,17 @@ export function Kiosk() {
         onPaid={() => buy(false)}
         onSkip={() => buy(true)}
         onBack={() => {
-          setCode("");
-          transition(() => setStep("print"), "fade");
+          setSale({ ...sale, stage: "print" });
+          goTo("print");
         }}
+        onIdle={backToStart}
       />
     );
   return (
     <KioskEntry
       onTap={() => {
-        setError("");
-        // Còn tiền đã đút dở (tải lại trang): quay lại đúng màn trả tiền.
-        transition(() => setStep(sale?.pack ? (sale.stage === "print" ? "print" : "pay") : "package"), "fade");
+        // Còn tiền đã đút dở (tải lại trang): quay lại đúng màn đọc tiền.
+        goTo(sale?.bills?.length ? "pay" : sale?.pack ? (sale.stage === "pay" ? "pay" : "print") : cashRoom ? "package" : "code");
       }}
       roomId={roomId}
     >

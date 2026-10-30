@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy, X } from "lucide-react";
 import { api, money } from "./api";
+import { includedSheets, isStrip, piecesLabel } from "./kiosk/print-count.js";
 import { Button, ErrorBox, useStudio, useToast } from "./studio";
 import {
   FieldError,
@@ -15,6 +16,14 @@ const RULES = {
   branch: ["Chi nhánh", chosen],
   name: ["Tên khách", maxLength(100)],
   phone: ["Số điện thoại khách", phoneVN],
+};
+
+// Số tờ khách nhận: "2 tờ nhỏ (1 tờ 10 × 15 cắt đôi)" / "2 tờ 10 × 15 cm" / "2 tấm Instax".
+const printsText = (pack) => {
+  const sheets = includedSheets(pack);
+  const pieces = piecesLabel(pack, sheets);
+  if (isStrip(pack)) return `${pieces} (${sheets} tờ 10 × 15 cắt đôi)`;
+  return pack.printSize === "instax" ? pieces : `${pieces} 10 × 15 cm`;
 };
 
 // Trạng thái phòng lúc cấp mã, để gợi ý khách vào phòng đang trống.
@@ -42,9 +51,15 @@ export function CounterTicket({ onClose, onCreated, initialDraft = null, assigne
     branch: initialDraft?.branch || assignedBranch || branches[0] || "",
     name: "",
     phone: "",
-    paymentMethod: "cash",
+    // Khách mua mã ở quầy thường chuyển khoản (trả tiền mặt thì đút vào máy ở phòng đút tiền):
+    // tiệm đã nhập tài khoản / QR ngân hàng thì mặc định chuyển khoản, QR hiện ngay.
+    paymentMethod: settings.bankAccount || settings.bankQrImage ? "transfer" : "cash",
   });
   const [ticket, setTicket] = useState(initialDraft);
+  // Phòng đút tiền mở màn chọn khổ ảnh trước, khách có mã bấm "Đã có mã chụp" (Quản lý máy → Loại phòng).
+  const cashRooms = rooms
+    .filter((r) => ticket?.room ? String(r._id) === String(ticket.room) : r.branch === (ticket?.branch || form.branch))
+    .some((r) => r.payment === "cash");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -184,7 +199,12 @@ export function CounterTicket({ onClose, onCreated, initialDraft = null, assigne
               {ticket.code}
             </div>
             <p>
-              {ticket.packageName} · {ticket.prints} tờ in 10 × 15 cm
+              {ticket.packageName} · {printsText(ticket)}
+            </p>
+            {/* Phòng đút tiền mở màn chọn khổ ảnh trước: khách có mã bấm "Đã có mã chụp". */}
+            <p className="ticket-steps">
+              Trên máy chụp: chạm <b>“Chạm để bắt đầu”</b> →{" "}
+              {cashRooms ? <>bấm <b>“Đã có mã chụp”</b> → </> : null}nhập 6 số → bắt đầu chụp.
             </p>
             <p className="soft-note">
               Mã dùng một lần trong 2 giờ từ lúc xác nhận đã thu, ở phòng nào cũng được. Chụp xong, máy chụp
@@ -259,8 +279,7 @@ export function CounterTicket({ onClose, onCreated, initialDraft = null, assigne
               </label>
               {pack && (
                 <p className="muted">
-                  {pack.shots || "—"} ảnh · {pack.countdownSeconds || 10} giây/ảnh · {pack.prints} tờ
-                  in 10 × 15 cm
+                  {pack.shots || "—"} lần chụp · {pack.countdownSeconds || 10} giây/ảnh · {printsText(pack)}
                 </p>
               )}
               <label>

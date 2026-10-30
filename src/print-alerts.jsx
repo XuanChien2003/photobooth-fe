@@ -34,14 +34,25 @@ export function PrintAlerts() {
     // động lại, 502…): tự mở lại luồng với thời gian chờ tăng dần. Nối lại được thì báo `nxc:print`
     // vì lệnh in gửi trong lúc mất kết nối không có thông báo.
     let source, timer, failures = 0, lost = false, stopped = false;
-    const onPrint = (e) => {
-      const job = JSON.parse(e.data);
-      const text = `Lệnh in mới · vé #${job.code} (${job.sheetCount || 1} tờ)`;
-      toast.info(text, 8000);
+    const unit = (job) => (job.printSize === "instax" ? "tấm Instax" : "tờ");
+    const notify = (title, text) => {
       beep();
       if ("Notification" in window && Notification.permission === "granted")
-        new Notification("NXC — Lệnh in mới", { body: text });
+        new Notification(title, { body: text });
       window.dispatchEvent(new Event("nxc:print"));
+    };
+    const onPrint = (e) => {
+      const job = JSON.parse(e.data);
+      const text = `Lệnh in mới · vé #${job.code} (${job.sheetCount || 1} ${unit(job)})`;
+      toast.info(text, 8000);
+      notify("NXC — Lệnh in mới", text);
+    };
+    // Print agent báo in lỗi (hết phim Instax, máy in mất kết nối…): lễ tân xử lý rồi bấm In lại.
+    const onFailed = (e) => {
+      const job = JSON.parse(e.data);
+      const text = `Lệnh in vé #${job.code} chưa in được: ${job.spoolMessage || "máy in không nhận lệnh"}`;
+      toast.error(text, 20000);
+      notify("NXC — Lệnh in lỗi", text);
     };
     const connect = () => {
       clearTimeout(timer);
@@ -50,6 +61,7 @@ export function PrintAlerts() {
         withCredentials: true,
       });
       source.addEventListener("print", onPrint);
+      source.addEventListener("print-failed", onFailed);
       source.addEventListener("open", () => {
         failures = 0;
         if (lost) window.dispatchEvent(new Event("nxc:print"));

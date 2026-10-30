@@ -51,7 +51,8 @@ function fontOf(item, px) {
   const family = (DECOR_FONTS[item.font] || DECOR_FONTS.sans).css;
   return `${item.type === "signature" ? "italic " : ""}${item.bold ? "700 " : ""}${px}px ${family}`;
 }
-const sizeOf = (item, width) => Math.max(12, Math.min(160, Number(item.size) || 36)) * width / 1200;
+// Nhãn dán trên máy chụp được phóng to tới gần nửa khung (cỡ 600 ở khung rộng 1200 px).
+const sizeOf = (item, width) => Math.max(12, Math.min(600, Number(item.size) || 36)) * width / 1200;
 
 export function drawDecorations(ctx, decorations = [], width, height) {
   for (const item of decorations) {

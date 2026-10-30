@@ -4,7 +4,13 @@ import { money } from "../api";
 import { Button, ErrorBox, useStudio } from "../studio";
 import { FieldError } from "../validate";
 import { definitions, DEFAULT_STAFF_PERMISSIONS, PERMISSION_GROUPS } from "./config";
+import { includedSheets, isInstax, isStrip, piecesLabel, printSizeOf } from "../kiosk/print-count.js";
 
+// Loại phòng quyết định màn đầu tiên khách thấy sau “Chạm để bắt đầu”.
+const ROOM_TYPES = [
+  ["counter", "Phòng nhập mã", "Khách chuyển khoản trước tại quầy, nhân viên đưa mã 6 số. Khách chạm màn hình → nhập mã → chụp."],
+  ["cash", "Phòng đút tiền", "Khách chọn khổ ảnh, số bản in rồi đút tiền vào máy đọc tiền. Đủ tiền là vào chụp. Cần lắp máy đọc tiền."],
+];
 const ALL_PERMISSIONS = PERMISSION_GROUPS.flatMap(([, items]) => items.map(([key]) => key));
 const plain = (value) =>
   String(value || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/đ/gi, "d").toLowerCase();
@@ -96,7 +102,21 @@ export function ResourceEditor({
   };
   const field = ([key, label, type = "text"]) => {
     if (type === "permissions" && edit.role !== "staff") return null;
-    const Field = ["branches", "permissions"].includes(type) ? "div" : "label";
+    // Chế độ thử chỉ có ở phòng đút tiền.
+    if (key === "paymentTest" && edit.payment !== "cash") return null;
+    if (type === "checkbox")
+      return (
+        <label key={key} className="checkbox">
+          <input
+            name={key}
+            type="checkbox"
+            checked={Boolean(edit[key])}
+            onChange={(event) => update(key, event.target.checked)}
+          />
+          {label}
+        </label>
+      );
+    const Field = ["branches", "permissions", "payment"].includes(type) ? "div" : "label";
     return (
       <Field
         key={key}
@@ -112,11 +132,13 @@ export function ResourceEditor({
           />
         ) : type === "printSize" ? (
           <select
+            name={key}
             value={edit[key] || "full"}
             onChange={(event) => update(key, event.target.value)}
           >
-            <option value="full">10 × 15 cm · Nguyên tờ</option>
-            <option value="strip">5 × 15 cm · Hai dải / tờ</option>
+            <option value="full">Khổ to · ảnh 10 × 15 cm nguyên tờ (máy DNP)</option>
+            <option value="strip">Khổ nhỏ · 1 tờ 10 × 15 cắt đôi thành 2 tờ nhỏ (máy DNP)</option>
+            <option value="instax">Khổ Instax mini · thẻ 5,4 × 8,6 cm (máy Instax mini Link 3)</option>
           </select>
         ) : type === "flip" ? (
           <select
@@ -128,13 +150,21 @@ export function ResourceEditor({
             <option value="off">Không lật ảnh</option>
           </select>
         ) : type === "payment" ? (
-          <select
-            value={edit[key] || "counter"}
-            onChange={(event) => update(key, event.target.value)}
-          >
-            <option value="counter">Mua mã ở quầy rồi nhập mã ở máy chụp</option>
-            <option value="cash">Đút tiền vào máy đọc tiền tại máy chụp</option>
-          </select>
+          <div className="room-type-options" role="radiogroup" aria-label={label}>
+            {ROOM_TYPES.map(([value, title, detail]) => (
+              <label key={value} className={`room-type-option${(edit[key] || "counter") === value ? " is-selected" : ""}`}>
+                <input
+                  type="radio"
+                  name={key}
+                  value={value}
+                  checked={(edit[key] || "counter") === value}
+                  onChange={() => onChange({ ...edit, [key]: value, ...(value !== "cash" && { paymentTest: false }) })}
+                />
+                <strong>{title}</strong>
+                <small>{detail}</small>
+              </label>
+            ))}
+          </div>
         ) : type === "branches" ? (
           <BranchesField value={edit[key] || []} onChange={(value) => update(key, value)} />
         ) : type === "permissions" ? (
@@ -177,6 +207,15 @@ export function ResourceEditor({
             }
           />
         )}
+        {catalog && key === "prints" && (
+          <small className="field-hint">
+            {isStrip(edit)
+              ? `Tờ 10 × 15 = ${piecesLabel(edit, includedSheets(edit))} cho khách. Tối thiểu 1 tờ (khách thấy “2 tờ nhỏ”).`
+              : isInstax(edit)
+                ? "Số tấm Instax. Tối thiểu 2 tấm. Khách chọn thêm ở máy chụp tính theo giá in thêm Instax."
+                : "Tờ 10 × 15. Tối thiểu 2 tờ. Khách chọn thêm ở máy chụp tính theo giá in thêm."}
+          </small>
+        )}
         <FieldError error={form.errors[key]} />
       </Field>
     );
@@ -199,7 +238,7 @@ export function ResourceEditor({
             <div>
               <h2>{title}</h2>
               {catalog && (
-                <p>Thiết lập giá, thời gian chụp và số tờ in đi kèm.</p>
+                <p>Mỗi gói là một thẻ ở màn “Chọn khổ ảnh” của máy chụp: khổ ảnh, giá và số tờ in đi kèm.</p>
               )}
             </div>
           </div>
@@ -223,9 +262,17 @@ export function ResourceEditor({
                 className="catalog-editor-preview"
                 aria-label="Xem trước gói chụp"
               >
-                <h3>{edit.name || "Tên gói chụp"}</h3>
-                <strong>{money(Number(edit.price) || 0)}</strong>
-                {edit.description && <p>{edit.description}</p>}
+                <span className="catalog-preview-label">THẺ TRÊN MÁY CHỤP</span>
+                {/* Cùng kiểu thẻ ở màn “Chọn khổ ảnh” của máy chụp (KioskPackages). */}
+                <div className="kiosk-size-preview">
+                  <div className={`kiosk-size ${printSizeOf(edit)}`}>
+                    <span className="kiosk-size-art" aria-hidden="true">{isInstax(edit) ? <i /> : <><i /><i /></>}</span>
+                    <strong>{edit.name || "Tên gói chụp"}</strong>
+                    <small>{Number(edit.shots) || 0} lần chụp · kèm {piecesLabel(edit, includedSheets(edit))}</small>
+                    <b>{money(Number(edit.price) || 0)}</b>
+                    {edit.description && <small>{edit.description}</small>}
+                  </div>
+                </div>
                 <ul>
                   <li>
                     <Package size={17} aria-hidden="true" />
@@ -237,7 +284,9 @@ export function ResourceEditor({
                   </li>
                   <li>
                     <Printer size={17} aria-hidden="true" />
-                    {Number(edit.prints) || 0} tờ in 10 × 15 cm
+                    {isInstax(edit)
+                      ? `${piecesLabel(edit, includedSheets(edit))} · máy Instax cạnh máy chụp`
+                      : `${includedSheets(edit)} tờ in 10 × 15 cm${isStrip(edit) ? ` · cắt đôi = ${piecesLabel(edit, includedSheets(edit))}` : ""}`}
                   </li>
                   <li>
                     <InfinityIcon size={17} aria-hidden="true" />
