@@ -953,3 +953,13 @@
     margin-top: 16px;
   }
 }
+
+/* Quản lý máy: nút xoá hẳn phòng đã tắt */
+@layer components {
+  .admin-shell .icon-button.danger:hover,
+  .admin-shell .icon-button.danger:focus-visible {
+    border-color: #b4483c;
+    background: #fff4f2;
+    color: #b4483c;
+  }
+}

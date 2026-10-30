@@ -229,6 +229,12 @@ before(async () => {
         send(rooms.find((room) => room._id === roomMatch[1]));
         return;
       }
+      const permanent = path.match(/^\/api\/admin\/rooms\/([^/]+)\/permanent$/);
+      if (permanent && entry.method === "DELETE" && role === "admin") {
+        rooms = rooms.filter((room) => room._id !== permanent[1]);
+        send({ ok: true });
+        return;
+      }
       if (path === "/api/admin/rooms" && entry.method === "POST" && role === "admin") {
         const created = { _id: `room-${rooms.length + 1}`, active: true, ...entry.body };
         rooms = [...rooms, created];
@@ -676,5 +682,27 @@ test("a new room picks its kind (photobooth / polaroid) right in the add form", 
   // Hộp sửa phòng đã có không hiện loại phòng (đổi ở "Cài máy chụp").
   await page.getByRole("button", { name: "Chỉnh sửa Phòng Polaroid", exact: true }).click();
   assert.equal(await page.getByRole("dialog").getByRole("radiogroup", { name: "Loại phòng" }).count(), 0);
+  assertClean();
+});
+
+test("a stopped room can be switched back on or deleted for good", async () => {
+  await mount("admin");
+  await openRooms();
+  const stopped = roomRow("Phòng đã tắt");
+  assert.equal(await stopped.getByRole("button", { name: "Ngừng sử dụng Phòng đã tắt", exact: true }).count(), 0);
+  // Bật lại: gửi lại thông tin phòng với active = true.
+  await stopped.getByRole("button", { name: "Bật lại Phòng đã tắt", exact: true }).click();
+  await page.getByText("Đã bật lại phòng “Phòng đã tắt”.").waitFor();
+  const restored = requests.find((entry) => entry.method === "PUT");
+  assert.equal(restored.body.active, true);
+  assert.equal(restored.body.name, "Phòng đã tắt");
+  // Phòng đang chạy không có nút xoá hẳn (ngừng sử dụng trước).
+  assert.equal(await roomRow("Phòng 01").getByRole("button", { name: /^Xoá hẳn/ }).count(), 0);
+  await mount("admin");
+  await openRooms();
+  page.once("dialog", (dialog) => dialog.accept());
+  await roomRow("Phòng đã tắt").getByRole("button", { name: "Xoá hẳn Phòng đã tắt", exact: true }).click();
+  await page.getByText("Đã xoá phòng “Phòng đã tắt”.").waitFor();
+  assert.ok(requests.some((entry) => entry.method === "DELETE" && entry.path.endsWith("/permanent")));
   assertClean();
 });

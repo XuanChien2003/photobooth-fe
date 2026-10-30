@@ -15,6 +15,8 @@ import {
   LoaderCircle,
   Monitor,
   Printer,
+  RotateCcw,
+  Trash2,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { api, money } from "../api";
@@ -228,6 +230,35 @@ export function ResourceManager({ resource, notify, me }) {
       await api(`/admin/${resource}/${item._id}`, { method: "DELETE" });
       load();
       notify(`Đã ngừng sử dụng ${kind} “${item.name || item.code}”.`);
+    } catch (e) {
+      toast.error(e.message);
+    }
+  }
+  // Phòng đã ngừng sử dụng: bật lại, hoặc xoá hẳn (đơn hàng cũ vẫn giữ tên phòng).
+  async function restoreRoom(item) {
+    if (!canManage) return;
+    try {
+      await api(`/admin/rooms/${item._id}`, {
+        method: "PUT",
+        body: {
+          name: item.name, branch: item.branch, description: item.description || "",
+          flip: item.flip || "device", kind: item.kind || "photobooth", active: true,
+        },
+      });
+      load();
+      notify(`Đã bật lại phòng “${item.name}”.`);
+    } catch (e) {
+      toast.error(e.message);
+    }
+  }
+  async function removeRoom(item) {
+    if (!canManage) return;
+    if (!confirm(`Xoá hẳn phòng “${item.name}”?
+Liên kết máy chụp của phòng này sẽ không mở được nữa. Đơn hàng cũ vẫn giữ tên phòng. Không thể khôi phục.`)) return;
+    try {
+      await api(`/admin/rooms/${item._id}/permanent`, { method: "DELETE" });
+      load();
+      notify(`Đã xoá phòng “${item.name}”.`);
     } catch (e) {
       toast.error(e.message);
     }
@@ -455,6 +486,26 @@ export function ResourceManager({ resource, notify, me }) {
                               <X size={16} />
                             </button>
                           )}
+                        {resource === "rooms" && canManage && !item.active && (
+                          <>
+                            <button
+                              title="Bật lại"
+                              aria-label={`Bật lại ${item.name}`}
+                              className="icon-button"
+                              onClick={() => restoreRoom(item)}
+                            >
+                              <RotateCcw size={16} />
+                            </button>
+                            <button
+                              title="Xoá hẳn"
+                              aria-label={`Xoá hẳn ${item.name}`}
+                              className="icon-button danger"
+                              onClick={() => removeRoom(item)}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        )}
                         {resource === "rooms" && item.active && can(me, "rooms:setup") && (
                           <Button
                             className="outline small room-kiosk-button"
