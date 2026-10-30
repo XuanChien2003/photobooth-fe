@@ -229,6 +229,12 @@ before(async () => {
         send(rooms.find((room) => room._id === roomMatch[1]));
         return;
       }
+      if (path === "/api/admin/rooms" && entry.method === "POST" && role === "admin") {
+        const created = { _id: `room-${rooms.length + 1}`, active: true, ...entry.body };
+        rooms = [...rooms, created];
+        send(created);
+        return;
+      }
       unexpected.push(`${entry.method} ${path}`);
       send(
         { message: `Unexpected fixture request: ${entry.method} ${path}` },
@@ -649,5 +655,26 @@ test("admin keeps inactive rooms, create/edit/deactivate controls, and room edit
     path: join(screenshots, "rooms-admin-1440.png"),
     fullPage: true,
   });
+  assertClean();
+});
+
+test("a new room picks its kind (photobooth / polaroid) right in the add form", async () => {
+  await mount("admin");
+  await openRooms();
+  await page.getByRole("button", { name: "Thêm mới", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Tên máy / phòng", { exact: true }).fill("Phòng Polaroid");
+  await dialog.getByLabel("Chi nhánh / địa chỉ", { exact: true }).fill("Chi nhánh Nguyễn Trãi");
+  const kinds = dialog.getByRole("radiogroup", { name: "Loại phòng" });
+  assert.equal(await kinds.getByRole("radio", { name: /Photobooth/ }).isChecked(), true);
+  await kinds.getByRole("radio", { name: /Polaroid/ }).check();
+  await dialog.getByRole("button", { name: /Lưu|Thêm/ }).last().click();
+  await dialog.waitFor({ state: "hidden" });
+  const created = requests.find((entry) => entry.method === "POST" && entry.path === "/api/admin/rooms");
+  assert.equal(created.body.kind, "polaroid");
+  await roomRow("Phòng Polaroid").getByText(/Phòng Polaroid ·/).waitFor();
+  // Hộp sửa phòng đã có không hiện loại phòng (đổi ở "Cài máy chụp").
+  await page.getByRole("button", { name: "Chỉnh sửa Phòng Polaroid", exact: true }).click();
+  assert.equal(await page.getByRole("dialog").getByRole("radiogroup", { name: "Loại phòng" }).count(), 0);
   assertClean();
 });

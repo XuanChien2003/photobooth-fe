@@ -204,6 +204,10 @@
     font-size: 1.5em;
     animation: shoot-press 1.1s ease-in-out infinite;
   }
+  /* Phòng Polaroid tự chụp: không bấm được, máy chụp không trả lời thì đổi màu cảnh báo. */
+  .shoot-press.shoot-auto.is-failed {
+    background: rgb(163 64 40 / 92%);
+  }
   /* Nút chụp khi thử máy bằng webcam: nền kem để thấy rõ là nút bấm được. */
   .shoot-press.shoot-snap {
     border: 0;

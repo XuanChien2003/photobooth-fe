@@ -3,7 +3,7 @@ import { Clock3, Infinity as InfinityIcon, Package, Printer, Search, X } from "l
 import { money } from "../api";
 import { Button, ErrorBox, useStudio } from "../studio";
 import { FieldError } from "../validate";
-import { definitions, DEFAULT_STAFF_PERMISSIONS, PERMISSION_GROUPS } from "./config";
+import { definitions, DEFAULT_STAFF_PERMISSIONS, PERMISSION_GROUPS, ROOM_KINDS } from "./config";
 import { includedSheets, isInstax, isStrip, piecesLabel, printSizeOf } from "../kiosk/print-count.js";
 
 // Loại phòng quyết định màn đầu tiên khách thấy sau “Chạm để bắt đầu”.
@@ -105,6 +105,25 @@ export function ResourceEditor({
   const field = ([key, baseLabel, type = "text"]) => {
     const label = catalog && edit.printSize === "instax" ? POLAROID_LABELS[key] || baseLabel : baseLabel;
     if (type === "permissions" && edit.role !== "staff") return null;
+    // Loại phòng: chọn lúc thêm phòng mới (phòng đã có đổi ở bước 1 của "Cài máy chụp").
+    if (type === "roomKind") {
+      if (edit._id) return null;
+      return (
+        <div key={key} className={catalog ? "form-field resource-field resource-field-kind" : undefined}>
+          <span>{label}</span>
+          <div className="room-type-options" role="radiogroup" aria-label={label}>
+            {ROOM_KINDS.map(([value, title, detail]) => (
+              <label key={value} className={`room-type-option${(edit.kind || "photobooth") === value ? " is-selected" : ""}`}>
+                <input type="radio" name="kind" value={value} checked={(edit.kind || "photobooth") === value}
+                  onChange={() => update("kind", value)} />
+                <strong>{title}</strong>
+                <small>{detail}</small>
+              </label>
+            ))}
+          </div>
+        </div>
+      );
+    }
     if (type === "checkbox")
       return (
         <label key={key} className="checkbox">

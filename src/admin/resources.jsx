@@ -177,8 +177,8 @@ export function ResourceManager({ resource, notify, me }) {
                   ? "device"
                   : type === "branches"
                     ? []
-                    : type === "payment"
-                      ? "counter"
+                    : type === "roomKind"
+                      ? "photobooth"
                       : type === "checkbox"
                         ? false
                     : type === "permissions"
@@ -587,8 +587,9 @@ export function ResourceManager({ resource, notify, me }) {
               <p>
                 Tải file cài về <b>máy tính trong phòng</b> rồi chạy một lần: từ
                 đó mỗi lần bật máy Windows sẽ mở Chrome toàn màn hình đúng phòng này.
-                FUJIFILM X Acquire sẽ tự mở nếu đã cài; lần đầu nhớ cho phép camera
-                và chọn thư mục ảnh trong “Cài đặt máy chụp”.
+                {device.kind === "polaroid"
+                  ? "Canon Camera Agent (nếu đã cài) sẽ tự mở; lần đầu nhớ cho phép camera. Không có Agent, máy chụp tự chụp từ hình trực tiếp của Canon R100."
+                  : "FUJIFILM X Acquire sẽ tự mở nếu đã cài; lần đầu nhớ cho phép camera và chọn thư mục ảnh trong “Cài đặt máy chụp”."}
               </p>
               <div className="kiosk-autostart-actions">
                 <Button
@@ -596,7 +597,7 @@ export function ResourceManager({ resource, notify, me }) {
                   onClick={() => {
                     download(
                       "cai-kiosk-NXC.bat",
-                      windowsScript(device.url, device.name),
+                      windowsScript(device.url, device.name, device.kind),
                     );
                     notify(
                       "Đã tải file cài cho Windows. Mở file trên máy trong phòng (nếu Windows hỏi: “Thêm thông tin” → “Vẫn chạy”).",

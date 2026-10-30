@@ -59,7 +59,7 @@ after(async () => {
   await new Promise((resolve) => server?.close(resolve));
 });
 
-async function booth(launched, { webcam }) {
+async function booth(launched, { webcam, room = { _id: "room", flip: "device" }, extra = {} }) {
   const context = await launched.newContext({ viewport: { width: 1366, height: 768 } });
   if (launched === fakeCamera) await context.grantPermissions(["camera"]);
   const page = await context.newPage();
@@ -70,7 +70,7 @@ async function booth(launched, { webcam }) {
   });
   page.on("pageerror", (e) => errors.push(e.message));
   const booking = {
-    _id: "fixture-booking", packageName: "Gói thử", shots: 3, selectCount: 1, photos: [],
+    _id: "fixture-booking", packageName: "Gói thử", shots: 3, selectCount: 1, photos: [], ...extra,
     captureDuration: 10, status: "checked_in",
     captureStartedAt: new Date().toISOString(),
     captureEndsAt: new Date(Date.now() + 600000).toISOString(),
@@ -78,7 +78,7 @@ async function booth(launched, { webcam }) {
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     // /kiosk/finish trả về chính lượt chụp (không bọc trong { booking }) như máy chủ thật.
-    await route.fulfill({ json: path.endsWith("/kiosk/ping") ? { room: { _id: "room", flip: "device" } }
+    await route.fulfill({ json: path.endsWith("/kiosk/ping") ? { room }
       : path.endsWith("/health") ? { ok: true }
       : path.endsWith("/kiosk/finish") ? { ...booking, status: "completed" } : { booking } });
   });
@@ -155,6 +155,28 @@ test("in webcam test mode a tap counts down, takes a photo from the webcam and i
     assert.ok(b.videos[0].size > 1000);
     for (const r of await b.page.evaluate(() => window.__recorders))
       assert.match(r.mimeType, /^video\/webm/, "the timelapse build uses WebM too");
+    assert.deepEqual(b.errors, []);
+  } finally { await b.close(); }
+});
+
+test("polaroid room (Canon R100): the kiosk counts down and shoots by itself up to the layout's shots, no folder needed", async () => {
+  const b = await booth(fakeCamera, {
+    webcam: false,
+    room: { _id: "room", flip: "device", kind: "polaroid" },
+    extra: { shots: 2, selectCount: 2, countdownSeconds: 3, printSize: "instax" },
+  });
+  try {
+    // Không có nút chụp tay hay hướng dẫn bấm dây: máy tự chụp.
+    await b.page.getByText("Tự chụp sau mỗi 3 giây — tạo dáng nhé!").waitFor({ timeout: 15000 });
+    assert.equal(await b.page.getByRole("button", { name: "Chạm để chụp" }).count(), 0);
+    assert.equal(await b.page.getByText("Nhấn nút trên dây bấm để chụp").count(), 0);
+    await b.page.getByRole("timer").filter({ hasText: /^3$/ }).waitFor({ timeout: 10000 });
+    await b.page.locator(".shoot-thumbs .shoot-thumb-no", { hasText: "1" }).waitFor({ timeout: 15000 });
+    // Đủ 2 tấm của layout: tự sang màn chọn ảnh.
+    await b.page.getByRole("heading", { name: /để chọn ảnh/ }).waitFor({ timeout: 30000 });
+    const picks = b.page.getByRole("group", { name: "Ảnh đã chụp" }).getByRole("button");
+    await picks.first().waitFor();
+    assert.equal(await picks.count(), 2);
     assert.deepEqual(b.errors, []);
   } finally { await b.close(); }
 });

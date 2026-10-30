@@ -162,6 +162,8 @@ export const definitions = {
   rooms: [
     ["name", "Tên máy / phòng"],
     ["branch", "Chi nhánh / địa chỉ"],
+    // Chọn khi thêm phòng mới; phòng đã có đổi loại ở bước 1 của "Cài máy chụp".
+    ["kind", "Loại phòng", "roomKind"],
     ["flip", "Chế độ lật ảnh", "flip"],
     ["description", "Mô tả", "textarea"],
   ],
