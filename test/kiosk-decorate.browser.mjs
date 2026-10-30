@@ -218,6 +218,60 @@ test("guests pick photos, a colour and a sticker; the print shows exactly that",
   } finally { await page.close(); }
 });
 
+test("a colour can go to one photo only (tap it in the frame or pick its number), or to all photos", async () => {
+  const { page, errors, uploads } = await selectScreen();
+  try {
+    const shots = page.getByRole("group", { name: "Ảnh đã chụp" }).getByRole("button");
+    await shots.nth(0).click();
+    await shots.nth(1).click();
+    const targets = page.getByRole("radiogroup", { name: "Áp dụng màu cho" });
+    await targets.waitFor();
+    assert.equal(await targets.getByRole("radio", { name: "Tất cả ảnh" }).getAttribute("aria-checked"), "true");
+    // Chạm vào ô ảnh thứ hai trên khung: chọn ảnh 2.
+    await page.waitForFunction(() => document.querySelector(".decor-canvas:not(.is-loading)"));
+    const box = await page.getByRole("img", { name: /Khung ảnh xem trước/ }).boundingBox();
+    await page.mouse.click(box.x + 0.5 * box.width, box.y + 0.74 * box.height);
+    assert.equal(await targets.getByRole("radio", { name: "Ảnh 2" }).getAttribute("aria-checked"), "true");
+    await page.getByRole("radio", { name: "Trắng đen" }).click();
+    let decor = (await saved(page)).decor;
+    const [first, second] = (await saved(page)).selected;
+    assert.deepEqual(decor.photoFilters, { [second]: "mono" });
+    assert.equal(decor.filter, "original");
+    assert.match(await targets.getByRole("radio", { name: "Ảnh 2" }).innerText(), /Trắng đen/);
+    // Ảnh 1 vẫn màu gốc.
+    await targets.getByRole("radio", { name: "Ảnh 1" }).click();
+    assert.equal(await page.getByRole("radio", { name: "Gốc" }).getAttribute("aria-checked"), "true");
+    assert.equal(first in (await saved(page)).decor.photoFilters, false);
+
+    await page.getByRole("button", { name: "In ảnh" }).click();
+    for (let i = 0; i < 100 && !uploads.composite; i++) await page.waitForTimeout(100);
+    assert.ok(uploads.composite, "chưa gửi ảnh ghép vào album");
+    const { colors: [top, bottom] } = await samples(page, uploads.composite, [[0.5, 0.26], [0.5, 0.74]]);
+    const close = (actual, expected, tolerance = 24) => actual.every((v, i) => Math.abs(v - expected[i]) <= tolerance);
+    assert.ok(close(top, RED), `ảnh 1 giữ màu gốc: ${top}`);
+    assert.ok(close(bottom, [70, 70, 70]), `ảnh 2 trắng đen: ${bottom}`);
+    assert.deepEqual(errors, []);
+  } finally { await page.close(); }
+});
+
+test("choosing a colour for all photos clears the per-photo colours", async () => {
+  const { page, errors } = await selectScreen();
+  try {
+    const shots = page.getByRole("group", { name: "Ảnh đã chụp" }).getByRole("button");
+    await shots.nth(0).click();
+    await shots.nth(1).click();
+    const targets = page.getByRole("radiogroup", { name: "Áp dụng màu cho" });
+    await targets.getByRole("radio", { name: "Ảnh 1" }).click();
+    await page.getByRole("radio", { name: "Trắng đen" }).click();
+    await targets.getByRole("radio", { name: "Tất cả ảnh" }).click();
+    await page.getByText("Chọn màu ở đây sẽ áp cho tất cả ảnh (bỏ màu riêng của từng ảnh).").waitFor();
+    await page.getByRole("radio", { name: "Gốc" }).click();
+    const decor = (await saved(page)).decor;
+    assert.deepEqual([decor.filter, decor.photoFilters], ["original", {}]);
+    assert.deepEqual(errors, []);
+  } finally { await page.close(); }
+});
+
 test("two fingers resize a sticker on the touch screen; one finger then keeps dragging it", async () => {
   const { page, errors } = await selectScreen();
   try {

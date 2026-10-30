@@ -895,13 +895,80 @@
   .select-tab-panel .select-grid {
     max-height: 60dvh;
   }
+  /* Màu ảnh · áp dụng cho: "Tất cả ảnh" hoặc từng ảnh (số thứ tự trong khung) */
+  .color-targets {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .color-targets button {
+    position: relative;
+    border: 3px solid transparent;
+    border-radius: 12px;
+    background: #fffaf3;
+    color: var(--mellow-ink, #3f2c25);
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgb(74 50 38 / 12%);
+  }
+  .color-targets button[aria-checked="true"] {
+    border-color: #4caf6e;
+  }
+  .color-target-all {
+    min-height: 74px;
+    padding: 0 18px;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .color-target-photo {
+    width: 104px;
+    padding: 4px;
+  }
+  .color-target-photo img,
+  .color-target-photo i {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    border-radius: 7px;
+    object-fit: cover;
+    background: #e9d8c8;
+  }
+  .color-target-photo b {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--mellow-cocoa, #522e22);
+    color: #fff;
+    font-size: 13px;
+  }
+  .color-target-photo small {
+    display: block;
+    margin-top: 3px;
+    overflow: hidden;
+    color: #3d7a52;
+    font-size: 12px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .color-target-hint {
+    margin: 0;
+    color: var(--mellow-muted, #7a5a48);
+    font-size: 14px;
+  }
   /* Màu ảnh: ảnh khách đã chọn hiện với từng màu */
   .select-filters {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     align-content: start;
     gap: 14px;
-    max-height: 60dvh;
+    max-height: 46dvh;
     overflow-y: auto;
     padding: 4px;
   }

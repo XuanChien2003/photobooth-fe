@@ -64,7 +64,7 @@ nút **Làm mới ảnh** cập nhật ngay. Giao diện dùng nâu espresso **#
 Màn chọn ảnh của máy chụp (150 giây) có 3 mục bên cạnh khung xem trước:
 
 - **Chọn ảnh**: chọn đủ số ảnh của gói. Khi đã đủ, máy tự mở mục **Màu ảnh**.
-- **Màu ảnh**: một filter áp cho mọi ảnh trong khung, lấy từ **Quản lý filter** (gồm "Gốc", filter của tiệm, rồi bộ lọc có sẵn đang bật).
+- **Màu ảnh**: filter từ **Quản lý filter** (gồm "Gốc", filter của tiệm, rồi bộ lọc có sẵn đang bật), áp cho **tất cả ảnh** hoặc **từng ảnh**: chọn số ảnh ở hàng "Áp dụng cho" hoặc chạm vào ảnh trên khung. Chọn màu cho "Tất cả ảnh" sẽ bỏ màu riêng của từng ảnh.
 - **Nhãn dán**: nhãn dán của tiệm trước, rồi bộ biểu tượng có sẵn. Khách kéo nhãn dán trên khung, chụm/mở 2 ngón hoặc bấm **Nhỏ hơn / To hơn** để đổi cỡ.
 
 Màu chỉ áp lên ô ảnh, không áp lên nền khung, mã QR và nhãn dán. Ảnh ở màn QR, ảnh ghép trong album và tờ in vẽ cùng một cách (`src/kiosk/decor.js`).

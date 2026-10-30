@@ -90,9 +90,10 @@ export function frameCandidates(frames, { count, printSize, themeOrder = [] }) {
 
 // Ghép nhanh để xem trên màn hình (ảnh 1600 px), ảnh lặp lại khi khung nhiều số ảnh hơn số ảnh đã
 // chọn. qrUrl: link album của khách (vùng QR trên khung). placeholders: đang chọn ảnh — ô chưa có ảnh
-// để trống, hiện số thứ tự (không lặp ảnh). filter: công thức màu ảnh, stickers: nhãn dán (decor.js).
+// để trống, hiện số thứ tự (không lặp ảnh). filters: công thức màu của từng ảnh (cùng thứ tự images),
+// stickers: nhãn dán (decor.js).
 export async function composePreview(frame, images, width = 900, qrUrl = "",
-  { placeholders = false, filter = null, stickers = [] } = {}) {
+  { placeholders = false, filters = [], stickers = [] } = {}) {
   const layout = photoLayout(frame);
   const [background, qr] = await Promise.all([
     loadFrameImage(frame.image),
@@ -107,7 +108,7 @@ export async function composePreview(frame, images, width = 900, qrUrl = "",
   // Ảnh trong ô → màu ảnh → mã QR / ngày in → nhãn dán (nhãn dán không bị đổi màu).
   composeLayout(canvas, background, layout.slots, filled, [], [], { frame: { ...layout, marks: [] } });
   const ctx = canvas.getContext("2d");
-  filterPhotos(ctx, layout, filter, canvas.width, canvas.height);
+  filterPhotos(ctx, layout, filters, canvas.width, canvas.height);
   if (placeholders) {
     const empty = (slot, number) => {
       const r = slotRect(slot, canvas.width, canvas.height);
@@ -131,9 +132,9 @@ export async function composePreview(frame, images, width = 900, qrUrl = "",
 }
 
 // Ghép bản in: đúng kích thước in của khung, mỗi ô vẽ từ ảnh chất lượng cao, lần lượt từng ảnh
-// (ảnh 26 MP giải mã ~100 MB nên không giữ nhiều ảnh cùng lúc). filter / stickers: màu ảnh và nhãn
-// dán khách chọn, vẽ giống hệt ảnh xem trước.
-export async function renderPrintFrame(frame, shots, token, qrUrl = "", { filter = null, stickers = [] } = {}) {
+// (ảnh 26 MP giải mã ~100 MB nên không giữ nhiều ảnh cùng lúc). filters (màu từng ảnh, cùng thứ tự
+// shots) / stickers: màu ảnh và nhãn dán khách chọn, vẽ giống hệt ảnh xem trước.
+export async function renderPrintFrame(frame, shots, token, qrUrl = "", { filters = [], stickers = [] } = {}) {
   const layout = photoLayout(frame);
   const background = await loadFrameImage(frame.image);
   const canvas = document.createElement("canvas");
@@ -160,7 +161,7 @@ export async function renderPrintFrame(frame, shots, token, qrUrl = "", { filter
       for (const copy of layout.copies)
         if (copy.of === index) drawSlot(ctx, source, slotRect(copy.slot, canvas.width, canvas.height));
     }
-    filterPhotos(ctx, layout, filter, canvas.width, canvas.height);
+    filterPhotos(ctx, layout, filters, canvas.width, canvas.height);
     // Làm nét nhẹ các ô ảnh (bản in 300 dpi), trước khi vẽ mã QR / ngày in.
     for (const slot of [...layout.slots, ...layout.copies.map((c) => c.slot)])
       sharpenRect(ctx, slotRect(slot, canvas.width, canvas.height));

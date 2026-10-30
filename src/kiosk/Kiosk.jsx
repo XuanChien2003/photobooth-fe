@@ -64,7 +64,7 @@ import { KioskEntry } from "./KioskEntry.jsx";
 import { KioskSettings } from "./KioskSettings.jsx";
 import { KioskShoot } from "./KioskShoot.jsx";
 import { KioskSelect, useShotBitmaps } from "./KioskSelect.jsx";
-import { NO_DECOR, filterChoices, filterStepsFor } from "./decor.js";
+import { NO_DECOR, filterChoices, filterStepsFor, photoFilterId } from "./decor.js";
 import { KioskCode, KioskPackages, KioskPayment, KioskPrintCount } from "./KioskSale.jsx";
 import { extraPriceFor, isInstax, minSheets, saleTotal } from "./print-count.js";
 
@@ -976,17 +976,20 @@ export function Kiosk() {
     const chosenShots = keys.map((k) => all.find((x) => x.key === k)).filter(Boolean);
     const frame = frames[Math.min(s.frameIndex || 0, Math.max(0, frames.length - 1))];
     // Ảnh xem trước ở màn QR, ảnh trong album và ảnh in cùng màu ảnh và nhãn dán khách đã chọn.
+    // Màu từng ảnh (màu riêng của tấm đó, không có thì màu chung), cùng thứ tự ảnh đặt vào khung.
+    const stepsOf = (shot) => filterStepsFor(photoFilterId(s.decor, shot.key), settings);
     const look = {
-      filter: filterStepsFor(s.decor?.filter, settings),
+      filters: chosenShots.map(stepsOf),
       stickers: s.decor?.stickers || [],
     };
     setComposing(true);
     try {
       let composite = "";
       const albumLink = `${window.location.origin}/album/${s.accessToken}`;
-      const images = chosenShots.map((x) => bitmaps.get(x.key)).filter(Boolean);
+      const shown = chosenShots.filter((x) => bitmaps.has(x.key));
+      const images = shown.map((x) => bitmaps.get(x.key));
       if (frame) {
-        const canvas = await composePreview(frame, images, 700, albumLink, look);
+        const canvas = await composePreview(frame, images, 700, albumLink, { ...look, filters: shown.map(stepsOf) });
         composite = canvas.toDataURL("image/jpeg", 0.9);
         canvas.width = canvas.height = 0;
       } else {

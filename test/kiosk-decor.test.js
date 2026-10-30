@@ -5,7 +5,10 @@ import {
   STICKER_SCALE,
   clampScale,
   filterChoices,
+  filterPhotos,
   filterStepsFor,
+  photoAt,
+  photoFilterId,
   placedStickers,
   stickerArea,
 } from "../src/kiosk/decor.js";
@@ -128,4 +131,24 @@ test("sticker sizes stay between the smallest and largest step", () => {
   assert.equal(clampScale(0.001), STICKER_SCALE.min);
   assert.equal(clampScale(undefined), STICKER_SCALE.initial);
   assert.equal(clampScale(0.3), 0.3);
+});
+
+test("each photo keeps its own colour, also in its twin-strip copy; a tap finds the photo", () => {
+  const frame = { slots: [photo(0, 0, 1, 0.5, 0.5), photo(0, 0.5, 2, 0.5, 0.5), photo(0.5, 0, 1, 0.5, 0.5), photo(0.5, 0.5, 2, 0.5, 0.5)] };
+  const ctx = fakeContext(20, 20, [220, 30, 30, 255]);
+  // Ảnh 1 giữ màu gốc, ảnh 2 trắng đen.
+  filterPhotos(ctx, frame, [null, [["saturate", 0]]], 20, 20);
+  const at = (x, y) => [...ctx.data.subarray((y * 20 + x) * 4, (y * 20 + x) * 4 + 3)];
+  assert.deepEqual(at(3, 3), [220, 30, 30]);
+  assert.deepEqual(at(15, 3), [220, 30, 30], "the copy of photo 1 stays original");
+  assert.ok(at(3, 15).every((v) => Math.abs(v - 70) <= 1), `photo 2: ${at(3, 15)}`);
+  assert.ok(at(15, 15).every((v) => Math.abs(v - 70) <= 1), `copy of photo 2: ${at(15, 15)}`);
+  assert.equal(photoAt(frame, 0.25, 0.25), 0);
+  assert.equal(photoAt(frame, 0.75, 0.75), 1, "a tap on the copy picks the same photo");
+  assert.equal(photoAt({ slots: [photo(0.1, 0.1, 1, 0.3, 0.3)] }, 0.9, 0.9), -1);
+  // Màu riêng của một tấm đè màu chung; tấm khác theo màu chung.
+  const decor = { filter: "warm", photoFilters: { b: "mono" } };
+  assert.equal(photoFilterId(decor, "b"), "mono");
+  assert.equal(photoFilterId(decor, "a"), "warm");
+  assert.equal(photoFilterId(undefined, "a"), "original");
 });

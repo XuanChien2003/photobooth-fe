@@ -16,7 +16,8 @@ import { photoLayout, slotRect } from "../frame-utils.js";
 
 // Trang trí trên màn chọn ảnh của máy chụp: một màu ảnh (filter) cho mọi ảnh trong khung và các
 // nhãn dán trên khung. Ảnh xem trước, ảnh ghép trong album và ảnh in vẽ bằng cùng các hàm này.
-export const NO_DECOR = Object.freeze({ filter: "original", stickers: Object.freeze([]) });
+// filter: màu chung cho mọi ảnh; photoFilters: màu riêng của từng ảnh (theo mã tấm ảnh), đè màu chung.
+export const NO_DECOR = Object.freeze({ filter: "original", photoFilters: Object.freeze({}), stickers: Object.freeze([]) });
 export const MAX_STICKERS = 20;
 // Cỡ nhãn dán: chiều cao so với bề rộng vùng đặt nhãn dán.
 export const STICKER_SCALE = Object.freeze({ initial: 0.2, min: 0.06, max: 0.45, step: 1.2 });
@@ -49,15 +50,38 @@ export function filterChoices(settings = {}) {
 // Công thức màu của filter khách đã chọn (filter vừa bị tắt / xóa: giữ ảnh gốc).
 export const filterStepsFor = (id, settings) =>
   filterChoices(settings).find((choice) => choice.id === id)?.steps || null;
+// Màu của một tấm ảnh: màu riêng của tấm đó, không có thì màu chung.
+export const photoFilterId = (decor, shotKey) => decor?.photoFilters?.[shotKey] || decor?.filter || "original";
 
 // Màu ảnh chỉ áp lên các ô ảnh (kể cả ô bản sao): nền khung, mã QR và nhãn dán giữ nguyên màu.
-export function filterPhotos(ctx, frame, steps, width, height) {
-  if (!steps?.length) return;
+// filters: công thức màu của từng ảnh theo thứ tự đặt vào khung (null = ảnh gốc); khung nhiều ô hơn
+// số ảnh thì ảnh lặp lại như lúc ghép (ô i → ảnh i % số ảnh), ô bản sao theo ô gốc của nó.
+export function filterPhotos(ctx, frame, filters, width, height) {
+  if (!filters?.some((steps) => steps?.length)) return;
   const layout = photoLayout(frame);
-  for (const slot of [...layout.slots, ...layout.copies.map((copy) => copy.slot)]) {
+  const paint = (slot, steps) => {
+    if (!steps?.length) return;
     const r = slotRect(slot, width, height);
     filterRegion(ctx, r.x, r.y, r.w, r.h, steps);
-  }
+  };
+  const stepsOf = (index) => filters[index % filters.length];
+  layout.slots.forEach((slot, index) => paint(slot, stepsOf(index)));
+  for (const copy of layout.copies) paint(copy.slot, stepsOf(copy.of));
+}
+// Ảnh (thứ tự đặt vào khung) ở điểm chạm x, y (tỉ lệ 0–1 của khung), kể cả ô bản sao; -1 nếu ngoài ô ảnh.
+export function photoAt(frame, x, y) {
+  const layout = photoLayout(frame);
+  const inside = (s) => x >= s.x && x <= s.x + s.w && y >= s.y && y <= s.y + s.h;
+  const slot = layout.slots.findIndex(inside);
+  if (slot >= 0) return slot;
+  return layout.copies.find((copy) => inside(copy.slot))?.of ?? -1;
+}
+// Khung bao (px) các ô của một ảnh (cả ô bản sao) để tô viền ảnh đang chọn màu.
+export function photoRects(frame, index, width, height) {
+  const layout = photoLayout(frame);
+  return [layout.slots[index], ...layout.copies.filter((copy) => copy.of === index).map((copy) => copy.slot)]
+    .filter(Boolean)
+    .map((slot) => slotRect(slot, width, height));
 }
 
 // Vùng đặt nhãn dán (tỉ lệ 0–1 của khung). Khung có mỗi ô một bản sao lệch đều nhau (khung nhỏ:

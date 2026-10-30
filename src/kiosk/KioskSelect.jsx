@@ -21,6 +21,9 @@ import {
   drawStickers,
   hitSticker,
   loadStickers,
+  photoAt,
+  photoFilterId,
+  photoRects,
   stickerArea,
   stickerBoxes,
   stickersReady,
@@ -71,7 +74,12 @@ const spread = (points) => Math.hypot(points[0].x - points[1].x, points[0].y - p
 // Khung ghép xem trước: ảnh đã chọn (đã áp màu ảnh) ghép vào khung, nhãn dán vẽ lên trên.
 // Kéo nhãn dán để di chuyển, chụm / mở 2 ngón để thu nhỏ / phóng to. Ô chưa có ảnh hiện số thứ tự.
 // stickers: danh sách đang hiển thị (kể cả lúc đang kéo); onDraft khi đang kéo, onCommit khi nhấc tay.
-function DecorStage({ frame, images, imageKey, qrUrl, filter, filterKey, stickers, picked, onPick, onDraft, onCommit }) {
+// filters: màu của từng ảnh (cùng thứ tự images). highlight: ảnh đang chọn màu (viền đứt nét);
+// onPhotoTap: chạm vào một ảnh trong khung (không trúng nhãn dán).
+function DecorStage({
+  frame, images, imageKey, qrUrl, filters, filterKey, stickers, picked, onPick, onDraft, onCommit,
+  highlight = -1, onPhotoTap = null,
+}) {
   const canvas = useRef(null);
   const [base, setBase] = useState(null);
   const [loads, setLoads] = useState(0);
@@ -83,7 +91,7 @@ function DecorStage({ frame, images, imageKey, qrUrl, filter, filterKey, sticker
   // Nền (khung + ảnh đã áp màu) chỉ ghép lại khi đổi khung, ảnh hoặc màu ảnh; nhãn dán vẽ đè mỗi lần.
   useEffect(() => {
     let alive = true;
-    composePreview(frame, images, 700, qrUrl, { placeholders: true, filter })
+    composePreview(frame, images, 700, qrUrl, { placeholders: true, filters })
       .then((next) => {
         if (!alive) return void (next.width = next.height = 0);
         const old = latestBase.current;
@@ -118,6 +126,21 @@ function DecorStage({ frame, images, imageKey, qrUrl, filter, filterKey, sticker
       const ctx = c.getContext("2d");
       ctx.drawImage(base, 0, 0);
       drawStickers(ctx, stickers, area, c.width, c.height);
+      // Ảnh đang chọn màu riêng: viền đứt nét quanh các ô của ảnh đó (chỉ trên màn hình).
+      if (highlight >= 0) {
+        const line = Math.max(3, c.width / 200);
+        for (const r of photoRects(frame, highlight, c.width, c.height)) {
+          ctx.save();
+          ctx.lineWidth = line * 2;
+          ctx.strokeStyle = "rgb(255 255 255 / 90%)";
+          ctx.strokeRect(r.x + line, r.y + line, r.w - line * 2, r.h - line * 2);
+          ctx.lineWidth = line;
+          ctx.strokeStyle = "#4caf6e";
+          ctx.setLineDash([line * 3, line * 2]);
+          ctx.strokeRect(r.x + line, r.y + line, r.w - line * 2, r.h - line * 2);
+          ctx.restore();
+        }
+      }
       const index = stickers.findIndex((s) => s.id === picked);
       if (index < 0) return;
       // Nhãn dán đang chọn: viền đứt nét (cả bản lặp ở dải thứ hai) — chỉ trên màn hình, không in.
@@ -135,7 +158,7 @@ function DecorStage({ frame, images, imageKey, qrUrl, filter, filterKey, sticker
       }
     });
     return () => cancelAnimationFrame(request);
-  }, [base, stickers, picked, loads, area]);
+  }, [base, stickers, picked, loads, area, highlight]);
 
   // Điểm chạm đổi sang px của canvas (canvas co giãn theo màn hình, giữ tỉ lệ).
   const point = (e) => {
@@ -172,7 +195,12 @@ function DecorStage({ frame, images, imageKey, qrUrl, filter, filterKey, sticker
     }
     gesture.current = null;
     const hit = hitSticker(c.getContext("2d"), live.current, area, p.x, p.y, c.width, c.height);
-    if (hit < 0) return onPick(null);
+    if (hit < 0) {
+      onPick(null);
+      const photo = onPhotoTap ? photoAt(frame, p.x / c.width, p.y / c.height) : -1;
+      if (photo >= 0) onPhotoTap(photo);
+      return;
+    }
     const sticker = live.current[hit];
     capture(e);
     gesture.current = { id: sticker.id, pointers: new Map([[e.pointerId, p]]), origin: p, start: sticker, list: null };
@@ -241,6 +269,18 @@ function Pick({ shot, order, onToggle, disabled }) {
   );
 }
 
+// Ảnh nhỏ trong hàng "Áp dụng cho": số thứ tự trong khung và tên màu riêng (nếu có).
+function TargetChip({ shot, number, active, label, css, onPick }) {
+  const src = useObjectUrl(shot?.preview);
+  return (
+    <button type="button" role="radio" aria-checked={active} aria-label={`Ảnh ${number}`} className="color-target-photo" onClick={onPick}>
+      {src ? <img src={src} alt="" style={{ filter: css }} /> : <i aria-hidden="true" />}
+      <b>{number}</b>
+      {label && <small>{label}</small>}
+    </button>
+  );
+}
+
 // Màu ảnh: mỗi lựa chọn hiện ảnh khách đã chọn với màu đó (CSS filter cùng công thức với ảnh in).
 function ColorChoices({ shot, filters, value, onChange }) {
   const src = useObjectUrl(shot?.preview);
@@ -263,8 +303,8 @@ const TABS = {
 };
 
 // Chụp xong: bên trái khung ghép xem trước (nút ‹ › đổi khung), bên phải 3 mục:
-// Chọn ảnh — chọn đủ số ảnh của gói (vd. gói 70k chọn 4 tấm); Màu ảnh — một filter cho mọi ảnh trong
-// khung; Nhãn dán — dán, kéo, phóng to / thu nhỏ trên khung. Bấm "In ảnh" (hoặc hết giờ) để ghép
+// Chọn ảnh — chọn đủ số ảnh của gói (vd. gói 70k chọn 4 tấm); Màu ảnh — một filter cho tất cả ảnh
+// hoặc riêng từng ảnh; Nhãn dán — dán, kéo, phóng to / thu nhỏ trên khung. Bấm "In ảnh" (hoặc hết giờ) để ghép
 // bản in với đúng màu ảnh và nhãn dán đang thấy rồi gửi máy in.
 export function KioskSelect({
   shots, bitmaps, count, selected, onToggle, secondsLeft,
@@ -304,7 +344,20 @@ export function KioskSelect({
     if (current === "photos" && tabs.length > 1) open(tabs[1]);
   }, [full]);
 
-  const filter = filters.find((f) => f.id === decor?.filter) || filters[0];
+  // Màu ảnh: áp cho tất cả ảnh ("all") hoặc riêng một tấm (mã tấm ảnh).
+  const [colorTarget, setColorTarget] = useState("all");
+  const target = colorTarget !== "all" && selected.includes(colorTarget) ? colorTarget : "all";
+  const choiceOf = (id) => filters.find((f) => f.id === id) || filters[0];
+  const photoFilters = decor?.photoFilters || {};
+  const filterOf = (key) => choiceOf(photoFilterId(decor, key));
+  const shownFilter = target === "all" ? choiceOf(decor?.filter) : filterOf(target);
+  // Màu riêng chỉ tính khi khác màu chung (ảnh vẫn theo màu chung thì không ghi nhãn).
+  const ownColor = (key) => photoFilters[key] && photoFilters[key] !== (decor?.filter || "original");
+  const applyColor = (id) =>
+    target === "all"
+      ? onDecor({ filter: id, photoFilters: {} })
+      : onDecor({ photoFilters: { ...photoFilters, [target]: id } });
+  const readyFilters = ready.map((key) => filterOf(key));
   const [draft, setDraft] = useState(null);
   const stickers = draft || decor?.stickers || [];
   const pickedIndex = stickers.findIndex((s) => s.id === picked);
@@ -333,10 +386,10 @@ export function KioskSelect({
     saveStickers([]);
     setPicked(null);
   };
-  const thumbShot = shots.find((s) => s.key === selected[0]) || shots[0];
+  const thumbShot = shots.find((s) => s.key === (target === "all" ? selected[0] : target)) || shots[0];
   const lead = {
     photos: `Chọn ${count} tấm để ghép khung · đã chọn ${selected.length}/${count}`,
-    color: "Chọn màu cho các ảnh trong khung — khung và nhãn dán giữ nguyên màu",
+    color: "Chọn màu cho tất cả ảnh hoặc từng ảnh — khung và nhãn dán giữ nguyên màu",
     stickers: "Chạm nhãn dán để dán lên khung · kéo trên khung để di chuyển",
   }[current];
   return (
@@ -360,8 +413,10 @@ export function KioskSelect({
                 images={images}
                 imageKey={`${ready.join()}|${count}`}
                 qrUrl={qrUrl}
-                filter={filter?.steps}
-                filterKey={`${filter?.id}|${filter?.css}`}
+                filters={readyFilters.map((f) => f?.steps || null)}
+                filterKey={readyFilters.map((f) => `${f?.id}|${f?.css}`).join()}
+                highlight={current === "color" && target !== "all" ? ready.indexOf(target) : -1}
+                onPhotoTap={current === "color" ? (photo) => ready[photo] && setColorTarget(ready[photo]) : null}
                 stickers={stickers}
                 picked={picked}
                 onPick={(id) => {
@@ -426,7 +481,31 @@ export function KioskSelect({
           )}
           {current === "color" && (
             <div className="select-tab-panel" {...panel("color")}>
-              <ColorChoices shot={thumbShot} filters={filters} value={filter?.id} onChange={(id) => onDecor({ filter: id })} />
+              <div className="color-targets" role="radiogroup" aria-label="Áp dụng màu cho">
+                <button type="button" role="radio" aria-checked={target === "all"} className="color-target-all"
+                  onClick={() => setColorTarget("all")}>
+                  Tất cả ảnh
+                </button>
+                {selected.map((key, i) => (
+                  <TargetChip
+                    key={key}
+                    shot={shots.find((s) => s.key === key)}
+                    number={i + 1}
+                    active={target === key}
+                    label={ownColor(key) ? filterOf(key)?.label : ""}
+                    css={filterOf(key)?.css}
+                    onPick={() => setColorTarget(key)}
+                  />
+                ))}
+              </div>
+              <p className="color-target-hint">
+                {target === "all"
+                  ? Object.keys(photoFilters).some(ownColor)
+                    ? "Chọn màu ở đây sẽ áp cho tất cả ảnh (bỏ màu riêng của từng ảnh)."
+                    : "Màu áp cho tất cả ảnh trong khung. Muốn màu riêng: chọn số ảnh, hoặc chạm vào ảnh trên khung."
+                  : `Đang chọn màu riêng cho ảnh ${selected.indexOf(target) + 1}.`}
+              </p>
+              <ColorChoices shot={thumbShot} filters={filters} value={shownFilter?.id} onChange={applyColor} />
             </div>
           )}
           {current === "stickers" && (
