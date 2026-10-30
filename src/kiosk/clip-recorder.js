@@ -15,6 +15,9 @@ const RECORD_TYPES = [
   "video/webm;codecs=vp8",
   "video/webm",
 ];
+// Chế độ nhẹ (thử máy bằng webcam máy tính): VP8 mã hóa bằng phần mềm thay cho H.264 phần cứng —
+// webcam laptop + H.264 phần cứng đã làm sập tab Chrome (STATUS_BREAKPOINT) — và bitrate thấp hơn.
+const LIGHT_TYPES = ["video/webm;codecs=vp8", "video/webm;codecs=vp9", "video/webm"];
 // Video gửi lên album tối đa 60 MB: chừa khoảng an toàn.
 const MAX_VIDEO_BYTES = 48 * 1024 * 1024;
 
@@ -24,7 +27,7 @@ const pickType = (types) =>
     : "";
 
 export function createClipRecorder() {
-  let recorder = null, stream = null, startedAt = 0, previous = null, restart = null;
+  let recorder = null, stream = null, startedAt = 0, previous = null, restart = null, light = false;
   let chunks = [];
   const clips = [];
   const stopCurrent = () =>
@@ -46,9 +49,12 @@ export function createClipRecorder() {
     if (!stream?.active) return;
     try {
       chunks = [];
-      const type = pickType(RECORD_TYPES);
+      const type = pickType(light ? LIGHT_TYPES : RECORD_TYPES);
       // Bản quay gốc 1080p bitrate cao: video tua nhanh ghép từ đây nên càng nét càng tốt.
-      recorder = new MediaRecorder(stream, { ...(type && { mimeType: type }), videoBitsPerSecond: 12_000_000 });
+      recorder = new MediaRecorder(stream, {
+        ...(type && { mimeType: type }),
+        videoBitsPerSecond: light ? 3_000_000 : 12_000_000,
+      });
       const own = chunks;
       recorder.ondataavailable = (event) => event.data.size && own.push(event.data);
       recorder.start(1000);
@@ -63,9 +69,11 @@ export function createClipRecorder() {
   };
   return {
     // Bắt đầu quay từ luồng hình trực tiếp (không có hình HDMI thì bỏ qua video).
-    start(liveStream) {
+    // options.light: chế độ nhẹ cho webcam máy tính (VP8 phần mềm, bitrate thấp).
+    start(liveStream, options = {}) {
       if (!liveStream || typeof MediaRecorder === "undefined" || recorder) return;
       stream = liveStream;
+      light = Boolean(options.light);
       begin();
     },
     // Vừa có ảnh: chốt clip của tấm đó (đoạn đang quay, kèm đoạn trước nếu đoạn này quá ngắn).
@@ -95,11 +103,14 @@ export function createClipRecorder() {
 // Ghép các clip thành một video tua nhanh (mặc định ×4), Full HD 16:9, lật gương như màn hình xem
 // trước và cắt bỏ mép có thông số máy ảnh. Chạy trong lúc khách chọn ảnh: mất khoảng ¼ thời lượng
 // các clip. Bitrate cao nhất (8 Mbps) mà video vẫn dưới giới hạn tải lên.
-export async function buildTimelapse(clips, { zoom = 0, speed = 4, width = 1920, height = 1080, mirror = true } = {}) {
+export async function buildTimelapse(clips, { zoom = 0, speed = 4, width = 1920, height = 1080, mirror = true, light = false } = {}) {
+  // Chế độ nhẹ (webcam máy tính): 1280 × 720, WebM VP8 (mã hóa phần mềm), bitrate tối đa 4 Mbps.
+  if (light) [width, height] = [1280, 720];
   const segments = clips.flat();
   if (!segments.length || typeof MediaRecorder === "undefined") return null;
   const seconds = Math.max(1, clips.reduce((sum, clip) => sum + (clip.ms || SEGMENT_MS), 0) / 1000 / speed);
-  const bitrate = Math.round(Math.max(2_000_000, Math.min(8_000_000, (MAX_VIDEO_BYTES * 8) / seconds)));
+  const bitrate = Math.round(Math.max(light ? 1_500_000 : 2_000_000,
+    Math.min(light ? 4_000_000 : 8_000_000, (MAX_VIDEO_BYTES * 8) / seconds)));
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -107,8 +118,8 @@ export async function buildTimelapse(clips, { zoom = 0, speed = 4, width = 1920,
   ctx.imageSmoothingQuality = "high";
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
-  // MP4 (H.264) trước: điện thoại nào cũng xem / lưu được.
-  const type = pickType([
+  // MP4 (H.264) trước: điện thoại nào cũng xem / lưu được (chế độ nhẹ: WebM VP8).
+  const type = pickType(light ? LIGHT_TYPES : [
     "video/mp4;codecs=avc1.640028",
     "video/mp4;codecs=avc1.42E01E",
     "video/mp4",

@@ -63,7 +63,11 @@ async function booth(launched, { webcam }) {
   const context = await launched.newContext({ viewport: { width: 1366, height: 768 } });
   if (launched === fakeCamera) await context.grantPermissions(["camera"]);
   const page = await context.newPage();
-  const errors = [];
+  const errors = [], videos = [];
+  page.on("request", (r) => {
+    if (r.url().endsWith("/api/kiosk/video") && r.method() === "POST")
+      videos.push({ type: r.headers()["content-type"], size: r.postDataBuffer()?.length || 0 });
+  });
   page.on("pageerror", (e) => errors.push(e.message));
   const booking = {
     _id: "fixture-booking", packageName: "Gói thử", shots: 3, selectCount: 1, photos: [],
@@ -79,12 +83,15 @@ async function booth(launched, { webcam }) {
       : path.endsWith("/kiosk/finish") ? { ...booking, status: "completed" } : { booking } });
   });
   await page.addInitScript(({ booking, webcam }) => {
-    // Đếm số bộ ghi video được tạo (thử máy bằng webcam không được quay video tua nhanh).
-    window.__recorders = 0;
+    // Ghi lại cách tạo bộ ghi video (thử máy bằng webcam: VP8 phần mềm, bitrate thấp — không H.264).
+    window.__recorders = [];
     if (window.MediaRecorder) {
       const Native = window.MediaRecorder;
       window.MediaRecorder = class extends Native {
-        constructor(...args) { super(...args); window.__recorders++; }
+        constructor(stream, options = {}) {
+          super(stream, options);
+          window.__recorders.push({ mimeType: options.mimeType || "", bitrate: options.videoBitsPerSecond || 0 });
+        }
       };
     }
     if (sessionStorage.getItem("photo-capture-fixture-device")) return;
@@ -94,7 +101,7 @@ async function booth(launched, { webcam }) {
     }));
   }, { booking, webcam });
   await page.goto(base);
-  return { page, errors, close: () => context.close() };
+  return { page, errors, videos, close: () => context.close() };
 }
 
 test("without any camera the shoot screen explains it and offers the computer webcam for a test", async () => {
@@ -128,13 +135,26 @@ test("in webcam test mode a tap counts down, takes a photo from the webcam and i
     await b.page.locator(".shoot-thumbs .shoot-thumb-no", { hasText: "1" }).waitFor({ timeout: 15000 });
     const saved = await b.page.evaluate(() => JSON.parse(sessionStorage.getItem("photo-capture-fixture-device")));
     assert.equal(saved.captureOrder.length, 1);
-    // Webcam laptop: không mã hóa video liên tục (đã làm sập tab Chrome trên máy thật).
-    assert.equal(await b.page.evaluate(() => window.__recorders), 0);
+    // Webcam laptop vẫn quay video tua nhanh, nhưng chế độ nhẹ: WebM VP8, bitrate thấp (không H.264
+    // phần cứng — đã làm sập tab Chrome trên máy thật).
+    const recorders = await b.page.evaluate(() => window.__recorders);
+    assert.ok(recorders.length > 0, "the timelapse is recorded");
+    for (const r of recorders) {
+      assert.match(r.mimeType, /^video\/webm/, `recorder ${r.mimeType}`);
+      assert.ok(r.bitrate <= 4_000_000, `bitrate ${r.bitrate}`);
+    }
     await b.page.getByRole("button", { name: "Chụp xong, chọn ảnh" }).click();
     await b.page.getByRole("heading", { name: /để chọn ảnh/ }).waitFor({ timeout: 20000 });
     const picks = b.page.getByRole("group", { name: "Ảnh đã chụp" }).getByRole("button");
     await picks.first().waitFor();
     assert.equal(await picks.count(), 1);
+    // Chụp xong: video tua nhanh (WebM) ghép xong và gửi lên album.
+    for (let i = 0; i < 300 && !b.videos.length; i++) await b.page.waitForTimeout(100);
+    assert.equal(b.videos.length, 1, "the timelapse video is uploaded");
+    assert.match(b.videos[0].type, /^video\/webm/);
+    assert.ok(b.videos[0].size > 1000);
+    for (const r of await b.page.evaluate(() => window.__recorders))
+      assert.match(r.mimeType, /^video\/webm/, "the timelapse build uses WebM too");
     assert.deepEqual(b.errors, []);
   } finally { await b.close(); }
 });

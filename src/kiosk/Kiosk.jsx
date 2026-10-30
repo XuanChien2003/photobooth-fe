@@ -742,10 +742,12 @@ export function Kiosk() {
       unsubscribe();
     };
   }, [session?.captureToken, phase]);
-  // Quay video tua nhanh trong lúc chụp (cần hình trực tiếp HDMI). Thử máy bằng webcam thì không
-  // quay: mã hóa video liên tục từ webcam laptop đã làm sập tab Chrome (STATUS_BREAKPOINT).
+  // Quay video tua nhanh trong lúc chụp (hình trực tiếp HDMI, hoặc webcam khi thử máy). Webcam máy
+  // tính quay ở chế độ nhẹ (VP8 phần mềm, 720p): H.264 phần cứng với webcam laptop đã làm sập tab
+  // Chrome (STATUS_BREAKPOINT).
   useEffect(() => {
-    if (phase === "shoot" && ready && stream.current && !webcamTest) recorder.current.start(stream.current);
+    if (phase === "shoot" && ready && stream.current)
+      recorder.current.start(stream.current, { light: webcamRef.current });
   }, [phase, ready, webcamTest]);
   // Đồng hồ các bước chuẩn bị / chọn ảnh / chọn khung.
   useEffect(() => {
@@ -843,7 +845,7 @@ export function Kiosk() {
     setVideo({ token: s.accessToken, pending: true });
     let blob = null;
     try {
-      blob = await buildTimelapse(clips, { zoom: zoomRef.current });
+      blob = await buildTimelapse(clips, { zoom: zoomRef.current, light: webcamRef.current });
     } catch {
       blob = null;
     }
