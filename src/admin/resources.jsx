@@ -264,7 +264,8 @@ Liên kết máy chụp của phòng này sẽ không mở được nữa. Đơn
     }
   }
   // Cài máy chụp (đầu ca, từng phòng): lấy liên kết + QR mở máy chụp. Loại phòng đã chọn lúc thêm
-  // phòng; phòng Photobooth bật / tắt chế độ thử tiền mặt ngay trong hộp này.
+  // phòng; phòng Photobooth: quản trị viên bật / tắt chế độ thử tiền mặt ngay trong hộp này. Mở hộp
+  // không gửi chế độ thử (danh sách phòng có thể đã cũ): máy chủ trả trạng thái đang lưu.
   const setup = (item) =>
     issueDevice({
       room: item,
@@ -272,12 +273,12 @@ Liên kết máy chụp của phòng này sẽ không mở được nữa. Đơn
       kind: item.kind || "photobooth",
       paymentTest: Boolean(item.paymentTest),
     });
-  async function issueDevice(next) {
+  async function issueDevice(next, change = {}) {
     setDevice({ ...next, busy: true });
     try {
       const d = await api(`/admin/rooms/${next.room._id}/device`, {
         method: "POST",
-        body: { paymentTest: next.kind === "photobooth" && next.paymentTest },
+        body: change,
       });
       setDevice((current) => current && {
         ...next,
@@ -565,10 +566,11 @@ Liên kết máy chụp của phòng này sẽ không mở được nữa. Đơn
                 <input
                   type="checkbox"
                   checked={device.paymentTest}
-                  disabled={device.busy}
-                  onChange={(e) => issueDevice({ ...device, paymentTest: e.target.checked })}
+                  disabled={device.busy || !canManage}
+                  onChange={(e) => issueDevice({ ...device, paymentTest: e.target.checked }, { paymentTest: e.target.checked })}
                 />
                 Chế độ thử tiền mặt: chưa lắp máy đọc tiền — máy chụp có nút giả lập đút tiền (không tính doanh thu)
+                {!canManage && " · chỉ quản trị viên bật / tắt"}
               </label>
             )}
             {!device.url ? (

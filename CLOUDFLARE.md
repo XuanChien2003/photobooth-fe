@@ -67,8 +67,9 @@ Ví dụ cấu trúc quy tắc (thay origin ví dụ bằng URL thật, giữ or
 [
   {
     "AllowedOrigins": [
-      "http://localhost:5173",
-      "https://studio.selfbooth.workers.dev"
+      "https://mellowfoto.com",
+      "https://photobooth.ngathanh.workers.dev",
+      "http://localhost:5173"
     ],
     "AllowedMethods": ["GET", "HEAD", "PUT"],
     "AllowedHeaders": ["Range", "Content-Type"],

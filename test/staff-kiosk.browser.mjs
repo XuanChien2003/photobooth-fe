@@ -450,6 +450,11 @@ test("staff can create a kiosk link for a room that has never been configured", 
     await dialog.getByRole("link", { name: "Mở máy chụp" }).getAttribute("href"),
     /device=fixture-device\.token_01-keep\.room-2$/,
   );
+  // Lễ tân không bật / tắt chế độ thử tiền mặt (khách chụp không trả tiền): chỉ quản trị viên.
+  const testMode = dialog.getByRole("checkbox", { name: /Chế độ thử/ });
+  assert.equal(await testMode.isDisabled(), true);
+  await dialog.getByText(/chỉ quản trị viên bật \/ tắt/).waitFor();
+  assert.deepEqual(deviceRequests()[0].body, {});
   assert.deepEqual(
     deviceRequests().map((entry) => entry.method),
     ["POST"],
@@ -640,7 +645,8 @@ test("admin keeps inactive rooms, create/edit/deactivate controls, and room edit
   await setup.getByText("Phòng Photobooth", { exact: true }).waitFor();
   assert.equal(await setup.getByRole("radio").count(), 0);
   assert.equal(await setup.getByRole("button", { name: /Tiếp tục/ }).count(), 0);
-  assert.deepEqual(deviceRequests().at(-1).body, { paymentTest: false });
+  // Mở hộp thoại không gửi chế độ thử (máy chủ trả trạng thái đang lưu).
+  assert.deepEqual(deviceRequests().at(-1).body, {});
   // Phòng Photobooth bật chế độ thử tiền mặt ngay trong hộp: lưu lại liên kết với chế độ thử.
   const testMode = setup.getByRole("checkbox", { name: /Chế độ thử/ });
   assert.equal(await testMode.isChecked(), false);

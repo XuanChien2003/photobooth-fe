@@ -3,11 +3,11 @@ import { networkRequest } from "../network.js";
 // Fetch gives no upload progress events. A stalled 15 MB PUT must not hold both
 // camera upload slots for the whole three-minute budget while the API is healthy.
 // Progress resets only the inactivity timer; the overall deadline stays bounded.
-export function putToStorage(url, file, { timeout = 180000, stallTimeout = 30000, signal } = {}) {
+export function putToStorage(url, file, { timeout = 180000, stallTimeout = 30000, signal, contentType = "image/jpeg" } = {}) {
   return networkRequest(async (requestSignal) => {
     if (typeof XMLHttpRequest === "undefined") {
       const response = await fetch(url, {
-        method: "PUT", body: file, headers: { "Content-Type": "image/jpeg" },
+        method: "PUT", body: file, headers: { "Content-Type": contentType },
         credentials: "omit", referrerPolicy: "no-referrer", signal: requestSignal,
       });
       if (!response.ok) {
@@ -55,7 +55,7 @@ export function putToStorage(url, file, { timeout = 180000, stallTimeout = 30000
       try {
         xhr.open("PUT", url, true);
         xhr.withCredentials = false;
-        xhr.setRequestHeader("Content-Type", "image/jpeg");
+        xhr.setRequestHeader("Content-Type", contentType);
         watch();
         xhr.send(file);
       } catch (error) { finish(error, true); }

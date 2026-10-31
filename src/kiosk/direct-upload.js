@@ -14,6 +14,9 @@ let directOffUntil = 0;
 // instead of uploading 15 MB a second time.
 const storedUploads = new Map();
 
+// Video đã nằm trên kho mà chưa xác nhận được: thử lại thì chỉ xác nhận, không tải lại cả video.
+const storedVideos = new WeakMap();
+
 export const resetDirectUploads = () => { directOffUntil = 0; storedUploads.clear(); };
 
 const isStorageUrl = (src) => {
@@ -85,5 +88,55 @@ export async function savePhoto(path, image, options = {}) {
       return viaServer();
     }
     throw error; // connection or session state: the queue retries with the same upload
+  }
+}
+
+// Video tua nhanh (tới ~48 MB) thẳng lên kho R2 như ảnh gốc: máy chủ free không phải nhận và giữ cả
+// video trong bộ nhớ, video lên album nhanh hơn. Kho MongoDB, trang chưa được kho cho tải lên (CORS)
+// hoặc tệp trên kho không dùng được: gửi qua máy chủ như trước. video: Blob loại video/mp4 | video/webm.
+export async function saveVideo(video, captureToken) {
+  const viaServer = () => api("/kiosk/video", {
+    method: "POST",
+    body: video,
+    timeout: 180000,
+    headers: { "X-Capture-Token": captureToken },
+  });
+  let stored = storedVideos.get(video);
+  if (!stored) {
+    if (Date.now() < directOffUntil) return viaServer();
+    let ticket;
+    try {
+      ticket = await api("/kiosk/video/upload-url", {
+        method: "POST",
+        body: { captureToken, type: video.type, size: video.size },
+      });
+    } catch {
+      return viaServer(); // kho MongoDB (404), máy chủ cũ, hoặc phiên vừa hết
+    }
+    if (!isStorageUrl(ticket?.upload?.url) || typeof ticket.upload.stored !== "string") return viaServer();
+    try {
+      await putToStorage(ticket.upload.url, video, { contentType: video.type, timeout: 600000 });
+    } catch {
+      directOffUntil = Date.now() + DIRECT_PAUSE_MS;
+      return viaServer();
+    }
+    stored = ticket.upload.stored;
+    storedVideos.set(video, stored);
+  }
+  try {
+    const result = await api("/kiosk/video/commit", {
+      method: "POST",
+      timeout: 30000,
+      retry: 1,
+      body: { captureToken, stored },
+    });
+    storedVideos.delete(video);
+    return result;
+  } catch (error) {
+    if (error.status === 422) {
+      storedVideos.delete(video);
+      return viaServer();
+    }
+    throw error; // mất mạng: lần thử sau chỉ xác nhận lại video đã tải lên
   }
 }

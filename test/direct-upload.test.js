@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, beforeEach, test } from "node:test";
 import { createRequire } from "node:module";
-import { savePhoto, resetDirectUploads } from "../src/kiosk/direct-upload.js";
+import { savePhoto, saveVideo, resetDirectUploads } from "../src/kiosk/direct-upload.js";
 import { cleanJpegMetadata } from "../../photobooth-be/src/services/jpeg-metadata.js";
 
 const sharp = createRequire(new URL("../../photobooth-be/package.json", import.meta.url))("sharp");
@@ -151,4 +151,73 @@ test("a lost commit reply is retried without uploading 15 MB again; saved photos
     assert.deepEqual(odd.map((c) => c.kind), ["ticket", "commit"]);
     assert.equal(odd[1].init.headers["X-Photo-Stored"], undefined);
   }
+});
+
+// Video tua nhanh: thẳng lên kho R2, máy chủ chỉ gắn vào album; không được thì gửi qua máy chủ.
+const video = new Blob([Buffer.alloc(4096, 3)], { type: "video/mp4" });
+const VIDEO_STORAGE = "https://test-media.account.r2.cloudflarestorage.com/media/v.mp4?X-Amz-Signature=1";
+const isServerVideo = (call) => /\/api\/kiosk\/video$/.test(call.url);
+
+test("the timelapse video goes straight to storage and the server only attaches it", async () => {
+  const calls = network({
+    ticket: json({ upload: { url: VIDEO_STORAGE, stored: "video-token" } }),
+    storage: () => new Response(null, { status: 200 }),
+    commit: json({ ok: true, size: video.size }, 201),
+  });
+  assert.deepEqual(await saveVideo(video, "capture-token"), { ok: true, size: video.size });
+  assert.deepEqual(calls.map((c) => c.kind), ["ticket", "storage", "commit"]);
+  assert.match(calls[0].url, /\/api\/kiosk\/video\/upload-url$/);
+  assert.deepEqual(JSON.parse(calls[0].init.body), { captureToken: "capture-token", type: "video/mp4", size: video.size });
+  assert.equal(calls[1].init.method, "PUT");
+  assert.equal(calls[1].init.headers["Content-Type"], "video/mp4", "the signed upload expects the video type");
+  assert.equal(calls[1].init.body, video);
+  assert.match(calls[2].url, /\/api\/kiosk\/video\/commit$/);
+  assert.deepEqual(JSON.parse(calls[2].init.body), { captureToken: "capture-token", stored: "video-token" });
+});
+
+test("a commit without an answer is retried later without uploading the video again", async () => {
+  let commits = 0;
+  const calls = network({
+    ticket: json({ upload: { url: VIDEO_STORAGE, stored: "video-token" } }),
+    storage: () => new Response(null, { status: 200 }),
+    commit: () => (++commits === 1 ? Response.json({ message: "lỗi" }, { status: 400 }) : Response.json({ ok: true }, { status: 201 })),
+  });
+  await assert.rejects(saveVideo(video, "capture-token"));
+  assert.deepEqual(await saveVideo(video, "capture-token"), { ok: true });
+  assert.deepEqual(calls.map((c) => c.kind), ["ticket", "storage", "commit", "commit"]);
+});
+
+test("videos go through the server with MongoDB storage, a refused upload or an unusable stored file", async () => {
+  // Kho MongoDB: không có URL tải thẳng (404).
+  let calls = network({
+    ticket: json({ message: "Kho ảnh chưa hỗ trợ tải thẳng." }, 404),
+    storage: () => { throw new Error("not used"); },
+    commit: json({ ok: true }, 201),
+  });
+  await saveVideo(video, "capture-token");
+  assert.deepEqual(calls.map((c) => c.kind), ["ticket", "commit"]);
+  assert.ok(isServerVideo(calls[1]));
+  assert.equal(calls[1].init.headers["X-Capture-Token"], "capture-token");
+  assert.equal(calls[1].init.headers["Content-Type"], "video/mp4");
+  assert.equal(calls[1].init.body, video);
+  // Tệp trên kho không dùng được (422): gửi lại qua máy chủ.
+  calls = network({
+    ticket: json({ upload: { url: VIDEO_STORAGE, stored: "video-token" } }),
+    storage: () => new Response(null, { status: 200 }),
+    commit: (call) => (isServerVideo(call) ? Response.json({ ok: true }, { status: 201 })
+      : Response.json({ message: "Video chưa tải lên kho xong." }, { status: 422 })),
+  });
+  await saveVideo(new Blob([Buffer.alloc(10)], { type: "video/mp4" }), "capture-token");
+  assert.deepEqual(calls.map((c) => c.kind), ["ticket", "storage", "commit", "commit"]);
+  assert.ok(isServerVideo(calls[3]));
+  // Kho từ chối tải lên (vd. CORS chưa cho trang này): qua máy chủ, và một lúc sau không thử kho nữa.
+  calls = network({
+    ticket: json({ upload: { url: VIDEO_STORAGE, stored: "video-token" } }),
+    storage: () => { throw new TypeError("Failed to fetch"); },
+    commit: json({ ok: true }, 201),
+  });
+  await saveVideo(new Blob([Buffer.alloc(20)], { type: "video/mp4" }), "capture-token");
+  await saveVideo(new Blob([Buffer.alloc(30)], { type: "video/mp4" }), "capture-token");
+  assert.deepEqual(calls.map((c) => c.kind), ["ticket", "storage", "commit", "commit"]);
+  assert.ok(calls.slice(2).every(isServerVideo));
 });

@@ -32,7 +32,7 @@ import {
 } from "./folder.js";
 import { cameraPhotoId, prepareCameraPhoto } from "./photo.js";
 import { directMediaUrl } from "../media-delivery.js";
-import { savePhoto } from "./direct-upload.js";
+import { savePhoto, saveVideo } from "./direct-upload.js";
 import { watchCameraFolder } from "./watch-camera-folder.js";
 import {
   canApplyKioskPhoto,
@@ -965,12 +965,8 @@ export function Kiosk() {
     const body = new Blob([blob], { type: blob.type.split(";")[0] || "video/webm" });
     for (let attempt = 0; attempt < 6; attempt++) {
       try {
-        await api("/kiosk/video", {
-          method: "POST",
-          body,
-          timeout: 180000,
-          headers: { "X-Capture-Token": s.captureToken },
-        });
+        // Thẳng lên kho R2 khi được, không thì qua máy chủ (direct-upload.js).
+        await saveVideo(body, s.captureToken);
         return;
       } catch (e) {
         if (!isTransient(e) && !(e.status >= 500)) return;
