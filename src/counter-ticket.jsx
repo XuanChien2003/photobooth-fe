@@ -8,14 +8,16 @@ import {
   chosen,
   maxLength,
   phoneVN,
+  required,
   useValidation,
 } from "./validate";
 
 const RULES = {
   package: ["Gói chụp", chosen],
   branch: ["Chi nhánh", chosen],
-  name: ["Tên khách", maxLength(100)],
-  phone: ["Số điện thoại khách", phoneVN],
+  // Bắt buộc: tên và số điện thoại để tra cứu lại album của khách.
+  name: ["Tên khách", required, maxLength(100)],
+  phone: ["Số điện thoại khách", required, phoneVN],
 };
 
 // Số tờ khách nhận: "2 tờ nhỏ (1 tờ 10 × 15 cắt đôi)" / "2 tờ 10 × 15 cm" / "2 tấm Instax".
@@ -26,28 +28,12 @@ const printsText = (pack) => {
   return pack.printSize === "instax" ? pieces : `${pieces} 10 × 15 cm`;
 };
 
-// Trạng thái phòng lúc cấp mã, để gợi ý khách vào phòng đang trống.
-const roomStatus = (r, offset = 0) =>
-  r.status === "shooting"
-    ? `đang chụp, còn ${Math.max(1, Math.ceil((new Date(r.endsAt) - (Date.now() - offset)) / 60000))} phút`
-    : r.status === "starting"
-      ? "khách đang vào phòng"
-      : "đang trống";
-
 export function CounterTicket({ onClose, onCreated, initialDraft = null, assignedBranch = "" }) {
   const { packages = [], rooms = [], settings = {} } = useStudio();
   const branches = [...new Set(rooms.map((r) => r.branch).filter(Boolean))]
     .filter((name) => !assignedBranch || name === assignedBranch);
-  const [live, setLive] = useState(null);
-  useEffect(() => {
-    api("/admin/rooms/live").then(
-      (data) => setLive({ ...data, offset: Date.now() - data.now }),
-      () => {},
-    );
-  }, []);
   const [form, setForm] = useState({
     package: packages[0]?._id || "",
-    room: "",
     branch: initialDraft?.branch || assignedBranch || branches[0] || "",
     name: "",
     phone: "",
@@ -61,7 +47,6 @@ export function CounterTicket({ onClose, onCreated, initialDraft = null, assigne
   const [copied, setCopied] = useState(false);
   const [quote, setQuote] = useState(null);
   const [received, setReceived] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
   const toast = useToast();
   const v = useValidation();
   const quoteKey = form.package;
@@ -115,7 +100,6 @@ export function CounterTicket({ onClose, onCreated, initialDraft = null, assigne
         body: {
           name: form.name,
           phone: form.phone,
-          room: form.room,
           branch: form.branch,
           package: form.package,
           expectedTotal: quote.total,
@@ -279,28 +263,41 @@ export function CounterTicket({ onClose, onCreated, initialDraft = null, assigne
                 </p>
               )}
               <label>
-                Chi nhánh
-                <select value={form.branch} onChange={(e) => {
-                  setForm((current) => ({ ...current, branch: e.target.value, room: "" }));
-                }}>
-                  <option value="">Chọn chi nhánh</option>
-                  {branches.map((name) => <option key={name} value={name}>{name}</option>)}
-                </select>
+                Tên khách
+                <input
+                  name="name"
+                  autoComplete="off"
+                  aria-invalid={Boolean(v.errors.name)}
+                  value={form.name}
+                  onChange={(e) => change("name", e.target.value)}
+                />
+                <FieldError error={v.errors.name} />
               </label>
               <label>
-                Phòng gợi ý cho khách (không bắt buộc)
-                <select
-                  name="room"
-                  value={form.room}
-                  onChange={(e) => change("room", e.target.value)}
-                >
-                  <option value="">Phòng trống bất kỳ</option>
-                  {(live?.rooms || rooms).filter((r) => r.branch === form.branch).map((r) => (
-                    <option key={r._id} value={r._id}>
-                      {r.name}
-                      {r.status ? ` — ${roomStatus(r, live.offset)}` : ""}
-                    </option>
-                  ))}
+                Số điện thoại khách
+                <input
+                  name="phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="off"
+                  placeholder="VD: 0912345678"
+                  aria-invalid={Boolean(v.errors.phone)}
+                  value={form.phone}
+                  onChange={(e) =>
+                    change(
+                      "phone",
+                      e.target.value.replace(/[^\d]/g, "").slice(0, 10),
+                    )
+                  }
+                />
+                <FieldError error={v.errors.phone} />
+                <small className="muted">Dùng để tra cứu lại album của khách.</small>
+              </label>
+              <label>
+                Chi nhánh
+                <select value={form.branch} onChange={(e) => change("branch", e.target.value)}>
+                  <option value="">Chọn chi nhánh</option>
+                  {branches.map((name) => <option key={name} value={name}>{name}</option>)}
                 </select>
               </label>
               <label>
@@ -335,45 +332,6 @@ export function CounterTicket({ onClose, onCreated, initialDraft = null, assigne
                   <small>Kiểm tra tiền đã vào tài khoản ở bước xác nhận tiếp theo.</small>
                 </div>
               )}
-              <details
-                className="counter-optional"
-                open={moreOpen || Boolean(v.errors.name || v.errors.phone)}
-                onToggle={(e) => setMoreOpen(e.currentTarget.open)}
-              >
-                <summary>Thông tin khách (không bắt buộc)</summary>
-                <label>
-                  Tên khách
-                  <input
-                    name="name"
-                    aria-invalid={Boolean(v.errors.name)}
-                    value={form.name}
-                    onChange={(e) => change("name", e.target.value)}
-                  />
-                  <FieldError error={v.errors.name} />
-                </label>
-                <label>
-                  Số điện thoại khách
-                  <input
-                    name="phone"
-                    type="tel"
-                    inputMode="tel"
-                    placeholder="VD: 0912345678"
-                    aria-invalid={Boolean(v.errors.phone)}
-                    value={form.phone}
-                    onChange={(e) =>
-                      change(
-                        "phone",
-                        e.target.value.replace(/[^\d]/g, "").slice(0, 10),
-                      )
-                    }
-                  />
-                  <FieldError error={v.errors.phone} />
-                </label>
-                <p className="muted">
-                  Có số điện thoại sẽ tra cứu lại album được. Nếu để trống,
-                  khách giữ đường dẫn hoặc QR album.
-                </p>
-              </details>
             </div>
             <div className="transaction-confirmation">
               <div className="summary-total">

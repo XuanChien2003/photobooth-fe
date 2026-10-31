@@ -27,16 +27,6 @@ body {
   background: #f5ece3;
   border-radius: 12px;
 }
-.counter-optional {
-  margin-top: 20px;
-  padding: 16px 0;
-  border-block: 1px solid var(--line);
-}
-.counter-optional summary {
-  cursor: pointer;
-  font-size: 13px;
-  line-height: 1.6;
-}
 @media (max-width: 420px) {
   .counter-receipt .ticket-code {
     font-size: 36px;

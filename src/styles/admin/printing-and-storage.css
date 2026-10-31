@@ -255,15 +255,9 @@
 
   .admin-shell .counter-ticket .transaction-fields > p,
   .admin-shell .counter-ticket .muted,
-  .admin-shell .counter-ticket .soft-note,
-  .admin-shell .counter-ticket .counter-optional {
+  .admin-shell .counter-ticket .soft-note {
     font-size: 13px;
     line-height: 1.65;
-  }
-
-  .admin-shell .counter-ticket .counter-optional summary {
-    min-height: 44px;
-    padding: 10px 0;
   }
 
   .admin-shell .modal label.checkbox {
