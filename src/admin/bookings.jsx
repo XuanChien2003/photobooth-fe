@@ -9,7 +9,7 @@ import { useLiveData } from "../use-live-data";
 import { Button, ErrorBox, useToast } from "../studio";
 import { CounterTicket } from "../counter-ticket";
 import { ExtraPrints } from "../extra-prints";
-import { PeriodPicker } from "./period-picker";
+import { PeriodPicker, monthRange } from "./period-picker";
 
 // Khổ in của đơn: DNP 10 × 15 (to / nhỏ cắt đôi) hoặc Instax mini.
 const SIZE_NAMES = { full: "Lớn", strip: "Nhỏ", instax: "Instax" };
@@ -164,12 +164,14 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
   const toast = useToast();
   const lastError = useRef("");
   const today = localDate();
+  // Mặc định xem cả tháng này (đơn hiện ngay, không cần mở lịch); vẫn chọn được tháng / ngày khác.
+  const [monthStart, monthEnd] = monthRange(today.slice(0, 7));
   const [creating, setCreating] = useState(false);
   const [collecting, setCollecting] = useState(null);
   const [items, setItems] = useState([]);
   const [query, setQuery] = useState("");
-  const [from, setFrom] = useState(today);
-  const [to, setTo] = useState(today);
+  const [from, setFrom] = useState(monthStart);
+  const [to, setTo] = useState(monthEnd);
   const [payment, setPayment] = useState("");
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
@@ -192,11 +194,13 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
     revenue: filtered.reduce((sum, booking) => sum + (booking.total || 0), 0),
     received: filtered.reduce((sum, booking) => sum + (booking.paid ? booking.total || 0 : 0), 0),
   }), [filtered]);
-  const hasFilters = query.trim() || from !== today || to !== today || payment;
+  const isThisMonth = from === monthStart && to === monthEnd;
+  const isToday = from === today && to === today;
+  const hasFilters = query.trim() || !isThisMonth || payment;
   const resetFilters = () => {
     setQuery("");
-    setFrom(today);
-    setTo(today);
+    setFrom(monthStart);
+    setTo(monthEnd);
     setPayment("");
   };
 
@@ -233,8 +237,12 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
   return <>
     <ErrorBox error={error} />
     <div className="order-toolbar">
-      <Button className={`outline small ${from === today && to === today ? "is-current" : ""}`} aria-pressed={from === today && to === today}
-        onClick={() => { setFrom(today); setTo(today); }}>Hôm nay</Button>
+      <div className="order-quick">
+        <Button className={`outline small ${isThisMonth ? "is-current" : ""}`} aria-pressed={isThisMonth}
+          onClick={() => { setFrom(monthStart); setTo(monthEnd); }}>Tháng này</Button>
+        <Button className={`outline small ${isToday ? "is-current" : ""}`} aria-pressed={isToday}
+          onClick={() => { setFrom(today); setTo(today); }}>Hôm nay</Button>
+      </div>
       <PeriodPicker from={from} to={to} onChange={(start, end) => { setFrom(start); setTo(end); }} />
       <select aria-label="Lọc thanh toán" value={payment} onChange={(event) => setPayment(event.target.value)}>
         <option value="">Thanh toán: Tất cả</option><option value="cash">Tiền mặt</option><option value="transfer">Chuyển khoản</option>

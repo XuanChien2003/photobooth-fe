@@ -124,6 +124,7 @@ before(async () => {
     if (path.startsWith("/api/")) {
       const entry = {
         path,
+        search: new URL(request.url, "http://fixture").searchParams,
         method: request.method,
         body: await readJson(request),
       };
@@ -701,5 +702,36 @@ test("a stopped room can be switched back on or deleted for good", async () => {
   await roomRow("Phòng đã tắt").getByRole("button", { name: "Xoá hẳn Phòng đã tắt", exact: true }).click();
   await page.getByText("Đã xoá phòng “Phòng đã tắt”.").waitFor();
   assert.ok(requests.some((entry) => entry.method === "DELETE" && entry.path.endsWith("/permanent")));
+  assertClean();
+});
+
+test("orders open on the whole current month; Hôm nay and the picker still narrow it", async () => {
+  await mount();
+  const before = requests.length;
+  await page
+    .getByRole("navigation", { name: "Quản lý studio" })
+    .getByRole("button", { name: "Đơn hàng", exact: true })
+    .click();
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
+  const [year, month] = today.split("-").map(Number);
+  const last = String(new Date(Date.UTC(year, month, 0)).getUTCDate()).padStart(2, "0");
+  // Chỉ xét yêu cầu của trang Đơn hàng (trang Tổng hợp cũng đọc đơn, theo ?date=).
+  const orders = () => requests.slice(before)
+    .filter((entry) => entry.path === "/api/admin/bookings" && entry.search.has("from"));
+  await page.getByRole("button", { name: /Chọn tháng hoặc ngày: Tháng \d+\/\d{4}/ }).waitFor();
+  for (let i = 0; i < 40 && !orders().length; i++) await page.waitForTimeout(50);
+  const first = orders()[0].search;
+  assert.equal(first.get("from"), `${today.slice(0, 7)}-01`);
+  assert.equal(first.get("to"), `${today.slice(0, 7)}-${last}`);
+  assert.equal(await page.getByRole("button", { name: "Tháng này", exact: true }).getAttribute("aria-pressed"), "true");
+  assert.equal(await page.getByRole("button", { name: "Xóa bộ lọc" }).count(), 0);
+  await page.getByRole("button", { name: "Hôm nay", exact: true }).click();
+  await page.getByRole("button", { name: /Chọn tháng hoặc ngày: Hôm nay/ }).waitFor();
+  const latest = () => orders().at(-1).search;
+  for (let i = 0; i < 40 && latest().get("from") !== today; i++) await page.waitForTimeout(50);
+  assert.equal(latest().get("from"), today);
+  assert.equal(latest().get("to"), today);
+  await page.getByRole("button", { name: "Xóa bộ lọc" }).click();
+  await page.getByRole("button", { name: /Chọn tháng hoặc ngày: Tháng/ }).waitFor();
   assertClean();
 });

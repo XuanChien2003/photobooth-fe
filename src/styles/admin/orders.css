@@ -38,6 +38,10 @@
     font-size: 13px;
   }
   /* Lịch lọc đơn: ‹ [Tháng 10/2026 ▾] ›, bấm nhãn mở bảng 12 tháng (và chọn một ngày). */
+  .admin-shell .order-quick {
+    display: flex;
+    gap: 8px;
+  }
   .admin-shell .order-toolbar .button.is-current {
     border-color: var(--mellow-cocoa, #522e22);
     background: var(--mellow-cocoa, #522e22);
@@ -571,6 +575,7 @@
     .admin-shell .order-date-range { justify-content: space-between; gap: 6px; padding: 0 8px; }
     .admin-shell .period-current { flex: 1; min-width: 0; }
     .admin-shell .order-toolbar > select { width: 100%; }
+    .admin-shell .order-quick > .button { flex: 1; }
     .admin-shell .period-pop { width: min(300px, calc(100vw - 40px)); }
     /* Hai ô ngày chia đều chỗ còn lại thay vì cố định 118 px (điện thoại 320 px không đủ chỗ). */
     .admin-shell .order-date-range input { flex: 1 1 0; width: auto; min-width: 0; }
