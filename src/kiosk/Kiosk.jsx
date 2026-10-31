@@ -852,10 +852,14 @@ export function Kiosk() {
     if (phase === "shoot" && ready && stream.current)
       recorder.current.start(stream.current, { light: webcamRef.current });
   }, [phase, ready, webcamTest]);
-  // Đồng hồ các bước chuẩn bị / chọn ảnh / chọn khung.
+  // Đồng hồ các bước chuẩn bị / chọn ảnh / chọn khung: kiểm tra 4 lần mỗi giây nhưng chỉ vẽ lại khi
+  // số giây hiển thị đổi (vẽ lại cả màn hình liên tục tranh CPU với việc ghép video tua nhanh).
   useEffect(() => {
     if (!["ready", "select", "frame"].includes(phase)) return;
-    const timer = setInterval(() => setTick((n) => n + 1), 250);
+    const timer = setInterval(() => {
+      const s = current.current;
+      setTick(`${secondsUntil(s?.readyEndsAt)}:${secondsUntil(s?.selectEndsAt || s?.frameEndsAt)}`);
+    }, 250);
     return () => clearInterval(timer);
   }, [phase]);
   const preCount = secondsUntil(session?.readyEndsAt);

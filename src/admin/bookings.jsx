@@ -160,6 +160,9 @@ function PrintOrderDialog({ booking, onClose, onExtra, onPrinted }) {
   );
 }
 
+// Máy chủ trả tối đa bấy nhiêu đơn mới nhất cho một khoảng ngày (BOOKING_RANGE_LIMIT ở backend).
+const RANGE_LIMIT = 2000;
+
 export function BookingsManager({ notify, canSeeMoney, canExport = true, canCancel = false, canPrint = true, assignedBranch }) {
   const toast = useToast();
   const lastError = useRef("");
@@ -181,13 +184,16 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
   const params = new URLSearchParams({
     ...(from ? { from } : {}), ...(to ? { to } : {}), ...(payment ? { paymentMethod: payment } : {}),
   });
+  // Xem hôm nay: làm mới 20 giây/lần; khoảng có hôm nay (cả tháng này): 30 giây; khoảng đã qua ít khi
+  // đổi: 2 phút (vẫn làm mới ngay sau khi thao tác).
+  const refreshMs = from === today && to === today ? 20000 : to >= today ? 30000 : 120000;
   const load = useLiveData(`/admin/bookings?${params}`, (data) => {
     setItems(data); setError(""); lastError.current = "";
   }, (loadError) => {
     setError(loadError.message);
     if (lastError.current !== loadError.message && !isConnectivityError(loadError)) toast.error(loadError.message);
     lastError.current = loadError.message;
-  }, 20000);
+  }, refreshMs);
   const filtered = useMemo(() => items.filter((booking) =>
     `${booking.name} ${booking.phone} ${booking.code} ${booking._id}`.toLowerCase().includes(query.trim().toLowerCase())), [items, query]);
   const totals = useMemo(() => ({
@@ -262,6 +268,12 @@ export function BookingsManager({ notify, canSeeMoney, canExport = true, canCanc
         <span><small>Đã thực nhận</small><strong>{money(totals.received)}</strong></span>
       </>}
     </div>
+    {items.length >= RANGE_LIMIT && (
+      <p className="order-limit-note" role="status">
+        Đang hiện {RANGE_LIMIT.toLocaleString("vi-VN")} đơn mới nhất của khoảng ngày này — số đơn và tổng tiền
+        phía trên chưa tính các đơn cũ hơn. Chọn từng ngày để xem đủ.
+      </p>
+    )}
     <div className="order-list">
       {filtered.map((booking) => {
         const job = booking.latestPrint;

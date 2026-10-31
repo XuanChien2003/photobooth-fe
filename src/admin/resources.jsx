@@ -277,7 +277,7 @@ Liên kết máy chụp của phòng này sẽ không mở được nữa. Đơn
     try {
       const d = await api(`/admin/rooms/${next.room._id}/device`, {
         method: "POST",
-        body: { kind: next.kind, paymentTest: next.kind === "photobooth" && next.paymentTest },
+        body: { paymentTest: next.kind === "photobooth" && next.paymentTest },
       });
       setDevice((current) => current && {
         ...next,

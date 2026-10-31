@@ -56,10 +56,12 @@ hoặc tải file cài tự mở cho Windows/Mac. Thêm, sửa và ngừng phòn
 Quyền này dùng tài khoản lễ tân hiện có; không cần đổi vai trò tài khoản.
 
 Album của khách (`src/album/AlbumViewer.jsx`) chỉ để xem và tải, giống Snapbox: ảnh lớn ở giữa,
-dải ảnh nhỏ bên dưới gồm ảnh đã ghép khung, video tua nhanh rồi tới các ảnh gốc. Khách giữ vào ảnh
-để lưu trên điện thoại hoặc bấm tải ảnh gốc, ảnh ghép, video hay cả album (ZIP). Chọn ảnh, ghép
-khung và in đều làm ở máy chụp. Album tự làm mới 10 giây/lần khi đang mở để nhận ảnh đồng bộ muộn;
-nút **Làm mới ảnh** cập nhật ngay. Giao diện dùng nâu espresso **#4b332a** trên nền kem sáng.
+dải ảnh nhỏ bên dưới gồm ảnh đã ghép khung, video tua nhanh rồi tới các ảnh gốc. **Lưu ảnh / Lưu
+video** lưu tệp đang xem, **Lưu tất cả** lưu cả album vào thư viện ảnh (`src/album/save-to-phone.js`):
+iPhone mở bảng chia sẻ của iOS ("Lưu N mục" → app Ảnh; video WebM không lưu được vào Ảnh nên không
+kèm), Android / máy tính tải từng tệp. Chọn ảnh, ghép khung và in đều làm ở máy chụp. Album tự làm
+mới 10 giây/lần trong lúc chụp để nhận ảnh đồng bộ muộn, 60 giây/lần khi đã chụp xong; nút **Làm mới
+ảnh** cập nhật ngay. Giao diện dùng nâu espresso **#4b332a** trên nền kem sáng.
 
 Màn chọn ảnh của máy chụp (150 giây) có 3 mục bên cạnh khung xem trước:
 

@@ -61,7 +61,9 @@ function AlbumSession({ token }) {
       if (booking && lastError.current !== e.message) toast.error(e.message);
       lastError.current = e.message;
     },
-    10000,
+    // Đang chụp: 10 giây/lần để ảnh mới hiện nhanh. Chụp xong album gần như không đổi: 60 giây/lần
+    // (vẫn kịp làm mới link kho ảnh, hạn 5 phút) — khách hay để trang mở trên điện thoại.
+    booking?.status === "completed" ? 60000 : 10000,
     (b) => b.status === "cancelled" || b.mediaDeleted,
   );
   const ready = booking?.status === "completed" && !booking.mediaDeleted;

@@ -60,6 +60,8 @@ let requests = [];
 let unexpected = [];
 let pageErrors = [];
 const screenshots = join(tmpdir(), "photobooth-fe-staff-kiosk-review");
+// Đơn hàng trang Đơn hàng nhận được khi xem theo khoảng ngày (mặc định không có đơn).
+let orderFixtures = [];
 
 async function readJson(request) {
   let text = "";
@@ -165,7 +167,7 @@ before(async () => {
         return;
       }
       if (path === "/api/admin/bookings" || path === "/api/admin/print-jobs") {
-        send([]);
+        send(path === "/api/admin/bookings" && entry.search.has("from") ? orderFixtures : []);
         return;
       }
       if (path === "/api/admin/rooms/live") {
@@ -638,7 +640,7 @@ test("admin keeps inactive rooms, create/edit/deactivate controls, and room edit
   await setup.getByText("Phòng Photobooth", { exact: true }).waitFor();
   assert.equal(await setup.getByRole("radio").count(), 0);
   assert.equal(await setup.getByRole("button", { name: /Tiếp tục/ }).count(), 0);
-  assert.deepEqual(deviceRequests().at(-1).body, { kind: "photobooth", paymentTest: false });
+  assert.deepEqual(deviceRequests().at(-1).body, { paymentTest: false });
   // Phòng Photobooth bật chế độ thử tiền mặt ngay trong hộp: lưu lại liên kết với chế độ thử.
   const testMode = setup.getByRole("checkbox", { name: /Chế độ thử/ });
   assert.equal(await testMode.isChecked(), false);
@@ -651,7 +653,7 @@ test("admin keeps inactive rooms, create/edit/deactivate controls, and room edit
   assert.equal(deviceRequests().length, before + 1);
   const issued = deviceRequests().at(-1);
   assert.equal(issued.path, "/api/admin/rooms/room-1/device");
-  assert.deepEqual(issued.body, { kind: "photobooth", paymentTest: true });
+  assert.deepEqual(issued.body, { paymentTest: true });
   await mkdir(screenshots, { recursive: true });
   await page.screenshot({ path: join(screenshots, "room-setup-1440.png") });
   await setup.getByRole("button", { name: "Đóng", exact: true }).click();
@@ -734,4 +736,22 @@ test("orders open on the whole current month; Hôm nay and the picker still narr
   await page.getByRole("button", { name: "Xóa bộ lọc" }).click();
   await page.getByRole("button", { name: /Chọn tháng hoặc ngày: Tháng/ }).waitFor();
   assertClean();
+});
+
+test("orders say so when the server's 2000-order cap for a date range is reached", async () => {
+  orderFixtures = Array.from({ length: 2000 }, (_, i) => ({
+    _id: `order-${i}`, code: String(100000 + i), name: `Khách ${i}`, status: "completed", total: 50000,
+    paid: true, createdAt: new Date(Date.now() - i * 60000).toISOString(), packageName: "Gói 1", printSize: "full",
+  }));
+  try {
+    await mount();
+    await page
+      .getByRole("navigation", { name: "Quản lý studio" })
+      .getByRole("button", { name: "Đơn hàng", exact: true })
+      .click();
+    await page.getByText(/Đang hiện 2\.000 đơn mới nhất/).waitFor();
+    assertClean();
+  } finally {
+    orderFixtures = [];
+  }
 });

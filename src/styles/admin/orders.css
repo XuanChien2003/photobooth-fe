@@ -38,6 +38,15 @@
     font-size: 13px;
   }
   /* Lịch lọc đơn: ‹ [Tháng 10/2026 ▾] ›, bấm nhãn mở bảng 12 tháng (và chọn một ngày). */
+  .admin-shell .order-limit-note {
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    border: 1px solid #e7c58f;
+    border-radius: 10px;
+    background: #fff6e6;
+    color: #7a4b12;
+    font-size: 13px;
+  }
   .admin-shell .order-quick {
     display: flex;
     gap: 8px;
