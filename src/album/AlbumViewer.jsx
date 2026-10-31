@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { PiArrowLeftBold, PiArrowRightBold, PiDownloadSimpleBold, PiFileZipBold, PiPlayFill } from "react-icons/pi";
+import { PiArrowLeftBold, PiArrowRightBold, PiDownloadSimpleBold, PiImagesBold, PiPlayFill } from "react-icons/pi";
+import { useToast } from "../studio";
 import { api, getApiUrl } from "../api";
 import { directMediaUrl, storageLink } from "../media-delivery.js";
 import { PhotoThumb, photoUrl } from "./photo-thumb.jsx";
+import { downloadEach, fetchFiles, savableOnIOS, usesShareSheet } from "./save-to-phone.js";
 
 // Trang link ảnh (khách quét QR ở máy chụp / nhân viên bấm "Link ảnh"), như Snapbox: ảnh lớn ở giữa,
-// dải ảnh nhỏ bên dưới — ảnh đã ghép khung, video tua nhanh rồi tới mọi ảnh gốc. Giữ vào ảnh để lưu
-// trên điện thoại; nút tải lấy ảnh gốc / ảnh ghép / video.
+// dải ảnh nhỏ bên dưới — ảnh đã ghép khung, video tua nhanh rồi tới mọi ảnh gốc. "Lưu" đưa ảnh / video
+// đang xem vào thư viện ảnh của điện thoại, "Lưu tất cả" đưa cả album (xem save-to-phone.js).
 export function AlbumViewer({ token, booking }) {
+  const toast = useToast();
   const [job, setJob] = useState(null);
   const composite = booking.composite ? getApiUrl(`/api/albums/${token}/composite`) : "";
   // Album cũ (trước khi máy chụp lưu ảnh ghép): ảnh ghép lấy từ lệnh in.
@@ -32,19 +35,38 @@ export function AlbumViewer({ token, booking }) {
           kind: "image",
           src: composite || sheet,
           thumb: `${composite || sheet}?size=thumbnail`,
-          download: composite ? `${composite}?download=1` : `${sheet}?download=1`,
+          save: {
+            url: composite ? `${composite}?download=1` : `${sheet}?download=1`,
+            name: `NXC-${booking.code}-anh-ghep.jpg`,
+            type: "image/jpeg",
+          },
           label: "Ảnh ghép khung",
         }]
       : []),
-    ...(video ? [{ key: "video", kind: "video", src: video, download: `${video}?download=1`, label: "Video tua nhanh" }] : []),
+    ...(video
+      ? [{
+          key: "video",
+          kind: "video",
+          src: video,
+          save: {
+            url: `${video}?download=1`,
+            name: `NXC-${booking.code}-video.${booking.video.mimeType === "video/webm" ? "webm" : "mp4"}`,
+            type: booking.video.mimeType || "video/mp4",
+          },
+          label: "Video tua nhanh",
+        }]
+      : []),
     ...originals.map((photo, i) => ({
       key: photo.id,
       kind: "image",
       photo,
       src: photoSrc(photo),
       fallback: photoUrl(token, photo.id, "preview"),
-      download: photoUrl(token, photo.id),
-      name: `NXC-${booking.code}-${String(i + 1).padStart(2, "0")}.jpg`,
+      save: {
+        url: photoUrl(token, photo.id),
+        name: `NXC-${booking.code}-${String(i + 1).padStart(2, "0")}.jpg`,
+        type: "image/jpeg",
+      },
       label: `Ảnh ${i + 1}`,
     })),
   ];
@@ -67,13 +89,55 @@ export function AlbumViewer({ token, booking }) {
   });
   // Vuốt ngang trên ảnh lớn để chuyển ảnh.
   const swipe = useRef(null);
+  // Lưu vào thư viện ảnh. iPhone: tải tệp về trang rồi mở bảng chia sẻ ("Lưu N mục"). Tải lâu thì
+  // Safari không cho mở bảng chia sẻ nữa: nút đổi thành "Bấm để lưu", bấm lần nữa là mở ngay.
+  const [shareSheet] = useState(usesShareSheet);
+  const fileCache = useRef(new Map());
+  const [saving, setSaving] = useState(null); // { scope, done, total }
+  const [ready, setReady] = useState(null); // { scope, files }
+  const entriesOf = (list) =>
+    list.map((entry) => entry.save).filter((entry) => !shareSheet || savableOnIOS(entry));
+  async function share(scope, files) {
+    try {
+      await navigator.share({ files });
+    } catch (e) {
+      if (e?.name === "NotAllowedError") return setReady({ scope, files });
+      if (e?.name !== "AbortError") toast.error("Không mở được bảng lưu ảnh. Vui lòng thử lại.");
+    }
+  }
+  async function save(scope, list) {
+    if (saving) return;
+    const entries = entriesOf(list);
+    if (!entries.length) return toast.info("iPhone không lưu được video này vào Ảnh.");
+    if (!shareSheet) return downloadEach(entries);
+    if (ready?.scope === scope) {
+      setReady(null);
+      return share(scope, ready.files);
+    }
+    setReady(null);
+    setSaving({ scope, done: 0, total: entries.length });
+    let files;
+    try {
+      files = await fetchFiles(entries, fileCache.current, (done) =>
+        setSaving((current) => current && { ...current, done }));
+    } catch (e) {
+      toast.error(e.message);
+      return;
+    } finally {
+      setSaving(null);
+    }
+    await share(scope, files);
+  }
+  const buttonText = (scope, idle) =>
+    saving?.scope === scope
+      ? `Đang tải ${saving.done}/${saving.total}…`
+      : ready?.scope === scope
+        ? ready.files.length > 1 ? `Bấm để lưu ${ready.files.length} mục` : "Bấm để lưu vào Ảnh"
+        : idle;
   if (!item) return null;
+  const allCount = entriesOf(items).length;
   return (
     <section className="album-viewer" aria-label="Ảnh và video của bạn">
-      <header className="album-viewer-hint">
-        <span>{item.kind === "video" ? "BẤM “TẢI VIDEO” ĐỂ LƯU VỀ MÁY" : "VUI LÒNG GIỮ VÀO ẢNH ĐỂ TẢI"}</span>
-        <b>{index + 1}/{items.length}</b>
-      </header>
       <div
         className="album-viewer-stage"
         onPointerDown={(event) => { swipe.current = event.clientX; }}
@@ -108,14 +172,14 @@ export function AlbumViewer({ token, booking }) {
         )}
       </div>
       <div className="album-viewer-actions">
-        <a className="button small" href={item.download} download={item.name || ""}>
+        <button type="button" className="button small" disabled={Boolean(saving)} onClick={() => save(item.key, [item])}>
           <PiDownloadSimpleBold aria-hidden="true" />
-          {item.kind === "video" ? "Tải video" : item.key === "composite" ? "Tải ảnh ghép" : "Tải ảnh gốc"}
-        </a>
-        {originals.length > 1 && (
-          <a className="button outline small" href={getApiUrl(`/api/albums/${token}/download`)}>
-            <PiFileZipBold aria-hidden="true" /> Tải tất cả ảnh (ZIP)
-          </a>
+          {buttonText(item.key, item.kind === "video" ? "Lưu video" : item.key === "composite" ? "Lưu ảnh ghép" : "Lưu ảnh")}
+        </button>
+        {allCount > 1 && (
+          <button type="button" className="button outline small" disabled={Boolean(saving)} onClick={() => save("all", items)}>
+            <PiImagesBold aria-hidden="true" /> {buttonText("all", `Lưu tất cả (${allCount})`)}
+          </button>
         )}
       </div>
       <div className="album-viewer-rail" ref={rail} role="tablist" aria-label="Chọn ảnh">

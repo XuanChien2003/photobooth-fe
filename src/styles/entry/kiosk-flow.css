@@ -1518,41 +1518,16 @@
   }
 
   /* ── Album: ảnh đã ghép & video tua nhanh ── */
-  /* Trang link ảnh (như Snapbox): ảnh lớn, dải ảnh nhỏ bên dưới, giữ vào ảnh để tải. */
+  /* Trang link ảnh (như Snapbox): ảnh lớn, nút Lưu / Lưu tất cả, dải ảnh nhỏ bên dưới. */
   .album-viewer {
     display: grid;
     gap: 12px;
     margin: 0 0 18px;
-    padding: 0 0 14px;
+    padding: 14px 0;
     overflow: hidden;
     border: 1px solid var(--line, #e5d9cf);
     border-radius: 16px;
     background: #fff;
-  }
-  .album-viewer-hint {
-    position: relative;
-    display: grid;
-    place-items: center;
-    min-height: 34px;
-    padding: 6px 56px;
-    background: #fdf3f4;
-    color: #d35d7a;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-align: center;
-  }
-  .album-viewer-hint b {
-    position: absolute;
-    top: 50%;
-    right: 12px;
-    padding: 2px 8px;
-    translate: 0 -50%;
-    border-radius: 6px;
-    background: #5f5a57;
-    color: #fff;
-    font-size: 11px;
-    letter-spacing: 0;
   }
   .album-viewer-stage {
     position: relative;
@@ -1560,8 +1535,8 @@
     /* Hàng / cột có kích thước xác định để ảnh không tràn xuống dải ảnh nhỏ. */
     grid-template: minmax(0, 1fr) / minmax(0, 1fr);
     place-items: center;
-    /* Chừa chỗ cho dòng nhắc, nút tải, dải ảnh nhỏ và thanh công cụ dưới cùng của album. */
-    height: clamp(340px, calc(100dvh - 330px), 760px);
+    /* Chừa chỗ cho nút lưu, dải ảnh nhỏ và thanh công cụ dưới cùng của album. */
+    height: clamp(340px, calc(100dvh - 296px), 760px);
     padding: 0 64px;
     overflow: hidden;
     touch-action: pan-y;
