@@ -145,7 +145,7 @@ Máy chụp: nên mở trình duyệt ở chế độ toàn màn hình (nút “
 “Cài đặt máy chụp (nhân viên)” ở màn chờ) và cho phép dùng camera.
 
 Một web, hai **loại phòng**. Đầu ca, nhân viên mở máy chụp từng phòng ở Quản trị → Quản lý máy →
-**Cài máy chụp**: bước 1 chọn loại phòng, bước 2 lấy liên kết / QR.
+**Cài máy chụp** (lấy liên kết / QR). Loại phòng chọn lúc thêm phòng.
 
 - **Photobooth** (máy ảnh **Fujifilm X-S10 / X-S20 / X-T3** + FUJIFILM X Acquire + dây bấm, in ở máy DNP DS-RX1):
   Chạm để bắt đầu → **Chọn cách thanh toán**.
@@ -153,7 +153,7 @@ Một web, hai **loại phòng**. Đầu ca, nhân viên mở máy chụp từng
     gói và số bản in lấy từ mã.
   - **Tiền mặt**: chọn loại tờ (tờ bé / tờ to) → chọn số lượng → màn đọc tiền. Mỗi tờ tiền máy nhận
     được cộng ngay trên màn hình; đủ tiền là vào màn chụp. Chưa lắp máy đọc tiền thì bật “Chế độ
-    thử tiền mặt” ở bước 1 để thử bằng nút giả lập.
+    thử tiền mặt” trong hộp Cài máy chụp để thử bằng nút giả lập.
 - **Polaroid** (máy ảnh **Canon EOS R100**, in ở máy Instax mini Link 3 qua print agent — xem README của `photobooth-be`):
   Chạm để bắt đầu → **Chọn layout** (thẻ số ảnh + giá) → thông báo “Chọn layout này, vào chụp nha!” →
   chụp (đồng hồ đếm ngược, tối đa số lần chụp của layout, mặc định 10) → chọn ảnh & khung → in Instax.

@@ -314,19 +314,32 @@
 
   /* Khổ ảnh: nhóm gói theo khổ nhỏ / khổ to như màn “Chọn khổ ảnh” của máy chụp */
   /* Các khổ đứng cạnh nhau như màn “Chọn khổ ảnh” của máy chụp; màn hẹp thì xếp dọc. */
+  /* Mỗi khổ là một khung trắng. Subgrid: phần đầu các khung đứng cùng một hàng lưới nên cao bằng
+     nhau dù mô tả dài ngắn khác nhau — nút "Thêm gói" và thẻ gói đầu tiên thẳng hàng giữa các cột. */
   .admin-shell .package-size-groups {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr));
-    align-items: start;
     gap: 24px;
   }
   .admin-shell .package-size-group {
     display: grid;
-    gap: 16px;
+    grid-row: span 2;
+    grid-template-rows: subgrid;
+    row-gap: 18px;
     min-width: 0;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: #fff;
+    box-shadow: 0 6px 22px -14px rgb(82 46 34 / 22%);
   }
   .admin-shell .package-size-group .package-catalog-grid {
     grid-template-columns: minmax(0, 1fr);
+    align-self: start;
+  }
+  /* Thẻ gói trong khung trắng: nền kem nhạt để tách khỏi khung. */
+  .admin-shell .package-size-group .package-card {
+    background: #fffaf3;
   }
   .admin-shell .package-size-head .package-size-add {
     flex: 1 0 100%;
@@ -335,6 +348,7 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    align-content: space-between; /* phần đầu cao bằng cột dài nhất: nút "Thêm gói" xuống đáy */
     gap: 14px;
     padding-bottom: 12px;
     border-bottom: 2px solid var(--line);
@@ -354,7 +368,6 @@
     font: 500 12px / 1 var(--sans, inherit);
   }
   .admin-shell .package-size-head p {
-    min-height: 3.2em; /* 2 dòng: nút "Thêm gói" của các cột thẳng hàng */
     margin: 4px 0 0;
     color: var(--muted);
     font-size: 12px;
@@ -402,6 +415,7 @@
     color: #fffaf3;
   }
   .admin-shell .package-size-empty {
+    align-self: start;
     margin: 0;
     padding: 18px;
     border: 1px dashed var(--line);

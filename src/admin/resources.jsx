@@ -22,7 +22,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { api, money } from "../api";
 import { Button, ErrorBox, useStudio, useToast } from "../studio";
 import { useValidation } from "../validate";
-import { RESOURCE_LABELS, RESOURCE_RULES, ROOM_KIND_NAMES, ROOM_KINDS, definitions, DEFAULT_STAFF_PERMISSIONS, PERMISSION_GROUPS, can } from "./config";
+import { RESOURCE_LABELS, RESOURCE_RULES, ROOM_KIND_NAMES, definitions, DEFAULT_STAFF_PERMISSIONS, PERMISSION_GROUPS, can } from "./config";
 import { PriceEditor } from "../extra-prints";
 import { TableHeading } from "./table-heading";
 import { Guide } from "../guide";
@@ -263,34 +263,32 @@ Liên kết máy chụp của phòng này sẽ không mở được nữa. Đơn
       toast.error(e.message);
     }
   }
-  // Cài máy chụp (đầu ca, từng phòng): bước 1 chọn loại phòng (Photobooth / Polaroid), bước 2 lưu và lấy
-  // liên kết + QR mở máy chụp.
+  // Cài máy chụp (đầu ca, từng phòng): lấy liên kết + QR mở máy chụp. Loại phòng đã chọn lúc thêm
+  // phòng; phòng Photobooth bật / tắt chế độ thử tiền mặt ngay trong hộp này.
   const setup = (item) =>
-    setDevice({
+    issueDevice({
       room: item,
       name: item.name,
-      step: "type",
       kind: item.kind || "photobooth",
       paymentTest: Boolean(item.paymentTest),
     });
-  async function issueDevice() {
-    if (device.busy) return;
-    setDevice({ ...device, busy: true });
+  async function issueDevice(next) {
+    setDevice({ ...next, busy: true });
     try {
-      const d = await api(`/admin/rooms/${device.room._id}/device`, {
+      const d = await api(`/admin/rooms/${next.room._id}/device`, {
         method: "POST",
-        body: { kind: device.kind, paymentTest: device.kind === "photobooth" && device.paymentTest },
+        body: { kind: next.kind, paymentTest: next.kind === "photobooth" && next.paymentTest },
       });
-      setDevice({
-        ...device,
+      setDevice((current) => current && {
+        ...next,
         ...d,
         busy: false,
-        step: "link",
         url: `${window.location.origin}/kiosk?device=${encodeURIComponent(d.token)}`,
       });
       load().catch(() => {});
     } catch (e) {
-      setDevice((current) => current && { ...current, busy: false });
+      // Chưa có liên kết thì đóng hộp; đang đổi chế độ thử thì giữ liên kết cũ.
+      setDevice((current) => current && (current.url ? { ...current, busy: false, paymentTest: !next.paymentTest } : null));
       toast.error(e.message);
     }
   }
@@ -302,7 +300,7 @@ Liên kết máy chụp của phòng này sẽ không mở được nữa. Đơn
           id="rooms-kiosk"
           title="cài máy chụp cho phòng"
           steps={[
-            "Bấm “Cài máy chụp” ở dòng phòng → chọn loại phòng (Photobooth / Polaroid) → mở liên kết (hoặc quét QR) trên máy tính trong phòng bằng Chrome / Edge.",
+            "Bấm “Cài máy chụp” ở dòng phòng → mở liên kết (hoặc quét QR) trên máy tính trong phòng bằng Chrome / Edge. Loại phòng (Photobooth / Polaroid) chọn lúc thêm phòng.",
             "Trên máy chụp: mở “Cài đặt máy chụp (nhân viên)”, làm theo hướng dẫn kết nối máy ảnh.",
             "Muốn bật máy tính là tự mở máy chụp: trong hộp “Cài máy chụp” tải “File cài cho Windows / Mac”, chạy 1 lần trên máy trong phòng.",
           ]}
@@ -561,47 +559,22 @@ Liên kết máy chụp của phòng này sẽ không mở được nữa. Đơn
               <X />
             </button>
             <h2>Cài máy chụp: {device.name}</h2>
-            {device.step === "type" ? (
-              <>
-                <p className="setup-step">Bước 1/2 · Chọn loại hình chụp của phòng này</p>
-                <div className="room-type-options" role="radiogroup" aria-label="Loại phòng">
-                  {ROOM_KINDS.map(([value, title, detail]) => (
-                    <label key={value} className={`room-type-option${device.kind === value ? " is-selected" : ""}`}>
-                      <input
-                        type="radio"
-                        name="setup-kind"
-                        value={value}
-                        checked={device.kind === value}
-                        onChange={() => setDevice({ ...device, kind: value })}
-                      />
-                      <strong>{title}</strong>
-                      <small>{detail}</small>
-                    </label>
-                  ))}
-                </div>
-                {device.kind === "photobooth" && (
-                  <label className="checkbox setup-test">
-                    <input
-                      type="checkbox"
-                      checked={device.paymentTest}
-                      onChange={(e) => setDevice({ ...device, paymentTest: e.target.checked })}
-                    />
-                    Chế độ thử tiền mặt: chưa lắp máy đọc tiền — máy chụp có nút giả lập đút tiền (không tính doanh thu)
-                  </label>
-                )}
-                <Button className="full" disabled={device.busy} onClick={issueDevice}>
-                  {device.busy ? "Đang lưu…" : "Tiếp tục: lấy liên kết & QR"}
-                </Button>
-              </>
+            <p className="setup-step">{ROOM_KIND_NAMES[device.kind]}</p>
+            {device.kind === "photobooth" && (
+              <label className="checkbox setup-test">
+                <input
+                  type="checkbox"
+                  checked={device.paymentTest}
+                  disabled={device.busy}
+                  onChange={(e) => issueDevice({ ...device, paymentTest: e.target.checked })}
+                />
+                Chế độ thử tiền mặt: chưa lắp máy đọc tiền — máy chụp có nút giả lập đút tiền (không tính doanh thu)
+              </label>
+            )}
+            {!device.url ? (
+              <p role="status">Đang tạo liên kết máy chụp…</p>
             ) : (
             <>
-            <p className="setup-step">
-              Bước 2/2 · {ROOM_KIND_NAMES[device.kind]}
-              {device.kind === "photobooth" && device.paymentTest ? " (chế độ thử đút tiền)" : ""}{" "}
-              <button type="button" className="link-button" onClick={() => setDevice({ ...device, step: "type" })}>
-                Đổi loại phòng
-              </button>
-            </p>
             <p>
               Mở liên kết này một lần trên máy tính trong phòng (hoặc quét QR),
               máy chụp sẽ tự nhớ. Liên kết có hiệu lực 1 năm; chỉ gửi cho nhân
@@ -637,7 +610,7 @@ Liên kết máy chụp của phòng này sẽ không mở được nữa. Đơn
               </h3>
               <p>
                 Tải file cài về <b>máy tính trong phòng</b> rồi chạy một lần: từ
-                đó mỗi lần bật máy Windows sẽ mở Chrome toàn màn hình đúng phòng này.
+                đó mỗi lần bật máy Windows sẽ mở Chrome toàn màn hình đúng phòng này.{" "}
                 {device.kind === "polaroid"
                   ? "Canon Camera Agent (nếu đã cài) sẽ tự mở; lần đầu nhớ cho phép camera. Không có Agent, máy chụp tự chụp từ hình trực tiếp của Canon R100."
                   : "FUJIFILM X Acquire sẽ tự mở nếu đã cài; lần đầu nhớ cho phép camera và chọn thư mục ảnh trong “Cài đặt máy chụp”."}

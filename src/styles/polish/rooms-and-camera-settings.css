@@ -222,7 +222,7 @@
   gap: 6px;
 }
 
-/* Cài máy chụp · bước 1: hộp thoại canh giữa, nhưng mô tả loại phòng đọc dễ hơn khi canh trái. */
+/* Thêm phòng / Cài máy chụp: hộp thoại canh giữa, nhưng mô tả loại phòng và ô chế độ thử đọc dễ hơn khi canh trái. */
 .modal .room-type-option,
 .modal .setup-test {
   text-align: left;

@@ -105,7 +105,7 @@ export function ResourceEditor({
   const field = ([key, baseLabel, type = "text"]) => {
     const label = catalog && edit.printSize === "instax" ? POLAROID_LABELS[key] || baseLabel : baseLabel;
     if (type === "permissions" && edit.role !== "staff") return null;
-    // Loại phòng: chọn lúc thêm phòng mới (phòng đã có đổi ở bước 1 của "Cài máy chụp").
+    // Loại phòng: chỉ chọn lúc thêm phòng mới.
     if (type === "roomKind") {
       if (edit._id) return null;
       return (

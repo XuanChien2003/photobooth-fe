@@ -399,7 +399,6 @@ test("opening a configured kiosk uses the returned device token and displays QR 
     .click();
   const dialog = kioskDialog();
   await dialog.waitFor();
-  await dialog.getByRole("button", { name: "Tiếp tục: lấy liên kết & QR" }).click();
   await dialog.getByRole("link", { name: "Mở máy chụp" }).waitFor();
   const url = `http://127.0.0.1:${server.address().port}/kiosk?device=${encodeURIComponent(deviceToken)}`;
   assert.equal(
@@ -423,7 +422,6 @@ test("opening a configured kiosk uses the returned device token and displays QR 
     .getByRole("button", { name: "Cài máy chụp cho Phòng 01", exact: true })
     .click();
   await dialog.waitFor();
-  await dialog.getByRole("button", { name: "Tiếp tục: lấy liên kết & QR" }).click();
   await dialog.getByRole("link", { name: "Mở máy chụp" }).waitFor();
   assert.equal(
     await dialog.getByRole("link", { name: "Mở máy chụp" }).getAttribute("href"),
@@ -444,7 +442,6 @@ test("staff can create a kiosk link for a room that has never been configured", 
     .click();
   const dialog = kioskDialog();
   await dialog.waitFor();
-  await dialog.getByRole("button", { name: "Tiếp tục: lấy liên kết & QR" }).click();
   await dialog.getByRole("link", { name: "Mở máy chụp" }).waitFor();
   assert.match(
     await dialog.getByRole("link", { name: "Mở máy chụp" }).getAttribute("href"),
@@ -471,7 +468,6 @@ test("downloaded Windows and Mac installers open the same room kiosk", async () 
     .click();
   const dialog = kioskDialog();
   await dialog.waitFor();
-  await dialog.getByRole("button", { name: "Tiếp tục: lấy liên kết & QR" }).click();
   await dialog.getByRole("link", { name: "Mở máy chụp" }).waitFor();
   const url = await dialog
     .getByRole("link", { name: "Mở máy chụp" })
@@ -560,7 +556,6 @@ test("staff mobile navigation closes after opening rooms and kiosk dialog fits t
     .click();
   const dialog = kioskDialog();
   await dialog.waitFor();
-  await dialog.getByRole("button", { name: "Tiếp tục: lấy liên kết & QR" }).click();
   await dialog.getByRole("link", { name: "Mở máy chụp" }).waitFor();
   assert.equal(
     await page.evaluate(
@@ -633,29 +628,31 @@ test("admin keeps inactive rooms, create/edit/deactivate controls, and room edit
   assert.equal(mutation.body.branch, "Chi nhánh Nguyễn Trãi");
   assert.equal(mutation.body.name, "Phòng 01 cập nhật");
 
-  // Loại phòng chọn ở bước đầu của "Cài máy chụp"; chế độ thử chỉ có ở phòng đút tiền.
+  // "Cài máy chụp" mở thẳng liên kết + QR: loại phòng đã chọn lúc thêm phòng, không chọn lại ở đây.
   await roomRow("Phòng 01 cập nhật")
     .getByRole("button", { name: /^Cài máy chụp cho / })
     .click();
   const setup = kioskDialog();
-  await setup.getByText("Bước 1/2 · Chọn loại hình chụp của phòng này").waitFor();
-  const testMode = setup.getByRole("checkbox", { name: /Chế độ thử/ });
-  assert.equal(await setup.getByRole("radio", { name: /Photobooth/ }).isChecked(), true);
-  assert.equal(await testMode.isChecked(), false);
-  assert.equal(await setup.getByRole("link", { name: "Mở máy chụp" }).count(), 0);
-  // Polaroid không thu tiền tại máy: không có chế độ thử đút tiền.
-  await setup.getByRole("radio", { name: /Polaroid/ }).check();
-  assert.equal(await testMode.count(), 0);
-  await setup.getByRole("radio", { name: /Photobooth/ }).check();
-  await testMode.check();
-  await mkdir(screenshots, { recursive: true });
-  await page.screenshot({ path: join(screenshots, "room-type-setup-1440.png") });
-  await setup.getByRole("button", { name: "Tiếp tục: lấy liên kết & QR" }).click();
   await setup.getByRole("link", { name: "Mở máy chụp" }).waitFor();
-  await setup.getByText(/Bước 2\/2 · Phòng Photobooth \(chế độ thử đút tiền\)/).waitFor();
+  await setup.getByText("Phòng Photobooth", { exact: true }).waitFor();
+  assert.equal(await setup.getByRole("radio").count(), 0);
+  assert.equal(await setup.getByRole("button", { name: /Tiếp tục/ }).count(), 0);
+  assert.deepEqual(deviceRequests().at(-1).body, { kind: "photobooth", paymentTest: false });
+  // Phòng Photobooth bật chế độ thử tiền mặt ngay trong hộp: lưu lại liên kết với chế độ thử.
+  const testMode = setup.getByRole("checkbox", { name: /Chế độ thử/ });
+  assert.equal(await testMode.isChecked(), false);
+  const before = deviceRequests().length;
+  await testMode.check();
+  await page.waitForFunction(() => {
+    const box = document.querySelector('[role="dialog"] .setup-test input');
+    return box && box.checked && !box.disabled;
+  });
+  assert.equal(deviceRequests().length, before + 1);
   const issued = deviceRequests().at(-1);
   assert.equal(issued.path, "/api/admin/rooms/room-1/device");
   assert.deepEqual(issued.body, { kind: "photobooth", paymentTest: true });
+  await mkdir(screenshots, { recursive: true });
+  await page.screenshot({ path: join(screenshots, "room-setup-1440.png") });
   await setup.getByRole("button", { name: "Đóng", exact: true }).click();
   await page.screenshot({
     path: join(screenshots, "rooms-admin-1440.png"),
@@ -679,7 +676,7 @@ test("a new room picks its kind (photobooth / polaroid) right in the add form", 
   const created = requests.find((entry) => entry.method === "POST" && entry.path === "/api/admin/rooms");
   assert.equal(created.body.kind, "polaroid");
   await roomRow("Phòng Polaroid").getByText(/Phòng Polaroid ·/).waitFor();
-  // Hộp sửa phòng đã có không hiện loại phòng (đổi ở "Cài máy chụp").
+  // Hộp sửa phòng đã có không hiện loại phòng (chỉ chọn lúc thêm).
   await page.getByRole("button", { name: "Chỉnh sửa Phòng Polaroid", exact: true }).click();
   assert.equal(await page.getByRole("dialog").getByRole("radiogroup", { name: "Loại phòng" }).count(), 0);
   assertClean();
