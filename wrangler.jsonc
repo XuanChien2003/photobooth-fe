@@ -12,10 +12,9 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api", "/api/*"]
   },
+  // Backend Render gói Starter ($7, 0,5 CPU, 512 MB) — không ngủ, nên không cần lịch cron đánh
+  // thức máy chủ như gói free (trang studio vẫn giữ cron trong wrangler.studio.jsonc).
   "vars": {
-    "API_ORIGIN": "https://photobooth-be-5ngq.onrender.com"
-  },
-  "triggers": {
-    "crons": ["*/10 * * * *"]
+    "API_ORIGIN": "https://photobooth-be-oqcr.onrender.com"
   }
 }

@@ -42,7 +42,9 @@ lại các bảng; quay lại tab, đổi mạng, mở máy sau khi ngủ thì c
 tự mở lại khi máy chủ khởi động lại và tải lại hàng chờ để không sót lệnh. Máy chụp hết
 giờ lúc mất mạng tự thử chốt phiên giãn dần (không gửi liên tục, báo một lần) rồi hiện QR.
 
-**Giữ máy chủ miễn phí không ngủ:** Render gói free tắt máy chủ sau 15 phút không có yêu cầu,
+**Giữ máy chủ miễn phí không ngủ** (chỉ cần cho backend Render gói free, vd. trang `studio`; backend của
+`photobooth.ngathanh.workers.dev` đã lên gói Starter, không ngủ — lần gọi nhẹ này không ảnh hưởng gì): Render
+gói free tắt máy chủ sau 15 phút không có yêu cầu,
 lần mở sau chờ ~1 phút. Màn máy chụp (`/kiosk`) và trang quản trị (`/admin`) mở suốt ngày trong
 tiệm nên tự gọi `GET /api/health` (rất nhẹ, không chạm database) mỗi 8 phút, chỉ trong giờ mở cửa
 8h–23h giờ Việt Nam (tiệm mở 9h–23h, giữ thức sớm 1 giờ; `OPEN_HOURS` trong `src/network.js`), nên một

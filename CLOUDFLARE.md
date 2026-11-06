@@ -2,7 +2,7 @@
 
 ## Hai địa chỉ đang sử dụng
 
-- `photobooth.ngathanh.workers.dev`: cấu hình `wrangler.jsonc`, API Render `photobooth-be-5ngq.onrender.com`; triển khai bằng `npm run deploy:cloudflare`.
+- `photobooth.ngathanh.workers.dev`: cấu hình `wrangler.jsonc`, API Render `photobooth-be-oqcr.onrender.com` (gói Starter, không ngủ: không có lịch cron đánh thức); triển khai bằng `npm run deploy:cloudflare`.
 - `studio.selfbooth.workers.dev`: cấu hình `wrangler.studio.jsonc`, API Render `photo-be-drja.onrender.com`; triển khai bằng `npm run deploy:studio`.
 
 Hai Worker thuộc hai tài khoản Cloudflare khác nhau. Đăng nhập đúng tài khoản trước mỗi lần triển khai; không thay `API_ORIGIN` của trang này bằng backend của trang kia. Phần hướng dẫn bên dưới mô tả cấu hình lịch sử của `studio`.
