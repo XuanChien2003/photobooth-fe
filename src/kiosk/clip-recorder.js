@@ -121,6 +121,17 @@ export function timelapseSize(sourceWidth, sourceHeight, region, maxHeight = 108
   return [even((height * 16) / 9), height];
 }
 
+// Bitrate video ghép: theo số điểm ảnh (0,35 bit / điểm ảnh / khung, 30 khung/giây — đủ cho H.264 phần
+// cứng giữ chi tiết cả khi tua nhanh nhiều chuyển động): 1920 × 1080 → 16 Mbps (trần), 1536 × 864 →
+// ~14 Mbps, 1034 × 582 → ~6 Mbps. Cao hơn mức này không nét thêm mà tệp nặng hơn, tải lên album lâu
+// hơn. Không vượt mức để cả video dưới giới hạn tải lên.
+export function timelapseBitrate(width, height, seconds, light = false) {
+  const floor = light ? 2_000_000 : 4_000_000, ceiling = light ? 8_000_000 : 16_000_000;
+  const byPixels = width * height * 30 * 0.35;
+  const bySize = (MAX_VIDEO_BYTES * 8) / Math.max(1, seconds);
+  return Math.round(Math.max(floor, Math.min(ceiling, byPixels, bySize)));
+}
+
 // Kích thước khung hình của một clip (chỉ đọc phần đầu tệp).
 async function clipSize(blob) {
   const url = URL.createObjectURL(blob);
@@ -144,7 +155,7 @@ async function clipSize(blob) {
 
 // Ghép các clip thành một video tua nhanh (mặc định ×4), 16:9 đúng độ phân giải nguồn (tối đa Full HD),
 // lật gương như màn hình xem trước và cắt bỏ mép có thông số máy ảnh. Chạy trong lúc khách chọn ảnh:
-// mất khoảng ¼ thời lượng các clip. Bitrate cao nhất (tới 16 Mbps) mà video vẫn dưới giới hạn tải lên.
+// mất khoảng ¼ thời lượng các clip. Bitrate theo độ phân giải (timelapseBitrate), dưới giới hạn tải lên.
 export async function buildTimelapse(clips, { zoom = 0, speed = 4, mirror = true, light = false } = {}) {
   const segments = clips.flat();
   if (!segments.length || typeof MediaRecorder === "undefined") return null;
@@ -152,8 +163,7 @@ export async function buildTimelapse(clips, { zoom = 0, speed = 4, mirror = true
   // Chế độ nhẹ (webcam máy tính): tối đa 720p, tới 8 Mbps.
   const [width, height] = timelapseSize(...(await clipSize(segments[0])), region, light ? 720 : 1080);
   const seconds = Math.max(1, clips.reduce((sum, clip) => sum + (clip.ms || SEGMENT_MS), 0) / 1000 / speed);
-  const bitrate = Math.round(Math.max(light ? 2_000_000 : 4_000_000,
-    Math.min(light ? 8_000_000 : 16_000_000, (MAX_VIDEO_BYTES * 8) / seconds)));
+  const bitrate = timelapseBitrate(width, height, seconds, light);
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;

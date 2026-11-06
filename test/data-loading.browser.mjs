@@ -108,9 +108,10 @@ after(async () => {
   await new Promise((resolve) => server?.close(resolve));
 });
 
-async function setup(handler) {
+async function setup(handler, { clock = false } = {}) {
   const context = await browser.newContext({ reducedMotion: "reduce" });
   const page = await context.newPage();
+  if (clock) await page.clock.install();
   page.setDefaultTimeout(5000);
   const requests = [], errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -321,6 +322,39 @@ test("switching album tokens removes the previous ticket while the next album lo
     await f.page.getByText('Đang mở album…', { exact: true }).waitFor();
     await respond(f.requests[1], { code: '222222', status: 'checked_in', photos: [], packageName: 'Fixture B' });
     await f.page.getByText('222222', { exact: true }).waitFor();
+    assert.deepEqual(f.errors, []);
+  } finally { await f.context.close(); }
+});
+
+test("the album checks every 5 seconds while photos are still arriving, then calms down to once a minute", async () => {
+  let photos = [];
+  const album = () => ({ code: '333333', status: 'completed', photos, packageName: 'Fixture C' });
+  const f = await setup((item) => respond(item, item.path.endsWith('/print') ? null : album()), { clock: true });
+  const polls = () => f.requests.filter((r) => r.path === '/api/albums/A').length;
+  const advance = async (ms) => {
+    for (let t = 0; t < ms; t += 1000) {
+      await f.page.clock.runFor(1000);
+      await f.page.waitForTimeout(5);
+    }
+  };
+  try {
+    await f.page.evaluate(() => window.mount('album'));
+    await until(() => polls() === 1);
+    // Ảnh còn đang lên (khách vừa bấm Chụp xong): 5 giây/lần.
+    await advance(30_000);
+    assert.ok(polls() >= 6 && polls() <= 8, `polls in the first 30 s: ${polls()}`);
+    // Một ảnh mới tới lúc 2 phút: album còn đang đổi, tiếp tục 5 giây/lần thêm 3 phút.
+    await advance(90_000);
+    photos = [{ id: 'p1', number: 1, kind: 'original', links: {} }];
+    await advance(150_000);
+    const busy = polls();
+    await advance(20_000);
+    assert.ok(polls() - busy >= 3, 'still every 5 s: the album changed less than 3 minutes ago');
+    // Đứng yên 3 phút: 60 giây/lần.
+    await advance(60_000);
+    const calm = polls();
+    await advance(55_000);
+    assert.ok(polls() - calm <= 1, `at most one check in 55 s once settled, got ${polls() - calm}`);
     assert.deepEqual(f.errors, []);
   } finally { await f.context.close(); }
 });

@@ -12,6 +12,16 @@ import { useLiveData } from "./use-live-data";
 import { isConnectivityError } from "./network.js";
 import { AlbumViewer } from "./album/AlbumViewer.jsx";
 
+// Album coi là đã đủ khi đứng yên 3 phút (không thêm / bớt ảnh, video, ảnh ghép, không đổi trạng thái).
+const ALBUM_SETTLE_MS = 3 * 60000;
+const albumSignature = (b) => [
+  b.status,
+  (b.photos || []).map((p) => p.id || p._id).join(","),
+  b.video?.size || 0,
+  b.composite ? 1 : 0,
+  b.mediaDeleted ? 1 : 0,
+].join("|");
+
 // Trang khách mở bằng mã QR trên máy chụp: xem và tải ảnh đã ghép khung, video và ảnh gốc. Chọn ảnh,
 // ghép khung và in đều làm xong ở máy chụp nên album không còn phần chỉnh / ghép ảnh.
 export function AlbumPage() {
@@ -36,9 +46,17 @@ function AlbumSession({ token }) {
   }, [loaded]);
   const lastStatus = useRef("");
   const lastError = useRef("");
+  // Ảnh / video còn đang lên album (máy chụp gửi tiếp sau khi khách bấm Chụp xong, video ghép xong
+  // sau đó): album đứng yên ALBUM_SETTLE_MS mới coi là đã đủ.
+  const lastChange = useRef({ signature: "", at: 0 });
+  const [settled, setSettled] = useState(false);
   const reload = useLiveData(
     `/albums/${token}`,
     (b) => {
+      const signature = albumSignature(b);
+      if (signature !== lastChange.current.signature)
+        lastChange.current = { signature, at: Date.now() };
+      setSettled(b.status === "completed" && Date.now() - lastChange.current.at >= ALBUM_SETTLE_MS);
       // Khách đang xem vé thì buổi chụp kết thúc: báo ảnh đã sẵn sàng.
       if (
         lastStatus.current &&
@@ -61,9 +79,10 @@ function AlbumSession({ token }) {
       if (booking && lastError.current !== e.message) toast.error(e.message);
       lastError.current = e.message;
     },
-    // Đang chụp: 10 giây/lần để ảnh mới hiện nhanh. Chụp xong album gần như không đổi: 60 giây/lần
-    // (vẫn kịp làm mới link kho ảnh, hạn 5 phút) — khách hay để trang mở trên điện thoại.
-    booking?.status === "completed" ? 60000 : 10000,
+    // Đang chụp hoặc ảnh / video vẫn đang lên: 5 giây/lần để hiện ngay (trả lời 304 rỗng khi chưa có
+    // gì mới). Album đứng yên 3 phút: 60 giây/lần (vẫn kịp làm mới link kho ảnh, hạn 5 phút) — khách
+    // hay để trang mở trên điện thoại.
+    settled ? 60000 : 5000,
     (b) => b.status === "cancelled" || b.mediaDeleted,
   );
   const ready = booking?.status === "completed" && !booking.mediaDeleted;
