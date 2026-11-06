@@ -93,12 +93,17 @@
   inset: 0;
   overflow: hidden;
 }
-.camera-preview-viewport video {
+.camera-preview-viewport video,
+.camera-preview-viewport canvas {
   position: absolute;
   display: block;
   max-width: none;
   visibility: hidden;
   transform: scaleX(-1);
+}
+/* Chế độ máy yếu: hình hiện trên canvas; thẻ video vẫn chạy (nguồn khung hình) nhưng trong suốt. */
+.camera-preview-viewport.is-canvas video {
+  opacity: 0;
 }
 .camera-cover,
 .camera-timeup {

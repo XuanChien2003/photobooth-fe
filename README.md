@@ -146,6 +146,12 @@ React. Cách triển khai và cấu hình: `CLOUDFLARE.md`.
 Máy chụp: nên mở trình duyệt ở chế độ toàn màn hình (nút “Bật / tắt toàn màn hình” trong
 “Cài đặt máy chụp (nhân viên)” ở màn chờ) và cho phép dùng camera.
 
+**Chế độ máy yếu** (Cài đặt máy chụp, nhớ trên từng máy): cho mini PC đời cũ (đồ họa Intel HD 5xx/6xx,
+vd. i5-7500T) mà hình trực tiếp bị trắng / giật sau khi chụp. Hình trực tiếp được vẽ lên `<canvas>` thay vì để
+Chrome tự hiện thẻ `<video>` (`src/kiosk/CameraPreview.jsx`), video tua nhanh quay nhẹ 720p. Lớp nháy trắng lúc
+chụp luôn được gỡ khỏi màn hình sau 0,4 giây. Thư mục ảnh của máy ảnh đông (trên 300 tệp) thì ảnh của khách
+trước chỉ được kiểm tra lại 10 giây/lần, và lượt quét lâu tự giãn lượt sau — vẫn nên dọn thư mục cuối ngày.
+
 Một web, hai **loại phòng**. Đầu ca, nhân viên mở máy chụp từng phòng ở Quản trị → Quản lý máy →
 **Cài máy chụp** (lấy liên kết / QR). Loại phòng chọn lúc thêm phòng.
 

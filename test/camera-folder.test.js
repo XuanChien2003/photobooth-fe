@@ -7,9 +7,10 @@ function fixture(t, onPhoto, initialFiles = []) {
   const now = Date.now();
   t.mock.timers.enable({ apis: ["setTimeout", "Date"], now });
   const files = new Map(initialFiles), reports = [], attempts = [];
+  const reads = new Map();
   const folder = { name: "fixture", async *entries() {
     for (const [name, file] of files) yield [name, {
-      kind: "file", getFile: async () => ({ ...file }),
+      kind: "file", getFile: async () => { reads.set(name, (reads.get(name) || 0) + 1); return { ...file }; },
     }];
   } };
   const stop = watchCameraFolder({ folder,
@@ -19,7 +20,7 @@ function fixture(t, onPhoto, initialFiles = []) {
     onScan: (info, writing) => reports.push({ ...info, writing }),
   });
   t.after(stop);
-  return { files, reports, attempts, stop, now,
+  return { files, reports, attempts, stop, now, reads,
     scan: async () => { t.mock.timers.tick(300); await settle(); },
   };
 }
@@ -132,4 +133,24 @@ test("a replacement written after the capture window cannot enter the previous g
   state.files.set("capture.jpg", { size: 200, lastModified: Date.now() });
   for (let scan = 0; scan < 5; scan++) await state.scan();
   assert.equal(state.attempts.length, 1);
+});
+
+test("a crowded folder re-reads earlier guests' photos every 10 seconds; this session's shots still arrive at once", async (t) => {
+  const earlier = Array.from({ length: 400 }, (_, i) => [`old-${i}.jpg`, {
+    size: 100, lastModified: Date.now() - 3600000,
+  }]);
+  const state = fixture(t, () => true, earlier);
+  await settle();
+  const total = () => [...state.reads.values()].reduce((sum, n) => sum + n, 0);
+  assert.equal(total(), 400, "the first scan reads every file once");
+  for (let scan = 0; scan < 20; scan++) await state.scan(); // 6 giây
+  assert.equal(total(), 400, "earlier guests' photos are not re-read every second");
+  state.files.set("new.jpg", { size: 50, lastModified: state.now + 7000 });
+  for (let scan = 0; scan < 4; scan++) await state.scan();
+  assert.deepEqual(state.attempts, ["new.jpg"], "a new shot is imported within about a second");
+  // Ảnh cũ bị máy ảnh ghi đè vẫn được nhận, chậm nhất khoảng 10 giây.
+  state.files.set("old-0.jpg", { size: 999, lastModified: state.now + 8000 });
+  for (let scan = 0; scan < 20; scan++) await state.scan();
+  assert.deepEqual(state.attempts, ["new.jpg", "old-0.jpg"]);
+  assert.ok(state.reads.get("old-1.jpg") <= 3, `old files re-read ${state.reads.get("old-1.jpg")} times`);
 });

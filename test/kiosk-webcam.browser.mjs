@@ -59,7 +59,7 @@ after(async () => {
   await new Promise((resolve) => server?.close(resolve));
 });
 
-async function booth(launched, { webcam, room = { _id: "room", flip: "device" }, extra = {} }) {
+async function booth(launched, { webcam, room = { _id: "room", flip: "device" }, extra = {}, lowPower = false }) {
   const context = await launched.newContext({ viewport: { width: 1366, height: 768 } });
   if (launched === fakeCamera) await context.grantPermissions(["camera"]);
   const page = await context.newPage();
@@ -82,7 +82,7 @@ async function booth(launched, { webcam, room = { _id: "room", flip: "device" },
       : path.endsWith("/health") ? { ok: true }
       : path.endsWith("/kiosk/finish") ? { ...booking, status: "completed" } : { booking } });
   });
-  await page.addInitScript(({ booking, webcam }) => {
+  await page.addInitScript(({ booking, webcam, lowPower }) => {
     // Ghi lại cách tạo bộ ghi video (thử máy bằng webcam: VP8 phần mềm, bitrate thấp — không H.264).
     window.__recorders = [];
     if (window.MediaRecorder) {
@@ -96,10 +96,11 @@ async function booth(launched, { webcam, room = { _id: "room", flip: "device" },
     }
     if (sessionStorage.getItem("photo-capture-fixture-device")) return;
     localStorage.setItem("kiosk-webcam-test", webcam ? "1" : "0");
+    localStorage.setItem("kiosk-low-power", lowPower ? "1" : "0");
     sessionStorage.setItem("photo-capture-fixture-device", JSON.stringify({
       captureToken: "fixture-capture", accessToken: "fixture-album", booking, phase: "shoot", mode: "remote",
     }));
-  }, { booking, webcam });
+  }, { booking, webcam, lowPower });
   await page.goto(base);
   return { page, errors, videos, close: () => context.close() };
 }
@@ -180,6 +181,27 @@ test("polaroid room (Canon R100): the kiosk counts down and shoots by itself up 
     const picks = b.page.getByRole("group", { name: "Ảnh đã chụp" }).getByRole("button");
     await picks.first().waitFor();
     assert.equal(await picks.count(), 2);
+    assert.deepEqual(b.errors, []);
+  } finally { await b.close(); }
+});
+
+test("low-power mode draws the live view on a canvas, and the shot flash does not stay over it", async () => {
+  const b = await booth(fakeCamera, { webcam: true, lowPower: true });
+  try {
+    const snap = b.page.getByRole("button", { name: "Chạm để chụp" });
+    await snap.waitFor({ timeout: 15000 });
+    // Hình trực tiếp hiện trên canvas (có hình thật), thẻ video vẫn chạy nhưng trong suốt.
+    await b.page.waitForFunction(() => {
+      const canvas = document.querySelector(".camera-preview-viewport.is-canvas canvas");
+      if (!canvas?.width || getComputedStyle(canvas).visibility !== "visible") return false;
+      const pixels = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+      for (let i = 0; i < pixels.length; i += 4 * 997) if (pixels[i] + pixels[i + 1] + pixels[i + 2] > 30) return true;
+      return false;
+    }, null, { timeout: 15000 });
+    assert.equal(await b.page.locator(".camera-preview-viewport video").evaluate((v) => getComputedStyle(v).opacity), "0");
+    await snap.click();
+    await b.page.locator(".camera-flash").waitFor({ timeout: 10000 });
+    await b.page.locator(".camera-flash").waitFor({ state: "detached", timeout: 3000 });
     assert.deepEqual(b.errors, []);
   } finally { await b.close(); }
 });

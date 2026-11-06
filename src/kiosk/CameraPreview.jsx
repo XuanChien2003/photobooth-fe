@@ -5,8 +5,12 @@ import { livePreviewLayout } from "./live-preview-layout.js";
 // giải): chỉ nhận kích thước nguồn mới khi nó giữ nguyên quá khoảng này, để hình không nhảy.
 const SETTLE_MS = 1500;
 
-export function CameraPreview({ videoRef, zoom = 0 }) {
+// canvas (chế độ máy yếu): vẽ từng khung hình lên <canvas> thay vì để trình duyệt tự hiện thẻ
+// <video>. Trên mini PC GPU Intel đời cũ, lớp video của Chrome có lúc hiện trắng sau khi chụp dù
+// khung hình vẫn đúng; vẽ bằng canvas đi đường khác nên vẫn thấy hình.
+export function CameraPreview({ videoRef, zoom = 0, canvas = false }) {
   const viewport = useRef(null);
+  const screen = useRef(null);
 
   useEffect(() => {
     const camera = videoRef.current;
@@ -20,13 +24,16 @@ export function CameraPreview({ videoRef, zoom = 0 }) {
         frame.clientHeight,
         zoom,
       );
+      const shown = [camera, screen.current].filter(Boolean);
       if (!layout) {
-        camera.style.visibility = "hidden";
+        for (const element of shown) element.style.visibility = "hidden";
         return;
       }
-      for (const [property, value] of Object.entries(layout))
-        camera.style[property] = `${value}px`;
-      camera.style.visibility = "visible";
+      for (const element of shown) {
+        for (const [property, value] of Object.entries(layout))
+          element.style[property] = `${value}px`;
+        element.style.visibility = "visible";
+      }
     };
     const sourceChanged = () => {
       const next = { width: camera.videoWidth, height: camera.videoHeight };
@@ -64,11 +71,31 @@ export function CameraPreview({ videoRef, zoom = 0 }) {
       camera.removeEventListener("loadedmetadata", reset);
       camera.removeEventListener("resize", sourceChanged);
     };
-  }, [videoRef, zoom]);
+  }, [videoRef, zoom, canvas]);
+
+  // Chế độ máy yếu: chép khung hình mới nhất lên canvas, tối đa ~30 lần mỗi giây (nguồn HDMI 30 hình/giây).
+  useEffect(() => {
+    if (!canvas) return;
+    const camera = videoRef.current;
+    const target = screen.current;
+    const ctx = target.getContext("2d", { alpha: false });
+    let frame = 0, last = 0;
+    const draw = (now) => {
+      frame = requestAnimationFrame(draw);
+      if (now - last < 30 || camera.readyState < 2 || !camera.videoWidth) return;
+      last = now;
+      if (target.width !== camera.videoWidth) target.width = camera.videoWidth;
+      if (target.height !== camera.videoHeight) target.height = camera.videoHeight;
+      ctx.drawImage(camera, 0, 0, target.width, target.height);
+    };
+    frame = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(frame);
+  }, [videoRef, canvas]);
 
   return (
-    <div ref={viewport} className="camera-preview-viewport">
+    <div ref={viewport} className={`camera-preview-viewport${canvas ? " is-canvas" : ""}`}>
       <video ref={videoRef} autoPlay playsInline muted />
+      {canvas && <canvas ref={screen} aria-hidden="true" />}
     </div>
   );
 }
