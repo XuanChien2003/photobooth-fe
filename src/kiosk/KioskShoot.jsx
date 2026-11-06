@@ -30,6 +30,39 @@ function Thumb({ shot }) {
   const src = useObjectUrl(shot.preview);
   return src ? <img src={src} alt="" /> : <span className="shoot-thumb-empty" />;
 }
+// Màn hình đứng (kiosk màn dọc): chia đôi, nửa trên hình trực tiếp, nửa dưới ảnh vừa chụp.
+function usePortrait() {
+  const query = "(orientation: portrait)";
+  const [portrait, setPortrait] = useState(() => globalThis.matchMedia?.(query).matches ?? false);
+  useEffect(() => {
+    const media = globalThis.matchMedia?.(query);
+    if (!media) return;
+    const change = () => setPortrait(media.matches);
+    media.addEventListener("change", change);
+    return () => media.removeEventListener("change", change);
+  }, []);
+  return portrait;
+}
+// Ảnh vừa chụp, phóng to (nửa dưới màn đứng).
+function Latest({ shot, number, receiving }) {
+  const src = useObjectUrl(shot?.preview);
+  return (
+    <figure className="shoot-latest" aria-label="Ảnh vừa chụp">
+      {src ? <img key={src} src={src} alt={`Ảnh ${number} vừa chụp`} /> : (
+        <span className="shoot-latest-empty">
+          <PiImagesDuotone aria-hidden="true" />
+          Ảnh vừa chụp sẽ hiện ở đây
+        </span>
+      )}
+      {src && <b className="shoot-latest-no">Ảnh {number}</b>}
+      {receiving && (
+        <span className="shoot-latest-pending" role="status">
+          <span className="spinner" aria-hidden="true" /> Đang nhận ảnh…
+        </span>
+      )}
+    </figure>
+  );
+}
 const clock = (s) =>
   `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
@@ -57,6 +90,7 @@ export function KioskShoot({
   canvasPreview = false,
 }) {
   const t = useKioskText();
+  const portrait = usePortrait();
   const shooting = phase === "shoot" && !ending;
   const full = Boolean(quota) && taken >= quota;
   // auto (phòng Polaroid): máy tự chụp, { count: số giây đếm ngược tới tấm kế tiếp, seconds }.
@@ -88,9 +122,9 @@ export function KioskShoot({
     return () => clearTimeout(timer);
   }, [flash]);
   return (
-    <section className={`shoot-screen phase-${phase}${ready ? "" : " no-live"}`}>
+    <section className={`shoot-screen phase-${phase}${ready ? "" : " no-live"}${portrait ? " is-portrait" : ""}`}>
       <div className="shoot-stage">
-        <CameraPreview videoRef={videoRef} zoom={zoom} canvas={canvasPreview} />
+        <CameraPreview videoRef={videoRef} zoom={zoom} canvas={canvasPreview} fit={portrait ? "contain" : "cover"} />
         {!ready && (
           <div className="shoot-no-camera" role="status">
             <span className="shoot-no-camera-icon" aria-hidden="true">
@@ -153,6 +187,7 @@ export function KioskShoot({
       </div>
 
       <aside className="shoot-rail" aria-label="Thời gian và ảnh đã chụp">
+          {portrait && <Latest shot={shots[shots.length - 1]} number={shots.length} receiving={receiving} />}
           {/* Còn dưới 1 phút: đồng hồ đỏ, nhấp nháy (như Selfbooth). */}
           <div className={`shoot-timer${phase === "shoot" && sessionLeft < 60 ? " is-urgent" : ""}`} role="timer">
             <span>THỜI GIAN CÒN LẠI</span>

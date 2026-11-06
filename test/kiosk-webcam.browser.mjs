@@ -1,6 +1,9 @@
 // Webcam test mode of the kiosk (no Fujifilm camera): isolated API, Chromium's fake camera.
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
+import { mkdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { after, before, test } from "node:test";
 import { build } from "vite";
 import tailwindcss from "@tailwindcss/vite";
@@ -59,8 +62,8 @@ after(async () => {
   await new Promise((resolve) => server?.close(resolve));
 });
 
-async function booth(launched, { webcam, room = { _id: "room", flip: "device" }, extra = {}, lowPower = false }) {
-  const context = await launched.newContext({ viewport: { width: 1366, height: 768 } });
+async function booth(launched, { webcam, room = { _id: "room", flip: "device" }, extra = {}, lowPower = false, viewport = { width: 1366, height: 768 } }) {
+  const context = await launched.newContext({ viewport });
   if (launched === fakeCamera) await context.grantPermissions(["camera"]);
   const page = await context.newPage();
   const errors = [], videos = [];
@@ -218,3 +221,40 @@ test("low-power mode draws the live view on a canvas, and the shot flash does no
     assert.deepEqual(b.errors, []);
   } finally { await b.close(); }
 });
+
+test("a portrait screen splits in two: the whole camera frame on top, the photo just taken large below", async () => {
+  const b = await booth(fakeCamera, { webcam: true, viewport: { width: 540, height: 960 } });
+  try {
+    const snap = b.page.getByRole("button", { name: "Chạm để chụp" });
+    await snap.waitFor({ timeout: 15000 });
+    await b.page.locator(".shoot-screen.is-portrait").waitFor();
+    await b.page.getByText("Ảnh vừa chụp sẽ hiện ở đây").first().waitFor();
+    await snap.click();
+    const latest = b.page.locator(".shoot-latest img");
+    await latest.waitFor({ timeout: 20000 });
+    await b.page.waitForFunction(() => document.querySelector(".shoot-latest img")?.naturalWidth > 0);
+    const [stage, rail, photo] = await Promise.all([
+      b.page.locator(".shoot-stage").boundingBox(),
+      b.page.locator(".shoot-rail").boundingBox(),
+      latest.boundingBox(),
+    ]);
+    // Chia đôi màn: nửa trên hình trực tiếp, nửa dưới ảnh vừa chụp.
+    assert.ok(Math.abs(stage.height - 480) <= 2 && Math.abs(rail.y - 480) <= 2, JSON.stringify({ stage, rail }));
+    assert.ok(photo.y >= rail.y && photo.width >= 480 * 0.85, `ảnh vừa chụp phóng to: ${JSON.stringify(photo)}`);
+    // Hình trực tiếp thấy đủ khung: phần còn thấy rộng đúng bằng màn (không bị cắt hai bên).
+    const live = await b.page.locator(".camera-preview-viewport video").evaluate((v) => {
+      const box = v.getBoundingClientRect();
+      // inset(trên phải dưới trái): phần hình còn thấy = bề rộng video trừ phần cắt hai bên.
+      // Trình duyệt rút gọn inset(a b c b) thành inset(a b c): trái bằng phải nếu thiếu.
+      const [top, right = top, , left = right] = v.style.clipPath.match(/[\d.]+%/g).map(parseFloat);
+      return { visible: box.width * (1 - (left + right) / 100), height: box.height };
+    });
+    assert.ok(Math.abs(live.visible - 540) < 2, `visible width ${live.visible}`);
+    await b.page.getByText("Ảnh 1", { exact: true }).waitFor();
+    const screenDir = join(tmpdir(), "photobooth-fe-kiosk-webcam");
+    await mkdir(screenDir, { recursive: true });
+    await b.page.screenshot({ path: join(screenDir, "shoot-portrait.png") });
+    assert.deepEqual(b.errors, []);
+  } finally { await b.close(); }
+});
+

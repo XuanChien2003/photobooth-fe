@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { livePreviewLayout } from "./live-preview-layout.js";
+import { livePreviewLayout, visibleClip } from "./live-preview-layout.js";
 
 // Lúc bấm chụp, máy ảnh đổi tín hiệu HDMI trong giây lát (hiện ảnh vừa chụp, đổi độ phân
 // giải): chỉ nhận kích thước nguồn mới khi nó giữ nguyên quá khoảng này, để hình không nhảy.
@@ -8,7 +8,8 @@ const SETTLE_MS = 1500;
 // canvas (chế độ máy yếu): vẽ từng khung hình lên <canvas> thay vì để trình duyệt tự hiện thẻ
 // <video>. Trên mini PC GPU Intel đời cũ, lớp video của Chrome có lúc hiện trắng sau khi chụp dù
 // khung hình vẫn đúng; vẽ bằng canvas đi đường khác nên vẫn thấy hình.
-export function CameraPreview({ videoRef, zoom = 0, canvas = false }) {
+// fit: "cover" (mặc định, phủ kín khung xem) hoặc "contain" (thấy đủ khung hình — màn đứng chia đôi).
+export function CameraPreview({ videoRef, zoom = 0, canvas = false, fit = "cover" }) {
   const viewport = useRef(null);
   const screen = useRef(null);
 
@@ -23,6 +24,7 @@ export function CameraPreview({ videoRef, zoom = 0, canvas = false }) {
         frame.clientWidth,
         frame.clientHeight,
         zoom,
+        fit,
       );
       const shown = [camera, screen.current].filter(Boolean);
       if (!layout) {
@@ -32,6 +34,7 @@ export function CameraPreview({ videoRef, zoom = 0, canvas = false }) {
       for (const element of shown) {
         for (const [property, value] of Object.entries(layout))
           element.style[property] = `${value}px`;
+        element.style.clipPath = visibleClip(zoom);
         element.style.visibility = "visible";
       }
     };
@@ -71,7 +74,7 @@ export function CameraPreview({ videoRef, zoom = 0, canvas = false }) {
       camera.removeEventListener("loadedmetadata", reset);
       camera.removeEventListener("resize", sourceChanged);
     };
-  }, [videoRef, zoom, canvas]);
+  }, [videoRef, zoom, canvas, fit]);
 
   // Chế độ máy yếu: chép khung hình mới nhất lên canvas, tối đa ~30 lần mỗi giây (nguồn HDMI 30 hình/giây).
   useEffect(() => {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { livePreviewLayout } from "../src/kiosk/live-preview-layout.js";
+import { livePreviewLayout, visibleClip, visibleRegion } from "../src/kiosk/live-preview-layout.js";
 
 const cases = [
   [1920, 1080, 1064, 900],
@@ -51,3 +51,18 @@ test("extra crop hides camera info at every edge and stays centred", () => {
   assert.ok(-layout.top / scale >= 1080 * 0.15 - 1e-6);
   assert.ok((768 - layout.top) / scale <= 1080 * 0.85 + 1e-6);
 });
+
+test("portrait split screen: the whole visible camera frame fits the top half, info edges clipped", () => {
+  // Nửa trên màn đứng 1080 × 960: phần còn thấy của HDMI 1920 × 1080 vừa đủ bề ngang, không cắt hai bên.
+  const layout = livePreviewLayout(1920, 1080, 1080, 960, 0.08, "contain");
+  const region = visibleRegion(0.08);
+  const scale = layout.width / 1920;
+  const visibleWidth = 1920 * region.w * scale;
+  assert.ok(Math.abs(visibleWidth - 1080) < 1e-6, "the visible width fills the screen width exactly");
+  assert.ok(1080 * region.h * scale <= 960 + 1e-6, "and its height fits inside the top half");
+  // Cover (màn ngang) vẫn phủ kín khung xem như trước.
+  const cover = livePreviewLayout(1920, 1080, 1080, 960, 0.08);
+  assert.ok(1080 * region.h * (cover.width / 1920) >= 960 - 1e-6);
+  assert.equal(visibleClip(0.08), "inset(8.000% 8.000% 12.000% 8.000%)");
+});
+

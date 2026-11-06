@@ -21,7 +21,9 @@ export function visibleRegion(zoom = 0) {
   return { x: side, y: top, w: 1 - side * 2, h: 1 - top - bottom };
 }
 
-export function livePreviewLayout(sourceWidth, sourceHeight, width, height, zoom = 0) {
+// fit "cover": phần hình còn thấy phủ kín khung xem (cắt bớt hai bên / trên dưới nếu khác tỉ lệ);
+// "contain": thấy đủ phần hình đó, khung xem có thể còn viền đen (màn đứng chia đôi).
+export function livePreviewLayout(sourceWidth, sourceHeight, width, height, zoom = 0, fit = "cover") {
   if (
     ![sourceWidth, sourceHeight, width, height].every(
       (value) => Number.isFinite(value) && value > 0,
@@ -32,7 +34,7 @@ export function livePreviewLayout(sourceWidth, sourceHeight, width, height, zoom
   const region = visibleRegion(zoom);
   const visibleWidth = sourceWidth * region.w;
   const visibleHeight = sourceHeight * region.h;
-  const scale = Math.max(width / visibleWidth, height / visibleHeight);
+  const scale = (fit === "contain" ? Math.min : Math.max)(width / visibleWidth, height / visibleHeight);
   return {
     width: sourceWidth * scale,
     height: sourceHeight * scale,
@@ -40,3 +42,12 @@ export function livePreviewLayout(sourceWidth, sourceHeight, width, height, zoom
     top: (height - visibleHeight * scale) / 2 - sourceHeight * region.y * scale,
   };
 }
+
+// Che phần mép có thông số (ngoài vùng còn thấy) trên chính thẻ video / canvas — cần khi "contain",
+// vì khi đó vùng còn thấy không phủ kín khung xem nên mép video lộ ra trong khung.
+export function visibleClip(zoom = 0) {
+  const r = visibleRegion(zoom);
+  const pct = (n) => `${(n * 100).toFixed(3)}%`;
+  return `inset(${pct(r.y)} ${pct(1 - r.x - r.w)} ${pct(1 - r.y - r.h)} ${pct(r.x)})`;
+}
+
