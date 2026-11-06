@@ -5,6 +5,8 @@
 // - Android / máy tính: tải từng tệp về. Android lưu vào thư mục Download, app Thư viện / Google Photos
 //   hiện ngay (lần đầu Chrome hỏi "Cho phép tải nhiều tệp" thì bấm Cho phép).
 
+import { directMediaUrl, fetchMediaBlob } from "../media-delivery.js";
+
 export const isIOS = () =>
   /iP(hone|od|ad)/.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -31,9 +33,9 @@ export async function fetchFiles(entries, cache, onProgress = () => {}) {
       const i = next++;
       const entry = entries[i];
       if (!cache.has(entry.url)) {
-        const response = await fetch(entry.url, { credentials: "same-origin" });
-        if (!response.ok) throw new Error("Không tải được ảnh / video. Vui lòng thử lại.");
-        const blob = await response.blob();
+        // Fetch unchanged original bytes from storage. Expired links, missing
+        // bucket CORS and older servers still use the authenticated API stream.
+        const blob = await fetchMediaBlob(entry.url, { link: entry.link, timeout: 180000 });
         cache.set(entry.url, new File([blob], entry.name, { type: entry.type || blob.type }));
       }
       files[i] = cache.get(entry.url);
@@ -49,7 +51,7 @@ export async function downloadEach(entries) {
   for (const [i, entry] of entries.entries()) {
     if (i) await new Promise((resolve) => setTimeout(resolve, 700));
     const link = document.createElement("a");
-    link.href = entry.url;
+    link.href = directMediaUrl(entry.url);
     link.download = entry.name;
     link.rel = "noopener";
     document.body.append(link);

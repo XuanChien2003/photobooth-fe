@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { after, test } from "node:test";
 import * as media from "../src/media-delivery.js";
-import { directMediaUrl, proxyMediaUrl, fetchMediaBlob } from "../src/media-delivery.js";
+import { albumMediaSources, directMediaUrl, proxyMediaUrl, fetchMediaBlob } from "../src/media-delivery.js";
 
 const originalFetch = globalThis.fetch;
 after(() => { globalThis.fetch = originalFetch; });
 
-test("only album images use direct delivery; sheet, thumbnail and download options survive", () => {
+test("album images and videos use direct delivery; sheet, thumbnail and download options survive", () => {
   const url = "https://api.example/api/albums/token/prints/job?sheet=2&download=1";
   const direct = directMediaUrl(url);
   assert.equal(new URL(direct).searchParams.get("direct"), "1");
@@ -15,6 +15,30 @@ test("only album images use direct delivery; sheet, thumbnail and download optio
   assert.equal(directMediaUrl("/api/catalog"), "/api/catalog");
   assert.equal(directMediaUrl("/api/albums/token/photos/id?size=thumbnail"),
     "/api/albums/token/photos/id?size=thumbnail&direct=1");
+  assert.equal(directMediaUrl("/api/albums/token/video?download=1"),
+    "/api/albums/token/video?download=1&direct=1");
+  assert.equal(directMediaUrl("/api/albums/token/composite?size=thumbnail"),
+    "/api/albums/token/composite?size=thumbnail&direct=1");
+  assert.equal(directMediaUrl("/api/albums/token/video/upload-url"),
+    "/api/albums/token/video/upload-url");
+  assert.equal(directMediaUrl("/api/albums/token/composite-other"),
+    "/api/albums/token/composite-other");
+});
+
+test("album media prefers fresh storage links and retains fresh-signing and proxy fallbacks", () => {
+  const now = Date.parse("2026-11-06T10:00:00Z");
+  const api = "/api/albums/token/video";
+  const video = { links: {
+    until: "2026-11-06T10:05:00Z",
+    original: "https://bucket.account.r2.cloudflarestorage.com/media/video.mp4?sig=1",
+  } };
+  assert.deepEqual(albumMediaSources(video, api, "original", now),
+    [video.links.original, api + "?direct=1", api]);
+  assert.deepEqual(albumMediaSources(video, api, "original", now + 5 * 60000),
+    [api + "?direct=1", api]);
+  assert.deepEqual(albumMediaSources(undefined, api), [api + "?direct=1", api], "older API / Mongo storage");
+  assert.deepEqual(albumMediaSources(video, api + "?direct=1", "original", now),
+    [video.links.original, api + "?direct=1", api], "fallbacks never repeat");
 });
 
 test("direct original bytes are preserved and missing CORS falls back once for later edits", async () => {

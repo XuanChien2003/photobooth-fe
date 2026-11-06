@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { PiArrowLeftBold, PiArrowRightBold, PiDownloadSimpleBold, PiImagesBold, PiPlayFill } from "react-icons/pi";
 import { useToast } from "../studio";
 import { api, getApiUrl } from "../api";
-import { directMediaUrl, storageLink } from "../media-delivery.js";
+import { albumMediaSources, storageLink } from "../media-delivery.js";
 import { PhotoThumb, photoUrl } from "./photo-thumb.jsx";
+import { AlbumMedia } from "./album-media.jsx";
 import { downloadEach, fetchFiles, savableOnIOS, usesShareSheet } from "./save-to-phone.js";
 
 // Trang link ảnh (khách quét QR ở máy chụp / nhân viên bấm "Link ảnh"), như Snapbox: ảnh lớn ở giữa,
@@ -21,22 +22,16 @@ export function AlbumViewer({ token, booking }) {
   const sheet = !composite && job?._id ? getApiUrl(`/api/albums/${token}/prints/${job._id}`) : "";
   const video = booking.video ? getApiUrl(`/api/albums/${token}/video`) : "";
   const originals = booking.photos.filter((p) => p.kind === "original");
-  // Ảnh lớn giữ nguyên nguồn đã chọn lần đầu: album làm mới link lưu trữ định kỳ, đổi src là tải lại.
-  const sources = useRef(new Map());
-  const photoSrc = (photo) => {
-    if (!sources.current.has(photo.id))
-      sources.current.set(photo.id, storageLink(photo, "preview") || directMediaUrl(photoUrl(token, photo.id, "preview")));
-    return sources.current.get(photo.id);
-  };
   const items = [
     ...(composite || sheet
       ? [{
           key: "composite",
           kind: "image",
-          src: composite || sheet,
-          thumb: `${composite || sheet}?size=thumbnail`,
+          sources: albumMediaSources(booking.composite, composite || sheet),
+          thumbs: albumMediaSources(booking.composite, `${composite || sheet}?size=thumbnail`, "thumbnail"),
           save: {
             url: composite ? `${composite}?download=1` : `${sheet}?download=1`,
+            link: storageLink(booking.composite, "original"),
             name: `NXC-${booking.code}-anh-ghep.jpg`,
             type: "image/jpeg",
           },
@@ -47,9 +42,10 @@ export function AlbumViewer({ token, booking }) {
       ? [{
           key: "video",
           kind: "video",
-          src: video,
+          sources: albumMediaSources(booking.video, video),
           save: {
             url: `${video}?download=1`,
+            link: storageLink(booking.video, "original"),
             name: `NXC-${booking.code}-video.${booking.video.mimeType === "video/webm" ? "webm" : "mp4"}`,
             type: booking.video.mimeType || "video/mp4",
           },
@@ -60,10 +56,10 @@ export function AlbumViewer({ token, booking }) {
       key: photo.id,
       kind: "image",
       photo,
-      src: photoSrc(photo),
-      fallback: photoUrl(token, photo.id, "preview"),
+      sources: albumMediaSources(photo, photoUrl(token, photo.id, "preview"), "preview"),
       save: {
         url: photoUrl(token, photo.id),
+        link: storageLink(photo, "original"),
         name: `NXC-${booking.code}-${String(i + 1).padStart(2, "0")}.jpg`,
         type: "image/jpeg",
       },
@@ -153,16 +149,12 @@ export function AlbumViewer({ token, booking }) {
           </button>
         )}
         {item.kind === "video" ? (
-          <video key={item.key} src={item.src} controls autoPlay muted loop playsInline preload="metadata" />
+          <AlbumMedia key={item.save.url} as="video" sources={item.sources} controls autoPlay muted loop playsInline preload="metadata" />
         ) : (
-          <img
-            key={item.key}
-            src={item.src}
+          <AlbumMedia
+            key={item.save.url}
+            sources={item.sources}
             alt={item.label}
-            crossOrigin={item.photo && item.src.startsWith("http") && !item.src.startsWith(location.origin) ? "anonymous" : undefined}
-            onError={(event) => {
-              if (item.fallback && event.currentTarget.src !== item.fallback) event.currentTarget.src = item.fallback;
-            }}
           />
         )}
         {items.length > 1 && (
@@ -198,7 +190,7 @@ export function AlbumViewer({ token, booking }) {
             ) : entry.photo ? (
               <PhotoThumb photo={entry.photo} token={token} alt="" loading="lazy" decoding="async" />
             ) : (
-              <img src={entry.thumb} alt="" loading="lazy" decoding="async" />
+              <AlbumMedia key={entry.save.url} sources={entry.thumbs} alt="" loading="lazy" decoding="async" />
             )}
           </button>
         ))}

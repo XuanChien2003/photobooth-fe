@@ -3,7 +3,8 @@ import { networkRequest, retryAfter } from "./network.js";
 // Private R2 files can be displayed/printed without relaying their bytes through
 // the application server. Older backends simply ignore this optional query.
 export function directMediaUrl(src) {
-  if (!/^https?:|^\//.test(src) || !/\/api\/albums\/[^/]+\/(photos|prints)\//.test(src)) return src;
+  if (!/^https?:|^\//.test(src) ||
+      !/\/api\/albums\/[^/]+\/(?:(?:photos|prints)\/|(?:video|composite)(?:[?#]|$))/.test(src)) return src;
   const url = new URL(src, globalThis.location?.origin || "http://localhost");
   url.searchParams.set("direct", "1");
   return src.startsWith("/") ? url.pathname + url.search : url.href;
@@ -24,6 +25,13 @@ export function storageLink(photo, size, now = Date.now()) {
   const link = photo?.links?.[size];
   return typeof link === "string" && Date.parse(photo.links.until) - now > LINK_MARGIN_MS &&
     isStorageUrl(link) ? link : null;
+}
+
+// Keep display URLs in preference order. The element retains this list while it
+// is mounted, so refreshing signed album links cannot restart a playing video.
+export function albumMediaSources(media, src, size = "original", now = Date.now()) {
+  const proxy = proxyMediaUrl(src);
+  return [...new Set([storageLink(media, size, now), directMediaUrl(proxy), proxy].filter(Boolean))];
 }
 
 export function proxyMediaUrl(src) {

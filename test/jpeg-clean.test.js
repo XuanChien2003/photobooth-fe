@@ -39,3 +39,29 @@ test("a file still being written or not a JPEG is refused like on the server", a
     assert.throws(() => cleanJpegParts(new Uint8Array(bytes), 6));
   }
 });
+
+test("an already clean JPEG reuses its original Blob and normalizes an unknown MIME type", async () => {
+  const { plain } = await samples();
+  const original = new Blob([plain], { type: "image/jpeg" });
+  assert.equal(await cleanCameraJpeg(original), original, "no replacement image allocation");
+  const untyped = await cleanCameraJpeg(new Blob([plain]));
+  assert.equal(untyped.type, "image/jpeg");
+  assert.deepEqual(Buffer.from(await untyped.arrayBuffer()), plain);
+});
+
+test("metadata removal reuses source Blob slices while preserving pixels and orientation", async () => {
+  const { rotated } = await samples();
+  const image = new Blob([rotated], { type: "image/jpeg" });
+  const slices = [], slice = image.slice.bind(image);
+  image.slice = (start, end) => {
+    slices.push([start, end]);
+    return slice(start, end);
+  };
+  const result = await cleanCameraJpeg(image);
+  const cleaned = Buffer.from(await result.arrayBuffer());
+  assert.deepEqual(cleaned, cleanJpegMetadata(rotated, 6));
+  assert.ok(slices.length > 0, "retained camera bytes come from the immutable source Blob");
+  assert.equal(slices.reduce((size, [start, end]) => size + end - start, 0), cleaned.length - 36,
+    "only the 36-byte replacement EXIF is newly allocated");
+  assert.equal((await sharp(cleaned).metadata()).orientation, 6);
+});

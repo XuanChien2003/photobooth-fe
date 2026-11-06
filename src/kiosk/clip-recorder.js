@@ -132,25 +132,35 @@ export function timelapseBitrate(width, height, seconds, light = false) {
   return Math.round(Math.max(floor, Math.min(ceiling, byPixels, bySize)));
 }
 
-// Kích thước khung hình của một clip (chỉ đọc phần đầu tệp).
-async function clipSize(blob) {
+// Prepare a playable first frame once; reuse the same decoder for dimensions and playback.
+function prepareClip(blob) {
   const url = URL.createObjectURL(blob);
   const video = document.createElement("video");
   video.muted = true;
-  video.preload = "metadata";
+  video.playsInline = true;
+  video.preload = "auto";
+  let settle, timer;
+  const ready = new Promise((resolve) => {
+    settle = (loaded) => {
+      clearTimeout(timer);
+      video.onloadeddata = video.onerror = null;
+      resolve(loaded);
+    };
+    video.onloadeddata = () => settle(true);
+    video.onerror = () => settle(false);
+    timer = setTimeout(() => settle(video.readyState >= 2), 4000);
+  });
   video.src = url;
-  try {
-    await new Promise((resolve) => {
-      video.onloadedmetadata = resolve;
-      video.onerror = resolve;
-      setTimeout(resolve, 3000);
-    });
-    return [video.videoWidth, video.videoHeight];
-  } finally {
-    video.removeAttribute("src");
-    video.load();
-    URL.revokeObjectURL(url);
-  }
+  return {
+    video, ready,
+    dispose() {
+      settle(false);
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      URL.revokeObjectURL(url);
+    },
+  };
 }
 
 // Ghép các clip thành một video tua nhanh (mặc định ×4), 16:9 đúng độ phân giải nguồn (tối đa Full HD),
@@ -160,8 +170,10 @@ export async function buildTimelapse(clips, { zoom = 0, speed = 4, mirror = true
   const segments = clips.flat();
   if (!segments.length || typeof MediaRecorder === "undefined") return null;
   const region = visibleRegion(zoom);
+  let current = prepareClip(segments[0]);
+  await current.ready;
   // Chế độ nhẹ (webcam máy tính): tối đa 720p, tới 8 Mbps.
-  const [width, height] = timelapseSize(...(await clipSize(segments[0])), region, light ? 720 : 1080);
+  const [width, height] = timelapseSize(current.video.videoWidth, current.video.videoHeight, region, light ? 720 : 1080);
   const seconds = Math.max(1, clips.reduce((sum, clip) => sum + (clip.ms || SEGMENT_MS), 0) / 1000 / speed);
   const bitrate = timelapseBitrate(width, height, seconds, light);
   const canvas = document.createElement("canvas");
@@ -194,36 +206,39 @@ export async function buildTimelapse(clips, { zoom = 0, speed = 4, mirror = true
       (width - dw) / 2, (height - dh) / 2, dw, dh);
     ctx.restore();
   };
-  for (const blob of segments) {
-    const url = URL.createObjectURL(blob);
-    const video = document.createElement("video");
-    video.muted = true;
-    video.playsInline = true;
-    video.src = url;
+  for (let index = 0; index < segments.length; index++) {
+    // Decode only one clip ahead while the current one plays. This removes the
+    // serial load/decode wait between clips without holding every decoder open.
+    // The first decoded clip also supplies dimensions, so it is not loaded twice.
+    const next = index + 1 < segments.length ? prepareClip(segments[index + 1]) : null;
+    const { video } = current;
     try {
-      await new Promise((resolve, reject) => {
-        video.onloadeddata = resolve;
-        video.onerror = () => reject(new Error("clip"));
-        setTimeout(resolve, 4000);
-      });
+      if (!(await current.ready)) continue;
       video.playbackRate = speed;
+      draw(video);
       await video.play();
       recorder.resume();
       await new Promise((resolve) => {
-        let stopped = false;
+        let stopped = false, frameId, timer;
         const done = () => {
           if (stopped) return;
           stopped = true;
+          clearTimeout(timer);
+          video.onended = video.onerror = null;
+          if (frameId !== undefined) {
+            if (video.cancelVideoFrameCallback) video.cancelVideoFrameCallback(frameId);
+            else cancelAnimationFrame(frameId);
+          }
           resolve();
         };
-        video.onended = done;
+        video.onended = video.onerror = done;
         // Clip lỗi / không phát hết: không để video bị treo.
-        setTimeout(done, 20000);
+        timer = setTimeout(done, 20000);
         const frame = () => {
           if (stopped) return;
           draw(video);
-          if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(frame);
-          else requestAnimationFrame(frame);
+          if (video.requestVideoFrameCallback) frameId = video.requestVideoFrameCallback(frame);
+          else frameId = requestAnimationFrame(frame);
         };
         frame();
       });
@@ -231,10 +246,8 @@ export async function buildTimelapse(clips, { zoom = 0, speed = 4, mirror = true
     } catch {
       /* bỏ qua clip lỗi */
     } finally {
-      video.pause();
-      video.removeAttribute("src");
-      video.load();
-      URL.revokeObjectURL(url);
+      current.dispose();
+      current = next;
     }
   }
   recorder.stop();

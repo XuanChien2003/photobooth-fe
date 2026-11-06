@@ -103,5 +103,10 @@ export function cleanJpegParts(bytes, orientation) {
 export async function cleanCameraJpeg(blob) {
   const bytes = new Uint8Array(await blob.arrayBuffer());
   const { parts, changed } = cleanJpegParts(bytes, exifOrientation(bytes));
-  return changed ? new Blob(parts, { type: "image/jpeg" }) : new Blob([bytes], { type: "image/jpeg" });
+  if (!changed) return blob.type === "image/jpeg" ? blob : blob.slice(0, blob.size, "image/jpeg");
+  // Reuse the immutable source bytes instead of copying the camera's entire
+  // scan into another Blob. Only the tiny replacement EXIF needs new bytes.
+  return new Blob(parts.map((part) => part.buffer === bytes.buffer
+    ? blob.slice(part.byteOffset - bytes.byteOffset, part.byteOffset - bytes.byteOffset + part.byteLength)
+    : part), { type: "image/jpeg" });
 }
