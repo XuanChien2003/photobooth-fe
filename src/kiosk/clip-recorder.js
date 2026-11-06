@@ -111,14 +111,46 @@ export function createClipRecorder() {
   };
 }
 
-// Ghép các clip thành một video tua nhanh (mặc định ×4), Full HD 16:9, lật gương như màn hình xem
-// trước và cắt bỏ mép có thông số máy ảnh. Chạy trong lúc khách chọn ảnh: mất khoảng ¼ thời lượng
-// các clip. Bitrate cao nhất (Full HD tới 16 Mbps) mà video vẫn dưới giới hạn tải lên.
-export async function buildTimelapse(clips, { zoom = 0, speed = 4, width = 1920, height = 1080, mirror = true, light = false } = {}) {
-  // Chế độ nhẹ (webcam máy tính, hình 720p): 1280 × 720, tới 8 Mbps.
-  if (light) [width, height] = [1280, 720];
+// Kích thước video ra: khung 16:9 đúng bằng độ phân giải phần hình còn thấy sau khi cắt mép thông số
+// (vd. HDMI 1920 × 1080 cắt mép → 1536 × 864), tối đa maxHeight. Không phóng to: phóng to không thêm
+// chi tiết mà làm nhoè, và cùng bitrate thì ảnh nhỏ hơn được nhiều bit mỗi điểm ảnh hơn.
+export function timelapseSize(sourceWidth, sourceHeight, region, maxHeight = 1080) {
+  const even = (n) => Math.max(2, Math.floor(n / 2) * 2);
+  const sw = sourceWidth * region.w, sh = sourceHeight * region.h;
+  const height = even(sw > 0 && sh > 0 ? Math.min(maxHeight, sh, (sw * 9) / 16) : maxHeight);
+  return [even((height * 16) / 9), height];
+}
+
+// Kích thước khung hình của một clip (chỉ đọc phần đầu tệp).
+async function clipSize(blob) {
+  const url = URL.createObjectURL(blob);
+  const video = document.createElement("video");
+  video.muted = true;
+  video.preload = "metadata";
+  video.src = url;
+  try {
+    await new Promise((resolve) => {
+      video.onloadedmetadata = resolve;
+      video.onerror = resolve;
+      setTimeout(resolve, 3000);
+    });
+    return [video.videoWidth, video.videoHeight];
+  } finally {
+    video.removeAttribute("src");
+    video.load();
+    URL.revokeObjectURL(url);
+  }
+}
+
+// Ghép các clip thành một video tua nhanh (mặc định ×4), 16:9 đúng độ phân giải nguồn (tối đa Full HD),
+// lật gương như màn hình xem trước và cắt bỏ mép có thông số máy ảnh. Chạy trong lúc khách chọn ảnh:
+// mất khoảng ¼ thời lượng các clip. Bitrate cao nhất (tới 16 Mbps) mà video vẫn dưới giới hạn tải lên.
+export async function buildTimelapse(clips, { zoom = 0, speed = 4, mirror = true, light = false } = {}) {
   const segments = clips.flat();
   if (!segments.length || typeof MediaRecorder === "undefined") return null;
+  const region = visibleRegion(zoom);
+  // Chế độ nhẹ (webcam máy tính): tối đa 720p, tới 8 Mbps.
+  const [width, height] = timelapseSize(...(await clipSize(segments[0])), region, light ? 720 : 1080);
   const seconds = Math.max(1, clips.reduce((sum, clip) => sum + (clip.ms || SEGMENT_MS), 0) / 1000 / speed);
   const bitrate = Math.round(Math.max(light ? 2_000_000 : 4_000_000,
     Math.min(light ? 8_000_000 : 16_000_000, (MAX_VIDEO_BYTES * 8) / seconds)));
@@ -137,7 +169,6 @@ export async function buildTimelapse(clips, { zoom = 0, speed = 4, width = 1920,
   const finished = new Promise((resolve) => (recorder.onstop = resolve));
   recorder.start(1000);
   recorder.pause();
-  const region = visibleRegion(zoom);
   const draw = (video) => {
     const sw = video.videoWidth * region.w, sh = video.videoHeight * region.h;
     if (!sw || !sh) return;

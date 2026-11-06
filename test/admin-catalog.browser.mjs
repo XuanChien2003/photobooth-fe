@@ -17,6 +17,7 @@ const fixture = `
   import { createRoot } from 'react-dom/client';
   import { ResourceManager } from '/src/admin/resources.jsx';
   import { FramesManager } from '/src/admin/frames.jsx';
+  import { ThemesManager } from '/src/admin/themes.jsx';
   import { StudioContext, ToastProvider } from '/src/studio.jsx';
   import '/src/tailwind.css';
   const root = createRoot(document.getElementById('root'));
@@ -31,8 +32,10 @@ const fixture = `
     window.notifications = [];
     window.catalogReloads = 0;
     const notify = (message) => window.notifications.push(message);
-    const title = resource === 'packages' ? 'Bảng giá' : 'Khung ảnh';
-    const content = resource === 'packages'
+    const title = resource === 'packages' ? 'Bảng giá' : resource === 'themes' ? 'Chủ đề' : 'Khung ảnh';
+    const content = resource === 'themes'
+      ? React.createElement(ThemesManager, { notify, onOpenFrames: () => {} })
+      : resource === 'packages'
       ? React.createElement(ResourceManager, {
           resource,
           notify,
@@ -100,7 +103,10 @@ const packageFixtures = [
     ...packageDefaults,
   },
 ];
-const themeFixtures = [{ name: "Hoa" }, { name: "Mùa hè" }];
+const themeFixtures = [
+  { name: "Hoa", kind: "photobooth", active: true, frames: 0, activeFrames: 0, slots: 0, sizes: [], previews: [] },
+  { name: "Mùa hè", kind: "photobooth", active: true, frames: 0, activeFrames: 0, slots: 0, sizes: [], previews: [] },
+];
 const frameFixtures = [
   {
     _id: "frame-1",
@@ -224,8 +230,21 @@ before(async () => {
         send(data.themes);
         return;
       }
+      if (path === "/api/admin/themes" && entry.method === "PUT") {
+        const theme = data.themes.find((item) => item.name === entry.body.name);
+        Object.assign(theme, {
+          ...(entry.body.newName && { name: entry.body.newName }),
+          ...(entry.body.kind && { kind: entry.body.kind }),
+          ...(entry.body.active !== undefined && { active: entry.body.active }),
+        });
+        send(data.themes);
+        return;
+      }
       if (path === "/api/admin/themes" && entry.method === "POST") {
-        data.themes.push({ name: entry.body.name, kind: entry.body.kind || "photobooth" });
+        data.themes.push({
+          name: entry.body.name, kind: entry.body.kind || "photobooth", active: true,
+          frames: 0, activeFrames: 0, slots: 0, sizes: [], previews: [],
+        });
         send(data.themes, 201);
         return;
       }
@@ -318,7 +337,7 @@ after(async () => {
   if (server) await new Promise((resolve) => server.close(resolve));
 });
 
-const CARDS = { packages: ".package-card", frames: ".frames-grid > li" };
+const CARDS = { packages: ".package-card", frames: ".frames-grid > li", themes: ".themes-table tbody tr" };
 
 async function mount(resource, overrides = {}) {
   data = {
@@ -937,4 +956,28 @@ test("catalogs and editors fit desktop and mobile widths with review screenshots
     }
   }
   console.log(`Catalog review screenshots: ${screenshotDirectory}`);
+});
+
+test("a theme stays in the room tab it was added from and can be moved to the other room", async () => {
+  await mount("themes");
+  const tab = (name) => page.getByRole("tab", { name: new RegExp(name) });
+  await tab("Polaroid").click();
+  await page.getByText(/Chưa có chủ đề phòng Polaroid/).waitFor();
+  await page.getByRole("button", { name: "Thêm mới chủ đề" }).click();
+  await page.getByLabel("Tên chủ đề").fill("Wide xinh");
+  await page.getByRole("button", { name: "Lưu" }).click();
+  await page.locator(".themes-table tbody tr", { hasText: "Wide xinh" }).waitFor();
+  assert.deepEqual(mutations().at(-1).body, { name: "Wide xinh", kind: "polaroid" });
+  await tab("Photobooth").click();
+  assert.equal(await page.locator(".themes-table tbody tr", { hasText: "Wide xinh" }).count(), 0);
+  // Chủ đề lỡ tạo nhầm tab: sửa chủ đề, chọn loại phòng khác.
+  await page.getByRole("button", { name: "Đổi tên Hoa", exact: true }).click();
+  await page.getByLabel("Loại phòng").selectOption("polaroid");
+  await page.getByRole("button", { name: "Lưu" }).click();
+  await page.locator(".themes-table tbody tr", { hasText: "Hoa" }).waitFor({ state: "detached" });
+  assert.deepEqual(mutations().at(-1).body, { name: "Hoa", newName: "Hoa", kind: "polaroid" });
+  await tab("Polaroid").click();
+  await page.locator(".themes-table tbody tr", { hasText: "Hoa" }).waitFor();
+  assert.deepEqual(unexpected, []);
+  assert.deepEqual(pageErrors, []);
 });

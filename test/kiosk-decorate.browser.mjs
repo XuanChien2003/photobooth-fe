@@ -167,9 +167,10 @@ test("guests pick photos, a colour and a sticker; the print shows exactly that",
     const shots = page.getByRole("group", { name: "Ảnh đã chụp" }).getByRole("button");
     await shots.nth(0).click();
     await shots.nth(1).click();
-    // Chọn đủ ảnh: tự mở mục Màu ảnh.
+    // Chọn đủ ảnh: tự mở mục kế tiếp — Chỉnh ảnh (phóng to / dời ảnh trong ô).
+    await page.waitForFunction(() => document.querySelector("#select-tab-adjust")?.getAttribute("aria-selected") === "true");
+    await tab("Màu ảnh").click();
     await page.getByRole("radiogroup", { name: "Màu ảnh" }).waitFor();
-    assert.equal(await tab("Màu ảnh").getAttribute("aria-selected"), "true");
     const colors = page.getByRole("radiogroup", { name: "Màu ảnh" }).getByRole("radio");
     assert.deepEqual(await colors.allInnerTexts(), ["Gốc", "Trắng đen"]);
     await page.getByRole("radio", { name: "Trắng đen" }).click();
@@ -230,6 +231,9 @@ test("a colour can go to one photo only (tap it in the frame or pick its number)
     const shots = page.getByRole("group", { name: "Ảnh đã chụp" }).getByRole("button");
     await shots.nth(0).click();
     await shots.nth(1).click();
+    // Chọn đủ ảnh: tự mở mục kế tiếp (Chỉnh ảnh); màu ảnh ở mục Màu ảnh.
+    await page.getByRole("tab", { name: /Chỉnh ảnh/ }).waitFor();
+    await page.getByRole("tab", { name: /Màu ảnh/ }).click();
     const targets = page.getByRole("radiogroup", { name: "Áp dụng màu cho" });
     await targets.waitFor();
     assert.equal(await targets.getByRole("radio", { name: "Tất cả ảnh" }).getAttribute("aria-checked"), "true");
@@ -266,6 +270,9 @@ test("choosing a colour for all photos clears the per-photo colours", async () =
     const shots = page.getByRole("group", { name: "Ảnh đã chụp" }).getByRole("button");
     await shots.nth(0).click();
     await shots.nth(1).click();
+    // Chọn đủ ảnh: tự mở mục kế tiếp (Chỉnh ảnh); màu ảnh ở mục Màu ảnh.
+    await page.getByRole("tab", { name: /Chỉnh ảnh/ }).waitFor();
+    await page.getByRole("tab", { name: /Màu ảnh/ }).click();
     const targets = page.getByRole("radiogroup", { name: "Áp dụng màu cho" });
     await targets.getByRole("radio", { name: "Ảnh 1" }).click();
     await page.getByRole("radio", { name: "Trắng đen" }).click();
@@ -317,6 +324,9 @@ test("colour and stickers survive a reload during selection", async () => {
     const shots = page.getByRole("group", { name: "Ảnh đã chụp" }).getByRole("button");
     await shots.nth(0).click();
     await shots.nth(2).click();
+    // Chọn đủ ảnh: tự mở mục kế tiếp (Chỉnh ảnh); màu ảnh ở mục Màu ảnh.
+    await page.getByRole("tab", { name: /Chỉnh ảnh/ }).waitFor();
+    await page.getByRole("tab", { name: /Màu ảnh/ }).click();
     await page.getByRole("radio", { name: "Trắng đen" }).click();
     await page.getByRole("tab", { name: /Nhãn dán/ }).click();
     await page.getByRole("button", { name: "Thêm nhãn dán Sao vàng" }).click();
@@ -340,7 +350,7 @@ test("without any shop sticker the kiosk hides the sticker tab (no built-in emoj
     await page.getByRole("heading", { name: /để chọn ảnh & trang trí/ }).waitFor();
     assert.deepEqual(
       await page.getByRole("tab").evaluateAll((tabs) => tabs.map((t) => t.textContent.replace(/\d+\/\d+/, "").trim())),
-      ["Chọn ảnh", "Màu ảnh"],
+      ["Chọn ảnh", "Chỉnh ảnh", "Màu ảnh", "Thêm chữ"],
     );
     assert.deepEqual(errors, []);
   } finally { await page.close(); }

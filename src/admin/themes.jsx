@@ -9,8 +9,11 @@ const SIZES = { full: "10 × 15 cm", strip: "5 × 15 cm", instax: "Instax Wide" 
 const searchable = (value) =>
   String(value || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/đ/gi, "d").toLowerCase();
 
-function NameDialog({ title, initial = "", busy, onClose, onSave }) {
+// Sửa chủ đề: đổi tên và / hoặc chuyển sang loại phòng khác (kind; không gửi khi thêm mới — chủ đề mới
+// thuộc tab đang mở).
+function NameDialog({ title, initial = "", kind = null, busy, onClose, onSave }) {
   const [name, setName] = useState(initial);
+  const [service, setService] = useState(kind);
   return (
     <div className="modal-backdrop">
       <section className="modal theme-name-dialog" role="dialog" aria-modal="true" aria-label={title}>
@@ -21,7 +24,7 @@ function NameDialog({ title, initial = "", busy, onClose, onSave }) {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            onSave(name.trim());
+            onSave(name.trim(), service);
           }}
         >
           <label>
@@ -29,6 +32,14 @@ function NameDialog({ title, initial = "", busy, onClose, onSave }) {
             <input autoFocus maxLength={100} value={name} placeholder="VD: Kawaii, Limited, Giáng sinh…"
               onChange={(e) => setName(e.target.value)} />
           </label>
+          {kind && (
+            <label>
+              Loại phòng
+              <select value={service} onChange={(e) => setService(e.target.value)}>
+                {SERVICES.map(([key, label]) => <option key={key} value={key}>Phòng {label}</option>)}
+              </select>
+            </label>
+          )}
           <div className="resource-editor-footer">
             <span />
             <div>
@@ -97,11 +108,16 @@ export function ThemesManager({ notify, onOpenFrames }) {
     if (!window.confirm(`Bạn có muốn xoá chủ đề “${theme.name}”? ${theme.frames ? `${theme.frames} khung trong chủ đề sẽ thành khung lẻ (không bị xoá).` : ""}`)) return;
     run(() => api(`/admin/themes/${encodeURIComponent(theme.name)}`, { method: "DELETE" }), `Đã xoá chủ đề “${theme.name}”.`);
   };
-  async function saveName(name) {
+  async function saveName(name, kind) {
     if (!name) return;
+    const moved = dialog.theme && kind && kind !== kindOf(dialog.theme);
     const ok = dialog.theme
-      ? await run(() => api("/admin/themes", { method: "PUT", body: { name: dialog.theme.name, newName: name } }),
-        `Đã đổi tên chủ đề thành “${name}”.`)
+      ? await run(() => api("/admin/themes", {
+        method: "PUT",
+        body: { name: dialog.theme.name, newName: name, ...(moved && { kind }) },
+      }), moved
+        ? `Đã chuyển chủ đề “${name}” sang phòng ${SERVICES.find(([key]) => key === kind)[1]}.`
+        : `Đã đổi tên chủ đề thành “${name}”.`)
       : await run(() => api("/admin/themes", { method: "POST", body: { name, kind: service } }),
         `Đã thêm chủ đề ${serviceName} “${name}”.`);
     if (ok) setDialog(null);
@@ -209,7 +225,7 @@ export function ThemesManager({ notify, onOpenFrames }) {
                         disabled={busy || filtered || index === 0} onClick={() => move(index, -1)}><ArrowUp size={16} /></button>
                       <button className="icon-button" title="Xuống sau" aria-label={`Đưa ${theme.name} xuống sau`}
                         disabled={busy || filtered || index === ofService.length - 1} onClick={() => move(index, 1)}><ArrowDown size={16} /></button>
-                      <button className="icon-button" title="Đổi tên" aria-label={`Đổi tên ${theme.name}`}
+                      <button className="icon-button" title="Sửa tên / loại phòng" aria-label={`Đổi tên ${theme.name}`}
                         onClick={() => setDialog({ theme })}><Pencil size={16} /></button>
                       <button className="icon-button" title="Xoá chủ đề" aria-label={`Xoá chủ đề ${theme.name}`}
                         disabled={busy} onClick={() => remove(theme)}><Trash2 size={16} /></button>
@@ -229,8 +245,9 @@ export function ThemesManager({ notify, onOpenFrames }) {
       {filtered && ofService.length > 1 && <p className="muted soft-note">Bỏ tìm kiếm / bộ lọc để đổi thứ tự chủ đề.</p>}
       {dialog && (
         <NameDialog
-          title={dialog.theme ? `Đổi tên chủ đề “${dialog.theme.name}”` : `Thêm mới chủ đề ${serviceName}`}
+          title={dialog.theme ? `Sửa chủ đề “${dialog.theme.name}”` : `Thêm mới chủ đề ${serviceName}`}
           initial={dialog.theme?.name}
+          kind={dialog.theme ? kindOf(dialog.theme) : null}
           busy={busy}
           onClose={() => setDialog(null)}
           onSave={saveName}

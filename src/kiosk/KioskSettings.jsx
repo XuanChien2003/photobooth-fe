@@ -180,7 +180,7 @@ export function KioskSettings({
         <label className="checkbox">
           <input type="checkbox" checked={lowPower} onChange={(e) => setLowPower(e.target.checked)} />
           Chế độ máy yếu (mini PC đời cũ, đồ họa Intel HD 5xx/6xx): hình trực tiếp vẽ bằng canvas — bật khi
-          hình trực tiếp bị trắng hoặc giật sau khi chụp; video tua nhanh quay nhẹ 720p.
+          hình trực tiếp bị trắng hoặc giật sau khi chụp.
         </label>
         <KioskDevices zoom={zoom} setZoom={setZoom} roomInfo={roomInfo} toast={toast} />
         <Button

@@ -84,21 +84,16 @@ test("the colour filter only changes the photo area and stays inside the canvas"
 
 const photo = (x, y, number, w = 0.4, h = 0.2) => ({ x, y, w, h, kind: "photo", photo: number });
 
-test("twin strips on one sheet: stickers sit on the first strip and repeat on the second", () => {
+test("twin strips on one sheet: a sticker goes where the guest puts it, without a copy on the other strip", () => {
+  // Khách tự dán từng nhãn (muốn có ở dải kia thì dán thêm một nhãn): vùng đặt là cả khung.
   const frame = { slots: [photo(0.05, 0.05, 1), photo(0.05, 0.3, 2), photo(0.55, 0.05, 1), photo(0.55, 0.3, 2)] };
   const area = stickerArea(frame);
-  assert.deepEqual(area, { x: 0, y: 0, w: 0.5, h: 1, shift: { dx: 0.5, dy: 0 } });
-  const [first, copy] = placedStickers([{ id: "a", text: "⭐", u: 0.5, v: 0.25, scale: 0.2 }], area);
-  near(first.x, 0.25);
-  near(first.y, 0.25);
-  near(copy.x, 0.75);
-  near(copy.y, 0.25);
-  assert.equal(copy.copy, true);
-  assert.equal(first.index, 0);
-  assert.equal(copy.index, 0);
-  // Cỡ theo bề rộng dải: biểu tượng cao 20 % dải = 120 px trên tờ rộng 1200 px.
-  near(first.size, 120);
-  assert.equal(first.text, "⭐");
+  assert.deepEqual(area, { x: 0, y: 0, w: 1, h: 1, shift: null });
+  const placed = placedStickers([{ id: "a", text: "⭐", u: 0.25, v: 0.25, scale: 0.2 }], area);
+  assert.equal(placed.length, 1);
+  near(placed[0].x, 0.25);
+  near(placed[0].y, 0.25);
+  assert.equal(placed[0].text, "⭐");
 });
 
 test("ordinary frames use the whole frame; uneven or partial copies are not mirrored", () => {
@@ -116,14 +111,11 @@ test("ordinary frames use the whole frame; uneven or partial copies are not mirr
   assert.equal(image.src, "/api/stickers/1/image");
 });
 
-test("stacked strips (one above the other) repeat stickers downwards", () => {
+test("stacked strips (one above the other) do not repeat stickers either", () => {
   const frame = { slots: [photo(0.05, 0.05, 1, 0.25, 0.4), photo(0.4, 0.05, 2, 0.25, 0.4), photo(0.05, 0.55, 1, 0.25, 0.4), photo(0.4, 0.55, 2, 0.25, 0.4)] };
   const area = stickerArea(frame);
-  assert.equal(area.w, 1);
-  near(area.h, 0.5);
-  near(area.shift.dy, 0.5);
-  const [, copy] = placedStickers([{ id: "c", text: "✨", u: 0.5, v: 0.5, scale: 0.1 }], area);
-  near(copy.y, 0.75);
+  assert.deepEqual(area, { x: 0, y: 0, w: 1, h: 1, shift: null });
+  assert.equal(placedStickers([{ id: "c", text: "✨", u: 0.5, v: 0.5, scale: 0.1 }], area).length, 1);
 });
 
 test("sticker sizes stay between the smallest and largest step", () => {

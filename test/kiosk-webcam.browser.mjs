@@ -217,8 +217,15 @@ test("low-power mode draws the live view on a canvas, and the shot flash does no
       return false;
     }, null, { timeout: 15000 });
     assert.equal(await b.page.locator(".camera-preview-viewport video").evaluate((v) => getComputedStyle(v).opacity), "0");
+    // Lớp nháy chỉ có 0,4 giây: theo dõi DOM thay vì dò định kỳ (dò thưa có thể bỏ lỡ).
+    await b.page.evaluate(() => {
+      window.__flashSeen = false;
+      new MutationObserver(() => {
+        if (document.querySelector(".camera-flash")) window.__flashSeen = true;
+      }).observe(document.body, { childList: true, subtree: true });
+    });
     await snap.click();
-    await b.page.locator(".camera-flash").waitFor({ timeout: 10000 });
+    await b.page.waitForFunction(() => window.__flashSeen, null, { timeout: 15000 });
     await b.page.locator(".camera-flash").waitFor({ state: "detached", timeout: 3000 });
     assert.deepEqual(b.errors, []);
   } finally { await b.close(); }
