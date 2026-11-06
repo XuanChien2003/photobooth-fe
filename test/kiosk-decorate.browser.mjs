@@ -355,3 +355,41 @@ test("without any shop sticker the kiosk hides the sticker tab (no built-in emoj
     assert.deepEqual(errors, []);
   } finally { await page.close(); }
 });
+
+test("a photo is dragged on the frame and shrunk below 100%; the print shows the frame background around it", async () => {
+  const { page, errors, uploads } = await selectScreen();
+  try {
+    const shots = page.getByRole("group", { name: "Ảnh đã chụp" }).getByRole("button");
+    await shots.nth(0).click();
+    await shots.nth(1).click();
+    // Chọn đủ ảnh: mở mục Chỉnh ảnh.
+    await page.waitForFunction(() => document.querySelector("#select-tab-adjust")?.getAttribute("aria-selected") === "true");
+    await page.waitForFunction(() => document.querySelector(".decor-canvas:not(.is-loading)"));
+    const box = await page.getByRole("img", { name: /Khung ảnh xem trước/ }).boundingBox();
+    // Kéo ảnh 1 sang phải ngay trên khung.
+    const start = { x: box.x + 0.5 * box.width, y: box.y + 0.26 * box.height };
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(start.x + 40, start.y, { steps: 6 });
+    await page.mouse.up();
+    const [first] = (await saved(page)).selected;
+    await page.waitForFunction((key) =>
+      JSON.parse(sessionStorage.getItem("photo-capture-fixture-device")).decor?.transforms?.[key]?.x > 0, first);
+    // Thu nhỏ dưới 100 % (tới 50 %): thấy cả ảnh, phần ô còn trống là nền khung.
+    const zoomOut = page.getByRole("button", { name: /Thu nhỏ/ });
+    for (let i = 0; i < 10 && await zoomOut.isEnabled(); i++) await zoomOut.click();
+    assert.equal(await zoomOut.isDisabled(), true);
+    await page.locator(".adjust-zoom span", { hasText: "50%" }).waitFor();
+    const t = (await saved(page)).decor.transforms[first];
+    assert.ok(Math.abs(t.zoom - 0.5) < 0.001 && t.x > 0, JSON.stringify(t));
+
+    await page.getByRole("button", { name: "In ảnh" }).click();
+    for (let i = 0; i < 100 && !uploads.composite; i++) await page.waitForTimeout(100);
+    assert.ok(uploads.composite, "chưa gửi ảnh ghép vào album");
+    const { colors: [edge, middle] } = await samples(page, uploads.composite, [[0.08, 0.26], [0.55, 0.26]]);
+    assert.ok(edge.slice(0, 3).every((v) => v > 200), `mép ô ảnh 1 là nền trắng của khung: ${edge}`);
+    assert.ok(middle[0] > 180 && middle[1] < 80, `ảnh 1 (đỏ) vẫn ở giữa ô: ${middle}`);
+    assert.deepEqual(errors, []);
+  } finally { await page.close(); }
+});
+

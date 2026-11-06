@@ -165,22 +165,26 @@ Một web, hai **loại phòng**. Đầu ca, nhân viên mở máy chụp từng
   - **Tiền mặt**: chọn loại tờ (tờ bé / tờ to) → chọn số lượng → màn đọc tiền. Mỗi tờ tiền máy nhận
     được cộng ngay trên màn hình; đủ tiền là vào màn chụp. Chưa lắp máy đọc tiền thì bật “Chế độ
     thử tiền mặt” trong hộp Cài máy chụp để thử bằng nút giả lập.
-- **Polaroid** (máy ảnh Fujifilm + FUJIFILM X Acquire + **dây bấm** như phòng Photobooth, in ở máy
-  **Instax Link WIDE** qua print agent — xem README của `photobooth-be`):
-  Chạm để bắt đầu → **Chọn layout** (lưới thẻ: hình layout, số ảnh, giá) → thông báo “Chọn layout này, vào chụp
-  nha!” → khách bấm dây chụp (không đếm ngược, không giới hạn số lần bấm trong thời gian chụp của layout, mặc
-  định 5 phút) → chọn ảnh & khung → in 1 tấm Instax → màn QR tải toàn bộ ảnh gốc (không quay video).
-  Khách **trả tiền ở quầy**: đơn ghi “Polaroid · chưa thu tiền”, nhân viên bấm “Đã thu tiền mặt / chuyển
-  khoản” ở Đơn hàng. Layout là các gói khổ Instax ở Khổ ảnh & bảng giá → tab **Polaroid** (số ảnh trong layout
-  chọn bằng hình, giá, thời gian chụp; luôn in 1 tấm, không có ô số tấm / số lần chụp); nút **Tạo 6 layout mẫu** tạo layout 1–6 ảnh (5 ảnh = 2 to trái + 3 bé
-  phải, `src/polaroid-layouts.js`) kèm khung trắng. Khung Instax là thẻ Instax Wide ngang 1800 × 1200, mỗi tấm
-  in 1260 × 840.
+- **Polaroid** (máy ảnh Fujifilm xuất hình qua thẻ ghi hình HDMI, in ở máy **Instax Link WIDE** qua print
+  agent — xem README của `photobooth-be`): Chạm để bắt đầu → **Chọn layout** (2 layout: **1 ảnh to** hoặc **2 ảnh
+  dọc chia đôi** thẻ; thẻ hiện số ảnh, số tấm, giây mỗi tấm, giá) → thông báo “Chọn layout này, vào chụp nha!” →
+  **máy tự chụp**: đếm ngược (mặc định 10 giây) rồi lấy khung hình từ hình trực tiếp HDMI, lặp tới đủ số tấm
+  (mặc định 8), không cần dây bấm hay thư mục ảnh → chọn ảnh & khung → in 1 tấm Instax → màn QR tải toàn bộ ảnh
+  gốc (không quay video). Khách **trả tiền ở quầy**: đơn ghi “Polaroid · chưa thu tiền”, nhân viên bấm “Đã thu
+  tiền mặt / chuyển khoản” ở Đơn hàng. Layout là các gói khổ Instax ở Khổ ảnh & bảng giá → tab **Polaroid** (layout
+  chọn bằng hình 1 / 2 ảnh, giá, số tấm tự chụp, giây mỗi tấm; luôn in 1 tấm); nút **Tạo 2 layout mẫu** tạo 2 layout
+  100.000 đ (8 tấm, 10 giây/tấm) kèm khung trắng. Khung Instax là thẻ Instax Wide ngang 1800 × 1200, mỗi tấm in
+  1260 × 840.
 
-Khổ ảnh & bảng giá và Chủ đề có 2 nút chuyển **Photobooth / Polaroid** để chỉnh riêng từng loại hình: gói khổ
-nhỏ / khổ to và giá in thêm tờ 10 × 15 ở tab Photobooth; layout và giá in thêm Instax ở tab Polaroid. Chủ đề
-lưu loại hình (chủ đề cũ theo khung bên trong: có khung Instax là Polaroid); ở Khung ảnh, khung Size Instax chỉ
-gán được vào chủ đề Polaroid và ngược lại. Không còn chế độ tự chụp theo đếm ngược (Canon R100): mọi phòng chụp
-bằng dây bấm; `scripts/canon-camera` (Canon Camera Agent) không còn được máy chụp dùng.
+**Khung Polaroid không thuộc chủ đề:** ở Khung ảnh → Thêm mới frame → Size Instax, chọn layout (1 ảnh to / 2 ảnh
+dọc chia đôi): ô ảnh đặt sẵn đúng vị trí, chưa tải khung thì dùng ngay khung trắng mẫu, muốn khung riêng thì “Đổi
+ảnh khung” (PNG 1800 × 1200, ô ảnh trong suốt). Trang **Chủ đề** chỉ còn chủ đề của phòng Photobooth; chủ đề
+Polaroid tạo trước đây hiện nhãn “Polaroid cũ · không còn dùng” để xoá. Khổ ảnh & bảng giá vẫn có 2 nút chuyển
+**Photobooth / Polaroid** (gói khổ nhỏ / khổ to và giá in thêm tờ 10 × 15; layout và giá in thêm Instax).
+
+**Chỉnh ảnh trong khung** (màn chọn ảnh, mục **Chỉnh ảnh**): kéo ảnh trên khung để dời, chụm / mở hai ngón (hoặc
+nút Thu nhỏ / Phóng to) từ 50 % tới 300 % (`PHOTO_ZOOM`, `src/frame-utils.js`); dưới 100 % thấy cả ảnh, phần ô
+còn trống là nền khung. Ảnh in ghép từ ảnh gốc nên phóng to vẫn nét.
 
 Mọi chữ chính trên màn hình máy chụp (tiêu đề, nút, thông báo chọn layout…) sửa ở Thiết lập →
 **Chữ trên máy chụp**; ô để trống dùng chữ mặc định (`src/kiosk/kiosk-texts.js`).

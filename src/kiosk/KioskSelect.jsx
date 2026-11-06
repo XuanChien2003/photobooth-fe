@@ -22,6 +22,7 @@ import {
   PiTrashBold,
 } from "react-icons/pi";
 import { Button, useToast } from "../studio";
+import { PHOTO_ZOOM, clampZoom } from "../frame-utils.js";
 import { composePreview, previewBitmap } from "./compose.js";
 import {
   DECOR_COLORS,
@@ -88,10 +89,12 @@ const spread = (points) => Math.hypot(points[0].x - points[1].x, points[0].y - p
 // stickers: danh sách đang hiển thị (kể cả lúc đang kéo); onDraft khi đang kéo, onCommit khi nhấc tay.
 // filters: màu của từng ảnh (cùng thứ tự images). highlight: ảnh đang chọn màu (viền đứt nét);
 // onPhotoTap: chạm vào một ảnh trong khung (không trúng nhãn dán).
+// photoGesture (mục Chỉnh ảnh): kéo một ảnh trên khung để dời, chụm / mở 2 ngón để thu nhỏ / phóng
+// to — { get(index) → phóng/dời hiện tại, draft(index, t) khi đang kéo, commit(index, t) khi nhấc tay }.
 function DecorStage({
   frame, images, imageKey, qrUrl, filters, filterKey, transforms = [], transformKey = "",
   stickers, picked, onPick, onDraft, onCommit,
-  highlight = -1, onPhotoTap = null,
+  highlight = -1, onPhotoTap = null, photoGesture = null,
 }) {
   const canvas = useRef(null);
   const [base, setBase] = useState(null);
@@ -198,9 +201,14 @@ function DecorStage({
     const g = gesture.current;
     // Ngón đầu tiên (isPrimary) luôn bắt đầu thao tác mới, kể cả khi màn cảm ứng làm mất lần nhấc tay trước.
     if (g && !e.isPrimary) {
-      // Ngón thứ hai: chụm / mở để đổi cỡ nhãn dán đang kéo.
+      // Ngón thứ hai: chụm / mở để đổi cỡ nhãn dán / ảnh đang kéo.
       capture(e);
       g.pointers.set(e.pointerId, p);
+      if (g.photo !== undefined) {
+        if (g.pointers.size === 2)
+          g.pinch = { spread: spread([...g.pointers.values()]), zoom: (g.next || g.start).zoom };
+        return;
+      }
       const sticker = (g.list || live.current).find((s) => s.id === g.id);
       if (g.pointers.size === 2 && sticker)
         g.pinch = { spread: spread([...g.pointers.values()]), scale: clampScale(sticker.scale) };
@@ -212,6 +220,12 @@ function DecorStage({
       onPick(null);
       const photo = onPhotoTap ? photoAt(frame, p.x / c.width, p.y / c.height) : -1;
       if (photo >= 0) onPhotoTap(photo);
+      // Mục Chỉnh ảnh: giữ ngón trên ảnh để kéo / chụm.
+      const rect = photo >= 0 && photoGesture && photoRects(frame, photo, c.width, c.height)[0];
+      if (rect) {
+        capture(e);
+        gesture.current = { photo, rect, pointers: new Map([[e.pointerId, p]]), origin: p, start: photoGesture.get(photo) };
+      }
       return;
     }
     const sticker = live.current[hit];
@@ -225,6 +239,20 @@ function DecorStage({
     const c = canvas.current;
     g.pointers.set(e.pointerId, point(e));
     const points = [...g.pointers.values()];
+    if (g.photo !== undefined) {
+      const base = g.next || g.start;
+      if (points.length >= 2 && g.pinch)
+        g.next = { ...base, zoom: clampZoom((g.pinch.zoom * spread(points)) / g.pinch.spread) };
+      else if (points.length === 1)
+        g.next = {
+          ...base,
+          x: Math.max(-1, Math.min(1, g.start.x + (points[0].x - g.origin.x) / g.rect.w)),
+          y: Math.max(-1, Math.min(1, g.start.y + (points[0].y - g.origin.y) / g.rect.h)),
+        };
+      else return;
+      photoGesture.draft(g.photo, g.next);
+      return;
+    }
     let changes = null;
     if (points.length >= 2 && g.pinch)
       changes = { scale: clampScale((g.pinch.scale * spread(points)) / g.pinch.spread) };
@@ -241,6 +269,20 @@ function DecorStage({
     const g = gesture.current;
     if (!g?.pointers.has(e.pointerId)) return;
     g.pointers.delete(e.pointerId);
+    if (g.photo !== undefined) {
+      if (g.pointers.size) {
+        // Nhấc một ngón sau khi chụm: ngón còn lại kéo tiếp từ chỗ đang đứng.
+        const [rest] = g.pointers.values();
+        g.origin = rest;
+        g.start = g.next || g.start;
+        g.next = null;
+        g.pinch = null;
+        return;
+      }
+      gesture.current = null;
+      if (g.next) photoGesture.commit(g.photo, g.next);
+      return;
+    }
     if (g.pointers.size) {
       // Nhấc một ngón sau khi chụm: ngón còn lại kéo tiếp từ chỗ đang đứng.
       const [p] = g.pointers.values();
@@ -451,7 +493,11 @@ export function KioskSelect({
 
   // #4 — Phóng / dời ảnh trong ô (giữ nét vì vẽ từ ảnh gốc). Lưu theo mã tấm ảnh.
   const DEFAULT_T = { zoom: 1, x: 0, y: 0 };
-  const transforms = decor?.transforms || {};
+  const [draftTransform, setDraftTransform] = useState(null); // { key, t } khi đang kéo / chụm
+  const savedTransforms = decor?.transforms || {};
+  const transforms = draftTransform
+    ? { ...savedTransforms, [draftTransform.key]: draftTransform.t }
+    : savedTransforms;
   const readyTransforms = ready.map((key) => transforms[key]);
   const transformKey = ready
     .map((key) => { const tf = transforms[key]; return tf ? `${tf.zoom}|${tf.x}|${tf.y}` : "·"; })
@@ -459,11 +505,25 @@ export function KioskSelect({
   const [adjustKey, setAdjustKey] = useState(null);
   const adjustIndex = adjustKey ? ready.indexOf(adjustKey) : -1;
   const setTransform = (key, change) => {
-    const cur = transforms[key] || DEFAULT_T;
-    onDecor({ transforms: { ...transforms, [key]: { ...cur, ...change } } });
+    const cur = savedTransforms[key] || DEFAULT_T;
+    onDecor({ transforms: { ...savedTransforms, [key]: { ...cur, ...change } } });
   };
-  const zoomPhoto = (key, factor) =>
-    setTransform(key, { zoom: Math.max(1, Math.min(3, (transforms[key]?.zoom || 1) * factor)) });
+  // Kéo / chụm trên khung (mục Chỉnh ảnh): vẽ nháp tối đa ~12 lần mỗi giây, lưu khi nhấc tay.
+  const draftAt = useRef(0);
+  const photoGesture = {
+    get: (photo) => ({ ...DEFAULT_T, ...savedTransforms[ready[photo]] }),
+    draft: (photo, t) => {
+      const now = performance.now();
+      if (now - draftAt.current < 80) return;
+      draftAt.current = now;
+      setDraftTransform({ key: ready[photo], t });
+    },
+    commit: (photo, t) => {
+      setDraftTransform(null);
+      setTransform(ready[photo], t);
+    },
+  };
+  const zoomPhoto = (key, factor) => setTransform(key, { zoom: clampZoom((transforms[key]?.zoom || 1) * factor) });
   const panPhoto = (key, dx, dy) =>
     setTransform(key, {
       x: Math.max(-1, Math.min(1, (transforms[key]?.x || 0) + dx)),
@@ -496,7 +556,7 @@ export function KioskSelect({
   const thumbShot = shots.find((s) => s.key === (target === "all" ? selected[0] : target)) || shots[0];
   const lead = {
     photos: `Chọn ${count} tấm để ghép khung · đã chọn ${selected.length}/${count}`,
-    adjust: "Chạm một ảnh trên khung rồi phóng to / thu nhỏ, dời cho vừa ô (vẫn giữ nét)",
+    adjust: "Kéo ảnh trên khung để dời, chụm / mở hai ngón để thu nhỏ / phóng to (vẫn giữ nét)",
     color: "Chọn màu cho tất cả ảnh hoặc từng ảnh — khung và nhãn dán giữ nguyên màu",
     text: "Gõ chữ muốn thêm vào khung, chọn kiểu chữ & màu rồi bấm “Thêm chữ”",
     stickers: "Chạm nhãn dán để dán lên khung · kéo trên khung để di chuyển",
@@ -541,6 +601,7 @@ export function KioskSelect({
                   : current === "adjust" ? (photo) => ready[photo] && setAdjustKey(ready[photo])
                   : null
                 }
+                photoGesture={current === "adjust" ? photoGesture : null}
                 stickers={stickers}
                 picked={picked}
                 onPick={(id) => {
@@ -620,11 +681,11 @@ export function KioskSelect({
                   {adjustKey ? (
                     <div className="adjust-controls">
                       <div className="adjust-zoom">
-                        <button type="button" onClick={() => zoomPhoto(adjustKey, 1 / 1.15)} disabled={adjustZoom <= 1}>
+                        <button type="button" onClick={() => zoomPhoto(adjustKey, 1 / 1.15)} disabled={adjustZoom <= PHOTO_ZOOM.min + 0.001}>
                           <PiMagnifyingGlassMinusBold aria-hidden="true" /> Thu nhỏ
                         </button>
                         <span>{Math.round(adjustZoom * 100)}%</span>
-                        <button type="button" onClick={() => zoomPhoto(adjustKey, 1.15)} disabled={adjustZoom >= 3}>
+                        <button type="button" onClick={() => zoomPhoto(adjustKey, 1.15)} disabled={adjustZoom >= PHOTO_ZOOM.max - 0.001}>
                           <PiMagnifyingGlassPlusBold aria-hidden="true" /> Phóng to
                         </button>
                       </div>
@@ -638,7 +699,7 @@ export function KioskSelect({
                       <button type="button" className="text-link" onClick={() => resetPhoto(adjustKey)}>
                         <PiArrowClockwiseBold aria-hidden="true" /> Về mặc định
                       </button>
-                      <small>Phóng to rồi dời ảnh cho vừa ô — ảnh in vẫn giữ nguyên độ nét.</small>
+                      <small>Kéo ảnh trên khung để dời, chụm / mở hai ngón để thu nhỏ / phóng to. Thu nhỏ dưới 100% để thấy cả ảnh — ảnh in vẫn giữ nguyên độ nét.</small>
                     </div>
                   ) : (
                     <p className="soft-note">Chạm một ảnh ở trên (hoặc chạm ảnh trên khung) để chỉnh.</p>

@@ -2,13 +2,15 @@ import { api } from "../api";
 import { frameCapacity } from "../frame-utils";
 import { LAYOUT_COUNTS, WIDE_FRAME, layoutSlots } from "../polaroid-layouts.js";
 
-// Bộ layout mẫu của phòng Polaroid (Khổ ảnh & bảng giá → Polaroid → "Tạo layout mẫu"): 1, 2, 3, 4,
-// 5 (2 to + 3 bé), 6 ảnh, mỗi layout một gói khổ Instax và một khung trắng Instax Wide đúng số ô.
-export const SAMPLE_THEME = "Layout trắng";
-const SAMPLE_PRICE = 110000;
+// Layout mẫu của phòng Polaroid (Khổ ảnh & bảng giá → Polaroid → "Tạo layout mẫu"): 1 ảnh to và 2 ảnh
+// dọc chia đôi, mỗi layout một gói khổ Instax (100.000 đ, máy tự chụp 8 tấm, 10 giây mỗi tấm) và một
+// khung trắng Instax Wide đúng số ô. Khung Polaroid không thuộc chủ đề nào.
+export const SAMPLE_PRICE = 100000;
+export const SAMPLE_SHOTS = 8;
+export const SAMPLE_SECONDS = 10;
 
 // Khung trắng 1800 × 1200: nền trắng, ô ảnh màu kem nhạt (ảnh của khách phủ lên ô khi ghép).
-function whiteFrame(count) {
+export function whiteFrame(count) {
   const { w, h } = WIDE_FRAME;
   const canvas = document.createElement("canvas");
   canvas.width = w;
@@ -23,6 +25,9 @@ function whiteFrame(count) {
   return data;
 }
 
+// Các ô ảnh của layout `count` ảnh, đánh số ảnh 1, 2… (để lưu vào khung).
+export const layoutRegions = (count) => layoutSlots(count).map((s, i) => ({ ...s, kind: "photo", photo: i + 1 }));
+
 // Số layout / khung mẫu còn thiếu: layout (kể cả đã tắt) hay khung Instax đã có cùng số ảnh thì giữ nguyên.
 export function missingSamples(packages, frames) {
   const layouts = new Set(packages.filter((p) => p.printSize === "instax").map((p) => Number(p.selectCount)));
@@ -34,22 +39,20 @@ export function missingSamples(packages, frames) {
 }
 
 export async function createSampleLayouts(packages) {
-  const [frames, themes] = await Promise.all([api("/admin/frames"), api("/admin/themes")]);
+  const frames = await api("/admin/frames");
   const missing = missingSamples(packages, frames);
-  if (missing.frames.length && !themes.some((t) => t.name === SAMPLE_THEME))
-    await api("/admin/themes", { method: "POST", body: { name: SAMPLE_THEME, kind: "polaroid" } });
   for (const count of missing.frames)
     await api("/admin/frames", {
       method: "POST",
       body: {
-        name: `Layout ${count} ảnh`,
-        themeName: SAMPLE_THEME,
+        name: `Khung trắng ${count} ảnh`,
+        themeName: "",
         order: count,
         printSize: "instax",
         image: whiteFrame(count),
-        slots: layoutSlots(count).map((s, i) => ({ ...s, kind: "photo", photo: i + 1 })),
+        slots: layoutRegions(count),
         sheet: false,
-        shots: count,
+        shots: 0,
         active: true,
       },
     });
@@ -57,11 +60,12 @@ export async function createSampleLayouts(packages) {
     await api("/admin/packages", {
       method: "POST",
       body: {
-        name: `Layout ${count} ảnh`,
+        name: count === 1 ? "1 ảnh to" : `${count} ảnh`,
         description: "",
         price: SAMPLE_PRICE,
         duration: 5,
-        shots: 0,
+        shots: SAMPLE_SHOTS,
+        countdownSeconds: SAMPLE_SECONDS,
         selectCount: count,
         printSize: "instax",
         prints: 1,

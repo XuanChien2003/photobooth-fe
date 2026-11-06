@@ -109,6 +109,11 @@ export function loadFrameImage(src) {
 }
 
 export const DEFAULT_TRANSFORM = { zoom: 1, x: 0, y: 0, rotate: 0 };
+// Khách chỉnh ảnh trong ô: 100 % = ảnh phủ kín ô; thu nhỏ tới 50 % (thấy cả ảnh, phần ô còn trống là
+// nền khung), phóng to tới 300 %. Ảnh in vẽ từ ảnh gốc nên phóng to vẫn nét.
+export const PHOTO_ZOOM = { min: 0.5, max: 3 };
+export const clampZoom = (zoom) =>
+  Math.max(PHOTO_ZOOM.min, Math.min(PHOTO_ZOOM.max, Number.isFinite(zoom) ? zoom : 1));
 
 // Tọa độ pixel của một ô trên canvas (nới 1px để không lộ viền trắng).
 export function slotRect(slot, width, height) {
@@ -131,7 +136,7 @@ export function slotScale(image, rect, t = DEFAULT_TRANSFORM) {
     Math.max(
       (cos * rect.w + sin * rect.h) / image.width,
       (sin * rect.w + cos * rect.h) / image.height,
-    ) * Math.max(1, t.zoom || 1)
+    ) * clampZoom(t.zoom ?? 1)
   );
 }
 
@@ -162,15 +167,9 @@ export function drawSlot(ctx, image, rect, t = DEFAULT_TRANSFORM) {
   const cos = Math.cos(angle),
     sin = Math.sin(angle);
   const scale = slotScale(image, rect, t);
-  const limitX = Math.max(
-    0,
-    (image.width * scale - Math.abs(cos) * rect.w - Math.abs(sin) * rect.h) / 2,
-  );
-  const limitY = Math.max(
-    0,
-    (image.height * scale - Math.abs(sin) * rect.w - Math.abs(cos) * rect.h) /
-      2,
-  );
+  // Ảnh lớn hơn ô: dời tới mép ảnh; ảnh nhỏ hơn ô (đã thu nhỏ): dời trong phạm vi ô.
+  const limitX = Math.abs(image.width * scale - Math.abs(cos) * rect.w - Math.abs(sin) * rect.h) / 2;
+  const limitY = Math.abs(image.height * scale - Math.abs(sin) * rect.w - Math.abs(cos) * rect.h) / 2;
   const px = (t.x || 0) * rect.w,
     py = (t.y || 0) * rect.h;
   const dx = Math.max(-limitX, Math.min(limitX, cos * px + sin * py));

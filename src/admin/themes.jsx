@@ -3,17 +3,14 @@ import { Activity, ArrowDown, ArrowUp, CalendarDays, Image, Layers, Pencil, Plus
 import { api, assetUrl, formatDate } from "../api";
 import { Button, ErrorBox, useStudio, useToast } from "../studio";
 import { TableHeading } from "./table-heading";
-import { SERVICES, ServiceTabs, useServiceTab } from "./service-tabs";
+
 
 const SIZES = { full: "10 × 15 cm", strip: "5 × 15 cm", instax: "Instax Wide" };
 const searchable = (value) =>
   String(value || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/đ/gi, "d").toLowerCase();
 
-// Sửa chủ đề: đổi tên và / hoặc chuyển sang loại phòng khác (kind; không gửi khi thêm mới — chủ đề mới
-// thuộc tab đang mở).
-function NameDialog({ title, initial = "", kind = null, busy, onClose, onSave }) {
+function NameDialog({ title, initial = "", busy, onClose, onSave }) {
   const [name, setName] = useState(initial);
-  const [service, setService] = useState(kind);
   return (
     <div className="modal-backdrop">
       <section className="modal theme-name-dialog" role="dialog" aria-modal="true" aria-label={title}>
@@ -24,7 +21,7 @@ function NameDialog({ title, initial = "", kind = null, busy, onClose, onSave })
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            onSave(name.trim(), service);
+            onSave(name.trim());
           }}
         >
           <label>
@@ -32,14 +29,7 @@ function NameDialog({ title, initial = "", kind = null, busy, onClose, onSave })
             <input autoFocus maxLength={100} value={name} placeholder="VD: Kawaii, Limited, Giáng sinh…"
               onChange={(e) => setName(e.target.value)} />
           </label>
-          {kind && (
-            <label>
-              Loại phòng
-              <select value={service} onChange={(e) => setService(e.target.value)}>
-                {SERVICES.map(([key, label]) => <option key={key} value={key}>Phòng {label}</option>)}
-              </select>
-            </label>
-          )}
+
           <div className="resource-editor-footer">
             <span />
             <div>
@@ -53,12 +43,12 @@ function NameDialog({ title, initial = "", kind = null, busy, onClose, onSave })
   );
 }
 
-// Thiết lập → Chủ đề (như Snapbox /setting/theme): mỗi chủ đề là một bộ khung khách chọn để ghép.
-// Chủ đề tách theo loại hình chụp: phòng Photobooth (khung 10 × 15) và phòng Polaroid (khung Instax Wide).
+// Thiết lập → Chủ đề (như Snapbox /setting/theme): mỗi chủ đề là một bộ khung 10 × 15 của phòng
+// Photobooth. Phòng Polaroid không dùng chủ đề: khung Instax thêm thẳng ở Khung ảnh (chọn layout). Chủ
+// đề Polaroid tạo trước đây vẫn hiện (có nhãn) để tiệm xoá.
 export function ThemesManager({ notify, onOpenFrames }) {
   const toast = useToast();
   const { reload } = useStudio();
-  const [service, setService] = useServiceTab();
   const [themes, setThemes] = useState(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
@@ -84,8 +74,7 @@ export function ThemesManager({ notify, onOpenFrames }) {
     }
   }
   const kindOf = (theme) => theme.kind || "photobooth";
-  const ofService = (themes || []).filter((t) => kindOf(t) === service);
-  const serviceName = SERVICES.find(([key]) => key === service)[1];
+  const ofService = themes || [];
   const visible = ofService.filter(
     (t) =>
       searchable(t.name).includes(searchable(query.trim())) &&
@@ -97,7 +86,7 @@ export function ThemesManager({ notify, onOpenFrames }) {
     run(() => api("/admin/themes", { method: "PUT", body: { name: theme.name, active: !theme.active } }),
       `Đã ${theme.active ? "tắt" : "bật"} chủ đề “${theme.name}”.`);
   };
-  // Đổi chỗ với chủ đề liền trước / sau cùng loại hình (thứ tự chung của mọi chủ đề vẫn lưu một danh sách).
+  // Đổi chỗ với chủ đề liền trước / sau.
   const move = (index, by) => {
     const names = themes.map((t) => t.name);
     const [a, b] = [names.indexOf(ofService[index].name), names.indexOf(ofService[index + by].name)];
@@ -108,36 +97,27 @@ export function ThemesManager({ notify, onOpenFrames }) {
     if (!window.confirm(`Bạn có muốn xoá chủ đề “${theme.name}”? ${theme.frames ? `${theme.frames} khung trong chủ đề sẽ thành khung lẻ (không bị xoá).` : ""}`)) return;
     run(() => api(`/admin/themes/${encodeURIComponent(theme.name)}`, { method: "DELETE" }), `Đã xoá chủ đề “${theme.name}”.`);
   };
-  async function saveName(name, kind) {
+  async function saveName(name) {
     if (!name) return;
-    const moved = dialog.theme && kind && kind !== kindOf(dialog.theme);
     const ok = dialog.theme
-      ? await run(() => api("/admin/themes", {
-        method: "PUT",
-        body: { name: dialog.theme.name, newName: name, ...(moved && { kind }) },
-      }), moved
-        ? `Đã chuyển chủ đề “${name}” sang phòng ${SERVICES.find(([key]) => key === kind)[1]}.`
-        : `Đã đổi tên chủ đề thành “${name}”.`)
-      : await run(() => api("/admin/themes", { method: "POST", body: { name, kind: service } }),
-        `Đã thêm chủ đề ${serviceName} “${name}”.`);
+      ? await run(() => api("/admin/themes", { method: "PUT", body: { name: dialog.theme.name, newName: name } }),
+        `Đã đổi tên chủ đề thành “${name}”.`)
+      : await run(() => api("/admin/themes", { method: "POST", body: { name, kind: "photobooth" } }),
+        `Đã thêm chủ đề “${name}”.`);
     if (ok) setDialog(null);
   }
   const active = ofService.filter((t) => t.active).length;
-  const counts = themes
-    ? Object.fromEntries(SERVICES.map(([key]) => [key, themes.filter((t) => kindOf(t) === key).length]))
-    : {};
   return (
     <>
       <ErrorBox error={error} />
-      <ServiceTabs value={service} onChange={setService} counts={counts} />
       <section className="catalog-toolbar" aria-label="Quản lý chủ đề">
         <div className="catalog-intro">
           <span className="catalog-intro-icon"><Layers size={24} aria-hidden="true" /></span>
           <div className="catalog-intro-copy">
-            <h3>Chủ đề phòng {serviceName}</h3>
+            <h3>Chủ đề phòng Photobooth</h3>
             <p>
-              Khung cùng chủ đề được ghép thành một bộ. Thêm khung vào chủ đề ở mục Khung ảnh
-              {service === "polaroid" ? " (khung Size Instax — thẻ Instax Wide ngang)." : " (khung size lớn / size nhỏ 10 × 15)."}
+              Khung cùng chủ đề được ghép thành một bộ. Thêm khung vào chủ đề ở mục Khung ảnh (khung size lớn /
+              size nhỏ 10 × 15). Phòng Polaroid không dùng chủ đề: thêm khung Instax thẳng ở mục Khung ảnh.
             </p>
           </div>
           <div className="inline-actions">
@@ -196,7 +176,10 @@ export function ThemesManager({ notify, onOpenFrames }) {
                           : <Layers size={20} />}
                       </div>
                       <div>
-                        <strong>{theme.name}</strong>
+                        <strong>
+                          {theme.name}
+                          {kindOf(theme) === "polaroid" && <em className="theme-old">Polaroid cũ · không còn dùng</em>}
+                        </strong>
                         <small>Thứ tự: {index + 1} · bấm để sửa khung</small>
                       </div>
                     </button>
@@ -225,7 +208,7 @@ export function ThemesManager({ notify, onOpenFrames }) {
                         disabled={busy || filtered || index === 0} onClick={() => move(index, -1)}><ArrowUp size={16} /></button>
                       <button className="icon-button" title="Xuống sau" aria-label={`Đưa ${theme.name} xuống sau`}
                         disabled={busy || filtered || index === ofService.length - 1} onClick={() => move(index, 1)}><ArrowDown size={16} /></button>
-                      <button className="icon-button" title="Sửa tên / loại phòng" aria-label={`Đổi tên ${theme.name}`}
+                      <button className="icon-button" title="Đổi tên" aria-label={`Đổi tên ${theme.name}`}
                         onClick={() => setDialog({ theme })}><Pencil size={16} /></button>
                       <button className="icon-button" title="Xoá chủ đề" aria-label={`Xoá chủ đề ${theme.name}`}
                         disabled={busy} onClick={() => remove(theme)}><Trash2 size={16} /></button>
@@ -238,16 +221,15 @@ export function ThemesManager({ notify, onOpenFrames }) {
         </table>
         {themes && !visible.length && (
           <div className="empty-state">
-            {filtered ? "Không có chủ đề phù hợp." : `Chưa có chủ đề phòng ${serviceName}. Thêm chủ đề rồi gán khung ở mục Khung ảnh.`}
+            {filtered ? "Không có chủ đề phù hợp." : "Chưa có chủ đề. Thêm chủ đề rồi gán khung ở mục Khung ảnh."}
           </div>
         )}
       </div>
       {filtered && ofService.length > 1 && <p className="muted soft-note">Bỏ tìm kiếm / bộ lọc để đổi thứ tự chủ đề.</p>}
       {dialog && (
         <NameDialog
-          title={dialog.theme ? `Sửa chủ đề “${dialog.theme.name}”` : `Thêm mới chủ đề ${serviceName}`}
+          title={dialog.theme ? `Đổi tên chủ đề “${dialog.theme.name}”` : "Thêm mới chủ đề"}
           initial={dialog.theme?.name}
-          kind={dialog.theme ? kindOf(dialog.theme) : null}
           busy={busy}
           onClose={() => setDialog(null)}
           onSave={saveName}

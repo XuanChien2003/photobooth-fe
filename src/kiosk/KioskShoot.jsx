@@ -53,19 +53,23 @@ export function KioskShoot({
   onEnd,
   onReopenCamera,
   webcam = null,
+  auto = null,
   canvasPreview = false,
 }) {
   const t = useKioskText();
   const shooting = phase === "shoot" && !ending;
   const full = Boolean(quota) && taken >= quota;
-  const testing = Boolean(webcam?.on && ready);
+  // auto (phòng Polaroid): máy tự chụp, { count: số giây đếm ngược tới tấm kế tiếp, seconds }.
+  const testing = Boolean(webcam?.on && ready && !auto);
   const centerCount =
     phase === "ready"
       ? preCount
       : webcam?.count
         ? webcam.count
-        : shooting && sessionLeft > 0 && sessionLeft <= 3
-          ? sessionLeft : null;
+        : auto?.count
+          ? auto.count
+          : shooting && sessionLeft > 0 && sessionLeft <= 3
+            ? sessionLeft : null;
   // Ảnh mới nhất ở đầu cột: có ảnh mới thì cuộn lên đầu để khách thấy ngay.
   const rail = useRef(null);
   useEffect(() => {
@@ -114,11 +118,20 @@ export function KioskShoot({
           </div>
         )}
         {centerCount ? (
-          <strong className="shoot-count" key={`${phase}-${webcam?.count ? "snap" : ""}${centerCount}`} role="timer" aria-live="assertive">
+          <strong className="shoot-count" key={`${phase}-${webcam?.count ? "snap" : auto?.count ? "auto" : ""}${centerCount}`} role="timer" aria-live="assertive">
             {centerCount}
           </strong>
         ) : null}
-        {shooting && !full && (testing ? (
+        {shooting && !full && (auto ? (
+          <div className="shoot-press shoot-auto" role="status">
+            <PiCameraBold aria-hidden="true" />
+            <strong>
+              {auto.count
+                ? t("shoot.auto", { s: auto.count, n: taken + 1, total: quota || "" })
+                : "Đang chụp…"}
+            </strong>
+          </div>
+        ) : testing ? (
           <button type="button" className="shoot-press shoot-snap" disabled={Boolean(webcam.count)} onClick={webcam.onSnap}>
             <PiCameraBold aria-hidden="true" />
             <strong>{webcam.count ? "Chuẩn bị…" : "Chạm để chụp"}</strong>

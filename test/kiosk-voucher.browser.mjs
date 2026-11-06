@@ -15,8 +15,10 @@ const fixture = `
     { _id: 'pack-strip', name: 'Khung nhỏ', printSize: 'strip', price: 70000, prints: 1, shots: 4 },
     { _id: 'pack-full', name: 'Khung to', printSize: 'full', price: 100000, prints: 2, shots: 4 },
     // Layout của phòng Polaroid (gói khổ Instax): số ảnh trong layout, giá.
-    { _id: 'pack-polaroid-6', name: 'Polaroid sáu ô', printSize: 'instax', price: 120000, prints: 2, shots: 10, selectCount: 6 },
-    { _id: 'pack-polaroid-2', name: 'Polaroid đôi', printSize: 'instax', price: 110000, prints: 2, shots: 10, selectCount: 2 },
+    { _id: 'pack-polaroid-2', name: 'Polaroid đôi', printSize: 'instax', price: 100000, prints: 1, shots: 8, countdownSeconds: 10, selectCount: 2 },
+    { _id: 'pack-polaroid-1', name: '1 ảnh to', printSize: 'instax', price: 100000, prints: 1, shots: 8, countdownSeconds: 10, selectCount: 1 },
+    // Layout 6 ảnh cũ (trước khi phòng Polaroid chỉ bán 1 ảnh / 2 ảnh): máy chụp không hiện.
+    { _id: 'pack-polaroid-6', name: 'Polaroid sáu ô', printSize: 'instax', price: 120000, prints: 1, shots: 8, selectCount: 6 },
   ];
   // Chữ trên máy chụp tiệm đã sửa (Thiết lập → Chữ trên máy chụp).
   const kioskTexts = { 'layout.confirm': 'Chốt layout này, vào chụp nha!' };
@@ -193,19 +195,20 @@ test("polaroid room: touch → layout cards (photos, price) → “vào chụp n
     await page.getByRole("heading", { name: "Chọn layout" }).waitFor();
     assert.equal(await page.getByRole("heading", { name: "Chọn cách thanh toán" }).count(), 0, "a polaroid room takes no payment");
     const cards = page.getByRole("group", { name: "Chọn layout" }).getByRole("button");
-    // Chỉ layout Instax, xếp theo số ảnh: 2 ảnh trước 6 ảnh; mỗi thẻ có số ảnh và giá.
+    // Chỉ 2 layout Instax (1 ảnh to, 2 ảnh dọc chia đôi), xếp theo số ảnh; mỗi thẻ có số ảnh, số tấm tự
+    // chụp, giây mỗi tấm và giá. Layout 6 ảnh cũ không hiện.
     const texts = await cards.allInnerTexts();
     assert.equal(texts.length, 2);
-    assert.match(texts[0], /2 ảnh[\s\S]*Polaroid đôi[\s\S]*110\.000/i);
-    assert.match(texts[1], /6 ảnh[\s\S]*Polaroid sáu ô[\s\S]*120\.000/i);
-    assert.equal(await cards.nth(0).locator(".layout-art i").count(), 2);
-    assert.equal(await cards.nth(1).locator(".layout-art i").count(), 6);
-    await cards.nth(0).click();
+    assert.match(texts[0], /1 ảnh[\s\S]*1 ảnh to[\s\S]*8 tấm · 10 giây\/tấm[\s\S]*100\.000/i);
+    assert.match(texts[1], /2 ảnh[\s\S]*Polaroid đôi[\s\S]*100\.000/i);
+    assert.equal(await cards.nth(0).locator(".layout-art i").count(), 1);
+    assert.equal(await cards.nth(1).locator(".layout-art i").count(), 2);
+    await cards.nth(1).click();
     const notice = page.getByRole("dialog", { name: "Chốt layout này, vào chụp nha!" });
     await notice.waitFor();
     await notice.getByRole("button", { name: "Chọn lại" }).click();
     assert.equal(await notice.count(), 0);
-    await cards.nth(0).click();
+    await cards.nth(1).click();
     await notice.getByRole("button", { name: /Vào chụp/ }).click();
     await page.locator(".shoot-screen").waitFor();
     assert.equal(opened.length, 1);

@@ -33,7 +33,7 @@ import { PackageCatalog } from "./package-catalog";
 import { ResourceEditor } from "./resource-editor";
 import { ServiceTabs, serviceOf, useServiceTab } from "./service-tabs";
 import { LAYOUT_COUNTS } from "../polaroid-layouts.js";
-import { createSampleLayouts } from "./polaroid-presets";
+import { createSampleLayouts, SAMPLE_PRICE, SAMPLE_SECONDS, SAMPLE_SHOTS } from "./polaroid-presets";
 
 const searchable = (value) =>
   String(value || "")
@@ -163,7 +163,7 @@ export function ResourceManager({ resource, notify, me }) {
   };
   const fields = definitions[resource];
   // Gói mới theo khổ ảnh: khổ nhỏ kèm 1 tờ (cắt đôi = 2 tờ nhỏ), khổ to kèm 2 tờ; layout Polaroid
-  // (khổ Instax) mặc định 4 ảnh, 5 phút chụp không giới hạn lần bấm, in 1 tấm.
+  // (khổ Instax) mặc định 1 ảnh, 100.000 đ, máy tự chụp 8 tấm, 10 giây mỗi tấm, in 1 tấm.
   function newItem(printSize = "full") {
     openEditor(
       Object.fromEntries([
@@ -173,9 +173,13 @@ export function ResourceManager({ resource, notify, me }) {
             ? key === "duration"
               ? printSize === "instax" ? 5 : 15
               : key === "shots"
-                ? printSize === "instax" ? 0 : 12
+                ? printSize === "instax" ? SAMPLE_SHOTS : 12
                 : key === "selectCount"
-                  ? 4
+                  ? printSize === "instax" ? 1 : 4
+                  : key === "countdownSeconds"
+                    ? SAMPLE_SECONDS
+                  : key === "price" && printSize === "instax"
+                    ? SAMPLE_PRICE
                   : key === "prints"
                     ? printSize === "full" ? 2 : 1
               : 0
@@ -233,12 +237,12 @@ export function ResourceManager({ resource, notify, me }) {
       setBusy(false);
     }
   }
-  // Tab Polaroid: tạo 6 layout mẫu (1, 2, 3, 4, 5, 6 ảnh) kèm khung trắng Instax Wide; layout / khung
-  // đã có cùng số ảnh thì giữ nguyên.
+  // Tab Polaroid: tạo 2 layout mẫu (1 ảnh to, 2 ảnh dọc chia đôi) kèm khung trắng Instax Wide; layout /
+  // khung đã có cùng số ảnh thì giữ nguyên.
   async function createSamples() {
     if (!canManage || busy) return;
-    if (!confirm(`Tạo layout mẫu ${LAYOUT_COUNTS.join(", ")} ảnh (110.000 đ, 5 phút chụp, in 1 tấm) kèm khung trắng Instax Wide trong chủ đề “Layout trắng”?
-Layout hoặc khung đã có cùng số ảnh được giữ nguyên. Sửa giá, thời gian chụp sau ở từng layout.`)) return;
+    if (!confirm(`Tạo layout mẫu ${LAYOUT_COUNTS.join(" và ")} ảnh (${SAMPLE_PRICE.toLocaleString("vi-VN")} đ, máy tự chụp ${SAMPLE_SHOTS} tấm, ${SAMPLE_SECONDS} giây mỗi tấm, in 1 tấm) kèm khung trắng Instax Wide?
+Layout hoặc khung đã có cùng số ảnh được giữ nguyên. Sửa giá, số tấm sau ở từng layout.`)) return;
     setBusy(true);
     try {
       const made = await createSampleLayouts(items);
@@ -246,7 +250,7 @@ Layout hoặc khung đã có cùng số ảnh được giữ nguyên. Sửa giá
       reloadCatalog?.();
       notify(made.layouts.length || made.frames.length
         ? `Đã tạo ${made.layouts.length} layout và ${made.frames.length} khung trắng mẫu.`
-        : "Đã có đủ layout và khung cho 1–6 ảnh — không tạo thêm.");
+        : "Đã có đủ layout và khung cho 1 ảnh và 2 ảnh — không tạo thêm.");
     } catch (e) {
       // Có thể đã tạo được một phần: tải lại để thấy đúng danh sách.
       await load();
@@ -355,7 +359,7 @@ Liên kết máy chụp của phòng này sẽ không mở được nữa. Đơn
           actions={service === "polaroid" && canManage && (
             <Button className="outline" disabled={busy || loading} onClick={createSamples}>
               <Sparkles size={16} aria-hidden="true" />
-              {busy ? "Đang tạo…" : "Tạo 6 layout mẫu"}
+              {busy ? "Đang tạo…" : "Tạo 2 layout mẫu"}
             </Button>
           )}
           loading={loading}

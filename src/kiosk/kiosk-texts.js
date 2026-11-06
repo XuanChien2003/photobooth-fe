@@ -31,6 +31,7 @@ export const KIOSK_TEXT_GROUPS = [
     ["layout.confirm", "Thông báo khi chọn layout", "Chọn layout này, vào chụp nha!"],
     ["layout.go", "Nút vào chụp", "Vào chụp"],
     ["layout.back", "Nút chọn lại", "Chọn lại"],
+    ["shoot.auto", "Màn chụp: máy tự chụp ({s} = số giây còn lại, {n} = tấm thứ, {total} = tổng số tấm)", "Tấm {n}/{total} · nhìn vào máy ảnh, tự chụp sau {s} giây"],
     ["done.polaroidTitle", "Tiêu đề màn QR", "Quét QR để tải toàn bộ ảnh gốc."],
   ]],
 ];

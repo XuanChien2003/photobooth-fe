@@ -37,10 +37,12 @@ export const priceVND = custom(
   "Giá tối thiểu 1.000 đ (để 0 nếu miễn phí) — kiểm tra có gõ thiếu số 0 không.",
 );
 
-// Layout Polaroid (khổ Instax) không có ô số lần chụp / số tấm in: luôn in 1 tấm, chụp không giới
-// hạn trong thời gian chụp.
+// Layout Polaroid (khổ Instax) không có ô số tấm in: luôn in 1 tấm.
 const exceptLayouts = (rules) =>
   rules.map((rule) => (v, label, all) => (all.printSize === "instax" ? "" : rule(v, label, all)));
+// Ô chỉ có ở layout Polaroid (đếm ngược mỗi tấm máy tự chụp).
+const onlyLayouts = (rules) =>
+  rules.map((rule) => (v, label, all) => (all.printSize === "instax" ? rule(v, label, all) : ""));
 
 export const RESOURCE_RULES = {
   rooms: {
@@ -53,7 +55,8 @@ export const RESOURCE_RULES = {
     description: ["Mô tả", maxLength(1000)],
     price: ["Giá", required, intRange(0, 100000000), priceVND],
     duration: ["Thời gian chụp", required, intRange(1, 30)],
-    shots: ["Số lần chụp", ...exceptLayouts([required, intRange(1, 40)])],
+    shots: ["Số lần chụp", required, intRange(1, 40)],
+    countdownSeconds: ["Đếm ngược mỗi tấm", ...onlyLayouts([required, intRange(3, 30)])],
     selectCount: ["Số ảnh khách chọn để ghép", required, intRange(1, 12)],
     prints: [
       "Số tờ in",
@@ -181,6 +184,8 @@ export const definitions = {
     ["prints", "Số tờ in kèm gói", "number"],
     ["duration", "Thời gian chụp (phút)", "number"],
     ["shots", "Số lần chụp (số lần bấm dây)", "number"],
+    // Chỉ layout Polaroid (máy tự chụp): phòng Photobooth bấm dây, không đếm ngược.
+    ["countdownSeconds", "Đếm ngược mỗi tấm (giây)", "number"],
     ["selectCount", "Số ảnh khách chọn để ghép khung", "number"],
     ["branches", "Chi nhánh áp dụng", "branches"],
   ],

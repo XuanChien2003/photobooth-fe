@@ -68,6 +68,7 @@ import { NO_DECOR, filterChoices, filterStepsFor, photoFilterId } from "./decor.
 import { visibleRegion } from "./live-preview-layout.js";
 import { KioskCode, KioskPackages, KioskPayChoice, KioskPayment, KioskPrintCount } from "./KioskSale.jsx";
 import { KioskLayouts } from "./KioskPolaroid.jsx";
+import { LAYOUT_COUNTS } from "../polaroid-layouts.js";
 import { extraPriceFor, isInstax, minSheets, saleTotal } from "./print-count.js";
 
 // Các chỗ báo lỗi mạng ở màn chụp: mỗi lần mất kết nối chỉ báo một lần, có mạng lại thì xoá.
@@ -164,9 +165,12 @@ export function Kiosk() {
     recorder = useRef(createClipRecorder()),
     endingRef = useRef(false),
     webcamRef = useRef(webcamTest),
+    // Phòng Polaroid: máy tự chụp từ hình trực tiếp (không dây bấm, không thư mục ảnh).
+    polaroidRef = useRef(false),
     snapping = useRef(false),
     opening = useRef(false);
   current.current = session;
+  polaroidRef.current = roomInfo?.kind === "polaroid";
   const phase = phaseOf(session);
   const key = "photo-capture-" + device.slice(-24);
   const shown = useRef({});
@@ -586,9 +590,9 @@ export function Kiosk() {
     }), "zoom");
     shown.current = {};
   }
-  // Mọi phòng chụp bằng dây bấm: cần thư mục ảnh của máy ảnh, trừ khi thử máy bằng webcam (ảnh lấy
-  // thẳng từ hình trực tiếp).
-  const needsFolder = () => !webcamRef.current;
+  // Phòng photobooth chụp bằng dây bấm: cần thư mục ảnh của máy ảnh. Phòng Polaroid (máy tự chụp) và
+  // thử máy bằng webcam lấy ảnh thẳng từ hình trực tiếp, không cần thư mục.
+  const needsFolder = () => !webcamRef.current && !polaroidRef.current;
   const checkFolder = () => {
     if (!needsFolder()) return true;
     if (!canPickFolder) {
@@ -732,8 +736,11 @@ export function Kiosk() {
   const cashReady = Boolean(roomInfo?.cashCheckoutReady);
   // Phòng photobooth bán tờ bé / tờ to (DNP); layout khổ Instax là của phòng Polaroid.
   const boothPackages = useMemo(() => roomPackages.filter((p) => !isInstax(p)), [roomPackages]);
+  // Phòng Polaroid bán 2 layout: 1 ảnh to, 2 ảnh dọc chia đôi.
   const layouts = useMemo(
-    () => roomPackages.filter(isInstax).sort((a, b) => (a.selectCount || 0) - (b.selectCount || 0) || a.price - b.price),
+    () => roomPackages
+      .filter((p) => isInstax(p) && LAYOUT_COUNTS.includes(Number(p.selectCount) || 1))
+      .sort((a, b) => (a.selectCount || 0) - (b.selectCount || 0) || a.price - b.price),
     [roomPackages],
   );
   // Phòng Polaroid: chọn layout xong vào chụp luôn — máy chủ mở lượt chụp (chưa thu tiền, khách trả
@@ -1268,10 +1275,11 @@ export function Kiosk() {
       trackReading(-1);
     }
   }
-  // Theo dõi thư mục ảnh của máy ảnh trong suốt lúc chụp (không khởi động lại mỗi lần có ảnh).
+  // Theo dõi thư mục ảnh của máy ảnh trong suốt lúc chụp (không khởi động lại mỗi lần có ảnh). Phòng
+  // Polaroid tự chụp từ hình trực tiếp: không nhận ảnh từ thư mục (khách có bấm dây cũng không trộn ảnh).
   useEffect(() => {
     const s = session;
-    if (done || phase !== "shoot" || !folder || folderAccess !== "granted" || !s?.booking.captureStartedAt)
+    if (polaroid || done || phase !== "shoot" || !folder || folderAccess !== "granted" || !s?.booking.captureStartedAt)
       return;
     const stopWatching = watchCameraFolder({
       folder,
@@ -1295,7 +1303,46 @@ export function Kiosk() {
       setScanInfo(null);
       scanRef.current = null;
     };
-  }, [done, phase, folder, folderAccess, session?.accessToken, session?.booking.captureStartedAt]);
+  }, [polaroid, done, phase, folder, folderAccess, session?.accessToken, session?.booking.captureStartedAt]);
+  // Phòng Polaroid: máy tự chụp — đếm ngược (mặc định 10 giây mỗi tấm) rồi lấy khung hình từ hình trực
+  // tiếp HDMI, lặp tới đủ số tấm của layout (mặc định 8); đủ tấm thì sang chọn ảnh (hiệu ứng bên dưới).
+  const [autoCount, setAutoCount] = useState(0);
+  const autoSeconds = Math.max(3, Math.min(30, Number(session?.booking.countdownSeconds) || 10));
+  useEffect(() => {
+    if (!polaroid || phase !== "shoot" || !ready || done || ending || !session?.booking.captureStartedAt) return;
+    let stopped = false;
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    (async () => {
+      let failures = 0;
+      while (!stopped && alive.current) {
+        const s = current.current;
+        if (phaseOf(s) !== "shoot" || endingRef.current) break;
+        const quota = Number(s.booking.shots) || 8;
+        if (shotsOf(s).length + readingRef.current >= quota) break;
+        for (let n = autoSeconds; n > 0 && !stopped; n--) {
+          setAutoCount(n);
+          await wait(1000);
+        }
+        if (stopped) break;
+        setAutoCount(0);
+        try {
+          await grabLiveFrame();
+          failures = 0;
+        } catch (e) {
+          if (++failures >= 3) {
+            notifyOnce("auto-shot", "error", `Máy chưa tự chụp được: ${e.message} Nhờ nhân viên kiểm tra thẻ ghi hình.`, 12000);
+            break;
+          }
+          await wait(1000);
+        }
+      }
+      if (!stopped) setAutoCount(0);
+    })();
+    return () => {
+      stopped = true;
+      setAutoCount(0);
+    };
+  }, [polaroid, phase, ready, done, ending, autoSeconds, session?.accessToken, session?.booking.captureStartedAt]);
   // Đủ số tấm của gói: sang chọn ảnh.
   useEffect(() => {
     if (phase !== "shoot" || !shotQuota || done || reading || detecting) return;
@@ -1357,6 +1404,7 @@ export function Kiosk() {
           onEnd={() => endCapture(false)}
           onReopenCamera={() => openCamera()}
           webcam={{ on: webcamTest, label: liveLabel, count: snapCount, onSnap: snapWebcam, onToggle: setWebcamTest }}
+          auto={polaroid ? { count: autoCount, seconds: autoSeconds } : null}
           canvasPreview={lowPower}
         />
         {error && !(error === CAMERA_ERROR && !ready) && (

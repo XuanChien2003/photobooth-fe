@@ -7,7 +7,8 @@ const MARGIN_Y = 70;
 const GAP = 22;
 // Layout mẫu: 1, 2, 3 ảnh xếp ngang; 4 ảnh 2 × 2; 5 ảnh = 2 ảnh to bên trái + 3 ảnh bé bên phải;
 // 6 ảnh 3 × 2.
-export const LAYOUT_COUNTS = [1, 2, 3, 4, 5, 6];
+// Phòng Polaroid bán 2 layout: 1 ảnh to, hoặc 2 ảnh dọc chia đôi thẻ (hàm vẫn vẽ được số ảnh khác).
+export const LAYOUT_COUNTS = [1, 2];
 
 function grid(cols, rows, box) {
   const w = (box.w - GAP * (cols - 1)) / cols;
