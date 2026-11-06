@@ -285,11 +285,15 @@
   }
 }
 
-/* Chụp tức thì: chớp sáng thay cho đếm ngược */
+/* Chụp tức thì: chớp sáng thay cho đếm ngược.
+   opacity: 0 sẵn — lớp trắng này vẫn nằm trên hình trực tiếp sau khi chớp xong. Máy tắt hiệu
+   ứng chuyển động (Windows: tắt "Show animations", Chrome báo prefers-reduced-motion) thì
+   animation bị tắt; không có opacity: 0 thì màn xem trực tiếp trắng xóa từ ảnh thứ nhất trở đi. */
 .camera-flash {
   position: absolute;
   inset: 0;
   background: #fff;
+  opacity: 0;
   pointer-events: none;
   animation: camera-flash 0.28s ease-out forwards;
 }
