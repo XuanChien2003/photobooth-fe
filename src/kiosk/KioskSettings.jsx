@@ -33,6 +33,8 @@ export function KioskSettings({
   toast,
   webcamTest = false,
   setWebcamTest = () => {},
+  lowPower = false,
+  setLowPower = () => {},
 }) {
   const usable = liveUsableFor({ webcam: webcamTest });
   return (
@@ -174,6 +176,11 @@ export function KioskSettings({
           <input type="checkbox" checked={webcamTest} onChange={(e) => setWebcamTest(e.target.checked)} />
           Thử máy bằng webcam máy tính (khi không có máy ảnh): webcam làm hình trực tiếp, chụp bằng nút
           “Chạm để chụp” trên màn hình, không cần thư mục ảnh. Tắt trước khi đón khách.
+        </label>
+        <label className="checkbox">
+          <input type="checkbox" checked={lowPower} onChange={(e) => setLowPower(e.target.checked)} />
+          Chế độ máy yếu (mini PC đời cũ, đồ họa Intel HD 5xx/6xx): hình trực tiếp vẽ bằng canvas — bật khi
+          hình trực tiếp bị trắng hoặc giật sau khi chụp; video tua nhanh quay nhẹ 720p.
         </label>
         <KioskDevices zoom={zoom} setZoom={setZoom} roomInfo={roomInfo} toast={toast} />
         <Button

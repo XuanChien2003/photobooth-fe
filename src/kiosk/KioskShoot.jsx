@@ -53,6 +53,7 @@ export function KioskShoot({
   onEnd,
   onReopenCamera,
   webcam = null,
+  canvasPreview = false,
 }) {
   const t = useKioskText();
   const shooting = phase === "shoot" && !ending;
@@ -71,10 +72,21 @@ export function KioskShoot({
     rail.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [shots.length, receiving]);
   const progress = quota ? Math.min(100, (Math.min(taken, quota) / quota) * 100) : 0;
+  // Nháy trắng lúc chụp: hiện 0,4 giây rồi gỡ hẳn, không để lớp trắng nằm đè hình trực tiếp.
+  // Lượt nháy có từ trước khi màn chụp mở (lượt khách trước) không nháy lại.
+  const [flashing, setFlashing] = useState(0);
+  const lastFlash = useRef(flash);
+  useEffect(() => {
+    if (!flash || flash === lastFlash.current) return;
+    lastFlash.current = flash;
+    setFlashing(flash);
+    const timer = setTimeout(() => setFlashing(0), 400);
+    return () => clearTimeout(timer);
+  }, [flash]);
   return (
     <section className={`shoot-screen phase-${phase}${ready ? "" : " no-live"}`}>
       <div className="shoot-stage">
-        <CameraPreview videoRef={videoRef} zoom={zoom} />
+        <CameraPreview videoRef={videoRef} zoom={zoom} canvas={canvasPreview} />
         {!ready && (
           <div className="shoot-no-camera" role="status">
             <span className="shoot-no-camera-icon" aria-hidden="true">
@@ -117,7 +129,9 @@ export function KioskShoot({
             <strong>{t("shoot.press")}</strong>
           </div>
         ))}
-        {flash > 0 && <div className="camera-flash" key={flash} aria-hidden="true" />}
+        {flashing > 0 && (
+          <div className="camera-flash" key={flashing} aria-hidden="true" onAnimationEnd={() => setFlashing(0)} />
+        )}
         {ending && (
           <div className="shoot-ending" role="status">
             <span className="spinner big" aria-hidden="true" />

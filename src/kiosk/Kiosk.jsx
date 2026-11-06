@@ -12,7 +12,7 @@ import {
   saveSetting,
 } from "../capture-store";
 import { transition } from "../transitions";
-import { CAMERA_KEY, FOLDER_KEY, MIRROR_KEY, QR_SECONDS, WEBCAM_KEY } from "./constants.js";
+import { CAMERA_KEY, FOLDER_KEY, LOW_POWER_KEY, MIRROR_KEY, QR_SECONDS, WEBCAM_KEY } from "./constants.js";
 import {
   CAMERA_ERROR,
   cameraRank,
@@ -127,6 +127,8 @@ export function Kiosk() {
     [zoom, setZoom] = useState(readCrop),
     // Thử máy bằng webcam máy tính (không có máy ảnh): nhớ trên máy này tới khi tắt.
     [webcamTest, setWebcamState] = useState(() => localStorage.getItem(WEBCAM_KEY) === "1"),
+    // Chế độ máy yếu (mini PC đời cũ): hình trực tiếp vẽ bằng canvas, video tua nhanh nhẹ 720p.
+    [lowPower, setLowPowerState] = useState(() => localStorage.getItem(LOW_POWER_KEY) === "1"),
     [liveLabel, setLiveLabel] = useState(""),
     [snapCount, setSnapCount] = useState(0);
   const [ready, setReady] = useState(false),
@@ -162,6 +164,7 @@ export function Kiosk() {
     recorder = useRef(createClipRecorder()),
     endingRef = useRef(false),
     webcamRef = useRef(webcamTest),
+    lowPowerRef = useRef(lowPower),
     snapping = useRef(false),
     opening = useRef(false);
   current.current = session;
@@ -667,6 +670,14 @@ export function Kiosk() {
   const saleSheets = sale?.pack ? sheetsOf(sale) : 0;
   // Có thư mục ảnh của máy ảnh, hoặc đang thử máy bằng webcam (ảnh lấy thẳng từ hình trực tiếp).
   const cameraReady = Boolean(folder && folderAccess === "granted") || !needsFolder();
+  function setLowPower(on) {
+    localStorage.setItem(LOW_POWER_KEY, on ? "1" : "0");
+    lowPowerRef.current = on;
+    setLowPowerState(on);
+    toast.success(on
+      ? "Đã bật chế độ máy yếu: hình trực tiếp vẽ bằng canvas, video tua nhanh 720p."
+      : "Đã tắt chế độ máy yếu.");
+  }
   function setWebcamTest(on) {
     localStorage.setItem(WEBCAM_KEY, on ? "1" : "0");
     webcamRef.current = on;
@@ -792,8 +803,8 @@ export function Kiosk() {
   // Chrome (STATUS_BREAKPOINT). Phòng Polaroid (khổ Instax) không quay: khách nhận ảnh gốc qua QR.
   useEffect(() => {
     if (phase === "shoot" && ready && stream.current && session?.booking.printSize !== "instax")
-      recorder.current.start(stream.current, { light: webcamRef.current });
-  }, [phase, ready, webcamTest]);
+      recorder.current.start(stream.current, { light: webcamRef.current || lowPowerRef.current });
+  }, [phase, ready, webcamTest, lowPower]);
   // Đồng hồ các bước chuẩn bị / chọn ảnh / chọn khung: kiểm tra 4 lần mỗi giây nhưng chỉ vẽ lại khi
   // số giây hiển thị đổi (vẽ lại cả màn hình liên tục tranh CPU với việc ghép video tua nhanh).
   useEffect(() => {
@@ -894,7 +905,7 @@ export function Kiosk() {
     setVideo({ token: s.accessToken, pending: true });
     let blob = null;
     try {
-      blob = await buildTimelapse(clips, { zoom: zoomRef.current, light: webcamRef.current });
+      blob = await buildTimelapse(clips, { zoom: zoomRef.current, light: webcamRef.current || lowPowerRef.current });
     } catch {
       blob = null;
     }
@@ -1348,6 +1359,7 @@ export function Kiosk() {
           onEnd={() => endCapture(false)}
           onReopenCamera={() => openCamera()}
           webcam={{ on: webcamTest, label: liveLabel, count: snapCount, onSnap: snapWebcam, onToggle: setWebcamTest }}
+          canvasPreview={lowPower}
         />
         {error && !(error === CAMERA_ERROR && !ready) && (
           <div className="shoot-error">
@@ -1480,6 +1492,8 @@ export function Kiosk() {
         toast={toast}
         webcamTest={webcamTest}
         setWebcamTest={setWebcamTest}
+        lowPower={lowPower}
+        setLowPower={setLowPower}
       />
     </KioskEntry>
   );

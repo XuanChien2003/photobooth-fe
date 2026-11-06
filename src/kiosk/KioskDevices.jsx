@@ -41,6 +41,7 @@ export function KioskDevices({ zoom, setZoom, roomInfo, toast }) {
         </ol>
         <p className="kiosk-device-note"><a href="https://www.fujifilm-x.com/global/support/download/software/x-acquire/" target="_blank" rel="noreferrer">FUJIFILM X Acquire chính hãng</a> đã cài trên máy kiosk. Chỉ để một chương trình giữ cổng USB máy ảnh. Kiosk tự đọc ảnh sau khi X Acquire tải ảnh xuống.</p>
         <p className="kiosk-device-note">Flash: dùng chế độ chụp ảnh, chọn màn trập và tốc độ đồng bộ phù hợp với X-T3/X-S10/X-S20 cùng bộ flash đang dùng. Thử flash và dây bấm trước khi nhận khách.</p>
+        <p className="kiosk-device-note">Mini PC đời cũ (đồ họa Intel HD 5xx/6xx, vd. i5-7500T): bật “Chế độ máy yếu” ở trên nếu hình trực tiếp bị trắng hoặc giật sau khi chụp. Cuối ngày chuyển ảnh cũ trong thư mục ảnh sang chỗ khác (ảnh đã lên album): thư mục càng ít tệp, máy chụp nhận ảnh càng nhanh.</p>
         <p className="kiosk-device-note">Hình trực tiếp dùng micro-HDMI → thẻ ghi hình USB. Bấm INFO để kiểm tra hiển thị; nếu vẫn còn ô AF ở chế độ ảnh, có thể dùng MF và chỉnh nét vào vị trí khách đứng. Kiểm tra ảnh thử trước khi đón khách.</p>
       </fieldset>
       )}

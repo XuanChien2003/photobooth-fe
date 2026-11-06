@@ -7,6 +7,8 @@ import {
   RAW_ONLY_MESSAGE,
 } from "./folder.js";
 
+const CROWDED = 300;
+
 // Scan only this session; stop before replacing the session or folder.
 export function watchCameraFolder({
   folder,
@@ -34,6 +36,10 @@ export function watchCameraFolder({
     newest = null;
   const queue = [];
   let processing = false;
+  // Thư mục đông (trên CROWDED tệp): ảnh có sẵn từ trước phiên (của khách trước) chỉ kiểm tra lại
+  // 10 giây/lần thay vì mỗi giây; ảnh của phiên này vẫn mỗi giây (máy ảnh có thể ghi đè cùng tên).
+  let crowded = false;
+  const notDue = (entry) => Date.now() < entry.checkAt + (entry.old && crowded ? 9000 : 0);
   // Continue observing newly written files while the previous JPEG is being
   // converted/saved. Process one file at a time to bound bitmap allocations.
   const processNext = () => {
@@ -58,6 +64,7 @@ export function watchCameraFolder({
     });
   };
   const scan = async () => {
+    const started = Date.now();
     const jpegs = new Set();
     let rawCount = 0,
       problem = "";
@@ -68,7 +75,7 @@ export function watchCameraFolder({
         if (isJpeg(path)) jpegs.add(baseName(path));
         else rawCount++;
         if (seen?.queued || seen?.processing) continue;
-        if (seen?.done && (!isJpeg(path) || Date.now() < seen.checkAt)) continue;
+        if (seen?.done && (!isJpeg(path) || notDue(seen))) continue;
         if (isRaw(path)) {
           known.set(path, { done: true });
           if (!first) raws.set(baseName(path), Date.now());
@@ -102,7 +109,7 @@ export function watchCameraFolder({
             : Date.now() > until)
         ) {
           known.set(path, {
-            done: true, size: file.size, time: file.lastModified,
+            done: true, size: file.size, time: file.lastModified, old: true,
             checkAt: Date.now() + 1000,
           });
           continue;
@@ -157,7 +164,9 @@ export function watchCameraFolder({
           error: problem.slice(0, 380),
         };
         onScan(info, writing);
-        timer = setTimeout(scan, 300);
+        crowded = jpegs.size + rawCount > CROWDED;
+        // Quét lâu (thư mục rất đông, máy yếu): nghỉ gấp đôi thời gian quét, tối đa 2 giây.
+        timer = setTimeout(scan, Math.min(2000, Math.max(300, (Date.now() - started) * 2)));
       }
     }
   };
