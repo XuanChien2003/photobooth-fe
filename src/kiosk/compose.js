@@ -93,7 +93,7 @@ export function frameCandidates(frames, { count, printSize, themeOrder = [] }) {
 // để trống, hiện số thứ tự (không lặp ảnh). filters: công thức màu của từng ảnh (cùng thứ tự images),
 // stickers: nhãn dán (decor.js).
 export async function composePreview(frame, images, width = 900, qrUrl = "",
-  { placeholders = false, filters = [], stickers = [] } = {}) {
+  { placeholders = false, filters = [], stickers = [], transforms = [] } = {}) {
   const layout = photoLayout(frame);
   const [background, qr] = await Promise.all([
     loadFrameImage(frame.image),
@@ -106,7 +106,8 @@ export async function composePreview(frame, images, width = 900, qrUrl = "",
   const filled = layout.slots.map((_, i) =>
     placeholders ? images[i] || null : images.length ? images[i % images.length] : null);
   // Ảnh trong ô → màu ảnh → mã QR / ngày in → nhãn dán (nhãn dán không bị đổi màu).
-  composeLayout(canvas, background, layout.slots, filled, [], [], { frame: { ...layout, marks: [] } });
+  // transforms: phóng/dời của từng ảnh (khách tự chỉnh); ô bản sao theo transform của ảnh gốc.
+  composeLayout(canvas, background, layout.slots, filled, transforms, [], { frame: { ...layout, marks: [] } });
   const ctx = canvas.getContext("2d");
   filterPhotos(ctx, layout, filters, canvas.width, canvas.height);
   if (placeholders) {
@@ -134,7 +135,7 @@ export async function composePreview(frame, images, width = 900, qrUrl = "",
 // Ghép bản in: đúng kích thước in của khung, mỗi ô vẽ từ ảnh chất lượng cao, lần lượt từng ảnh
 // (ảnh 26 MP giải mã ~100 MB nên không giữ nhiều ảnh cùng lúc). filters (màu từng ảnh, cùng thứ tự
 // shots) / stickers: màu ảnh và nhãn dán khách chọn, vẽ giống hệt ảnh xem trước.
-export async function renderPrintFrame(frame, shots, token, qrUrl = "", { filters = [], stickers = [] } = {}) {
+export async function renderPrintFrame(frame, shots, token, qrUrl = "", { filters = [], stickers = [], transforms = [] } = {}) {
   const layout = photoLayout(frame);
   const background = await loadFrameImage(frame.image);
   const canvas = document.createElement("canvas");
@@ -156,10 +157,11 @@ export async function renderPrintFrame(frame, shots, token, qrUrl = "", { filter
         sources.set(shot.key, await printSource(shot, token));
       }
       const source = sources.get(shot.key);
-      drawSlot(ctx, source, slotRect(slot, canvas.width, canvas.height));
+      const t = transforms[index];
+      drawSlot(ctx, source, slotRect(slot, canvas.width, canvas.height), t);
       // Ô bản sao cùng số ảnh (vd. dải thứ hai của khung nhỏ).
       for (const copy of layout.copies)
-        if (copy.of === index) drawSlot(ctx, source, slotRect(copy.slot, canvas.width, canvas.height));
+        if (copy.of === index) drawSlot(ctx, source, slotRect(copy.slot, canvas.width, canvas.height), t);
     }
     filterPhotos(ctx, layout, filters, canvas.width, canvas.height);
     // Làm nét nhẹ các ô ảnh (bản in 300 dpi), trước khi vẽ mã QR / ngày in.

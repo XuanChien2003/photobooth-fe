@@ -559,6 +559,27 @@
     align-items: center;
     gap: 12px;
   }
+  /* Ô chủ đề bấm được: mở sang Khung ảnh đã lọc chủ đề đó. */
+  .admin-shell button.theme-cell.theme-open {
+    width: 100%;
+    padding: 4px;
+    margin: -4px;
+    background: none;
+    border: 0;
+    border-radius: 10px;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .admin-shell button.theme-cell.theme-open:hover,
+  .admin-shell button.theme-cell.theme-open:focus-visible {
+    background: rgba(74, 50, 38, 0.08);
+  }
+  .admin-shell button.theme-cell.theme-open:hover strong {
+    text-decoration: underline;
+  }
   .admin-shell .theme-thumbs {
     display: flex;
     flex: none;

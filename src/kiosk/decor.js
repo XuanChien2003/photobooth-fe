@@ -7,12 +7,17 @@ import {
   filterSteps,
 } from "../beauty-render.js";
 import {
+  DECOR_COLORS,
+  DECOR_FONTS,
   decorationBox,
   decorationsReady,
   drawDecorations,
   preloadDecorations,
 } from "../album/decorations.js";
 import { photoLayout, slotRect } from "../frame-utils.js";
+
+// Dùng lại bảng font & màu của phần album cho chữ đánh máy trên máy chụp.
+export { DECOR_COLORS, DECOR_FONTS };
 
 // Trang trí trên màn chọn ảnh của máy chụp: một màu ảnh (filter) cho mọi ảnh trong khung và các
 // nhãn dán trên khung. Ảnh xem trước, ảnh ghép trong album và ảnh in vẽ bằng cùng các hàm này.
@@ -84,29 +89,11 @@ export function photoRects(frame, index, width, height) {
     .map((slot) => slotRect(slot, width, height));
 }
 
-// Vùng đặt nhãn dán (tỉ lệ 0–1 của khung). Khung có mỗi ô một bản sao lệch đều nhau (khung nhỏ:
-// 2 dải giống nhau trên một tờ, máy in cắt đôi) chỉ đặt nhãn dán trên dải đầu; nhãn dán tự lặp
-// sang dải kia (shift) để hai tờ cắt ra giống nhau.
-export function stickerArea(frame) {
-  const whole = { x: 0, y: 0, w: 1, h: 1, shift: null };
-  const layout = photoLayout(frame);
-  const { slots, copies } = layout;
-  if (!copies.length || copies.length !== slots.length || new Set(copies.map((c) => c.of)).size !== slots.length)
-    return whole;
-  const shifts = copies.map((c) => ({ dx: c.slot.x - slots[c.of].x, dy: c.slot.y - slots[c.of].y }));
-  const dx = shifts.reduce((sum, s) => sum + s.dx, 0) / shifts.length;
-  const dy = shifts.reduce((sum, s) => sum + s.dy, 0) / shifts.length;
-  if (shifts.some((s) => Math.abs(s.dx - dx) > 0.02 || Math.abs(s.dy - dy) > 0.02)) return whole;
-  const across = Math.abs(dx) >= 0.1,
-    down = Math.abs(dy) >= 0.1;
-  if (!across && !down) return whole;
-  return {
-    x: across && dx < 0 ? 1 - Math.abs(dx) : 0,
-    y: down && dy < 0 ? 1 - Math.abs(dy) : 0,
-    w: across ? Math.abs(dx) : 1,
-    h: down ? Math.abs(dy) : 1,
-    shift: { dx, dy },
-  };
+// Vùng đặt nhãn dán = TOÀN khung (tỉ lệ 0–1), KHÔNG tự nhân đôi sang dải kia. Mỗi lần khách bấm
+// thêm 1 nhãn, tự kéo tới chỗ muốn; muốn dán ở dải kia thì bấm thêm một nhãn nữa. (Trước đây khung
+// nhỏ 2 dải tự lặp nhãn sang dải kia — nay bỏ để khách chủ động dán từng cái.)
+export function stickerArea() {
+  return { x: 0, y: 0, w: 1, h: 1, shift: null };
 }
 
 // Nhãn dán lưu theo vùng đặt: { id, src (ảnh của tiệm) | text (biểu tượng), u, v (tâm, 0–1 trong
@@ -116,14 +103,15 @@ export function placedStickers(stickers = [], area) {
   const placed = [];
   stickers.forEach((sticker, index) => {
     const scale = clampScale(sticker.scale);
-    const item = {
-      type: "sticker",
-      ...(sticker.src ? { src: sticker.src } : { text: sticker.text }),
-      size: (sticker.src ? 750 : 1200) * scale * area.w,
+    const base = {
       x: area.x + Math.max(0, Math.min(1, sticker.u)) * area.w,
       y: area.y + Math.max(0, Math.min(1, sticker.v)) * area.h,
       index,
     };
+    // Chữ đánh máy: vẽ như chữ (font + màu khách chọn). Nhãn dán ảnh: vẽ ảnh của tiệm.
+    const item = sticker.type === "text"
+      ? { ...base, type: "text", text: sticker.text, font: sticker.font, color: sticker.color, bold: sticker.bold, size: 900 * scale * area.w }
+      : { ...base, type: "sticker", ...(sticker.src ? { src: sticker.src } : { text: sticker.text }), size: (sticker.src ? 750 : 1200) * scale * area.w };
     placed.push(item);
     if (area.shift) placed.push({ ...item, x: item.x + area.shift.dx, y: item.y + area.shift.dy, copy: true });
   });

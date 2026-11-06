@@ -168,7 +168,12 @@ export function ThemesManager({ notify, onOpenFrames }) {
               return (
                 <tr key={theme.name}>
                   <td data-label="Chủ đề">
-                    <div className="theme-cell">
+                    <button
+                      type="button"
+                      className="theme-cell theme-open"
+                      onClick={() => onOpenFrames(theme.name)}
+                      title={`Xem & sửa từng khung của chủ đề “${theme.name}”`}
+                    >
                       <div className="theme-thumbs" aria-hidden="true">
                         {theme.previews.length
                           ? theme.previews.slice(0, 3).map((src) => <img key={src} src={assetUrl(src)} alt="" loading="lazy" />)
@@ -176,9 +181,9 @@ export function ThemesManager({ notify, onOpenFrames }) {
                       </div>
                       <div>
                         <strong>{theme.name}</strong>
-                        <small>Thứ tự hiện cho khách: {index + 1}</small>
+                        <small>Thứ tự: {index + 1} · bấm để sửa khung</small>
                       </div>
-                    </div>
+                    </button>
                   </td>
                   <td data-label="Tổng frame">
                     <strong>{theme.frames}</strong> khung
@@ -198,6 +203,8 @@ export function ThemesManager({ notify, onOpenFrames }) {
                   <td data-label="Ngày tạo">{theme.createdAt ? formatDate(theme.createdAt) : "—"}</td>
                   <td data-label="Hành động">
                     <div className="inline-actions">
+                      <button className="icon-button" title="Xem & sửa khung" aria-label={`Xem và sửa khung của chủ đề ${theme.name}`}
+                        onClick={() => onOpenFrames(theme.name)}><Image size={16} /></button>
                       <button className="icon-button" title="Lên trước" aria-label={`Đưa ${theme.name} lên trước`}
                         disabled={busy || filtered || index === 0} onClick={() => move(index, -1)}><ArrowUp size={16} /></button>
                       <button className="icon-button" title="Xuống sau" aria-label={`Đưa ${theme.name} xuống sau`}

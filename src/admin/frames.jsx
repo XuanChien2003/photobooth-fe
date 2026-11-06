@@ -40,14 +40,15 @@ const pixelsText = (printSize) => {
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 
 // ─── Danh sách khung (như Snapbox /setting/frame): lọc chủ đề, kích thước, phân trang ──────
-export function FramesManager({ notify }) {
+export function FramesManager({ notify, initialTheme = "all" }) {
   const toast = useToast();
   const { reload: reloadCatalog, settings = {} } = useStudio();
   const [frames, setFrames] = useState(null);
   const [themes, setThemes] = useState([]);
   // Loại hình của từng chủ đề (Photobooth / Polaroid): khung chỉ gán vào chủ đề cùng loại với khổ khung.
   const [themeKinds, setThemeKinds] = useState({});
-  const [theme, setTheme] = useState("all");
+  // Lọc sẵn theo chủ đề khi mở từ trang Chủ đề; vẫn đổi được bằng ô "Chủ đề".
+  const [theme, setTheme] = useState(initialTheme);
   const [size, setSize] = useState("all");
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState(null);

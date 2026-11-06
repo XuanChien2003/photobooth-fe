@@ -35,6 +35,8 @@ if (fullStylesheet && !document.querySelector(`link[href="${fullStylesheet}"]`))
 export function Admin() {
   const [tab, setTab] = useState("overview");
   const [mobileMenu, setMobileMenu] = useState(false);
+  // Chủ đề được chọn khi bấm từ trang Chủ đề sang Khung ảnh ("all" = xem tất cả khung).
+  const [framesTheme, setFramesTheme] = useState("all");
   const session = useAdminSession(setTab);
   const { user, checking, error, setError, setPassword, globalToast, logout } =
     session;
@@ -173,9 +175,15 @@ export function Admin() {
             ) : currentTab === "screens" ? (
               <ScreensManager notify={notify} />
             ) : currentTab === "frames" ? (
-              <FramesManager notify={notify} />
+              <FramesManager notify={notify} initialTheme={framesTheme} />
             ) : currentTab === "themes" ? (
-              <ThemesManager notify={notify} onOpenFrames={() => open("frames")} />
+              <ThemesManager
+                notify={notify}
+                onOpenFrames={(themeName) => {
+                  setFramesTheme(themeName || "all");
+                  open("frames");
+                }}
+              />
             ) : currentTab === "stickers" ? (
               <StickersManager notify={notify} />
             ) : currentTab === "filters" ? (

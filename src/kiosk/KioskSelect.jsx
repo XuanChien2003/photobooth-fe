@@ -1,19 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  PiArrowClockwiseBold,
   PiArrowLeftBold,
   PiArrowRightBold,
+  PiArrowsOutCardinalBold,
+  PiBackspaceBold,
+  PiCaretDownBold,
+  PiCaretLeftBold,
+  PiCaretRightBold,
+  PiCaretUpBold,
   PiCheckBold,
   PiImagesBold,
+  PiMagnifyingGlassMinusBold,
+  PiMagnifyingGlassPlusBold,
   PiMinusBold,
   PiPaletteBold,
   PiPlusBold,
   PiPrinterBold,
   PiStickerBold,
+  PiTextTBold,
   PiTrashBold,
 } from "react-icons/pi";
 import { Button, useToast } from "../studio";
 import { composePreview, previewBitmap } from "./compose.js";
 import {
+  DECOR_COLORS,
+  DECOR_FONTS,
   MAX_STICKERS,
   STICKER_SCALE,
   clampScale,
@@ -77,7 +89,8 @@ const spread = (points) => Math.hypot(points[0].x - points[1].x, points[0].y - p
 // filters: màu của từng ảnh (cùng thứ tự images). highlight: ảnh đang chọn màu (viền đứt nét);
 // onPhotoTap: chạm vào một ảnh trong khung (không trúng nhãn dán).
 function DecorStage({
-  frame, images, imageKey, qrUrl, filters, filterKey, stickers, picked, onPick, onDraft, onCommit,
+  frame, images, imageKey, qrUrl, filters, filterKey, transforms = [], transformKey = "",
+  stickers, picked, onPick, onDraft, onCommit,
   highlight = -1, onPhotoTap = null,
 }) {
   const canvas = useRef(null);
@@ -91,7 +104,7 @@ function DecorStage({
   // Nền (khung + ảnh đã áp màu) chỉ ghép lại khi đổi khung, ảnh hoặc màu ảnh; nhãn dán vẽ đè mỗi lần.
   useEffect(() => {
     let alive = true;
-    composePreview(frame, images, 700, qrUrl, { placeholders: true, filters })
+    composePreview(frame, images, 700, qrUrl, { placeholders: true, filters, transforms })
       .then((next) => {
         if (!alive) return void (next.width = next.height = 0);
         const old = latestBase.current;
@@ -103,7 +116,7 @@ function DecorStage({
     return () => {
       alive = false;
     };
-  }, [frame._id, imageKey, filterKey]);
+  }, [frame._id, imageKey, filterKey, transformKey]);
   useEffect(() => () => {
     if (latestBase.current) latestBase.current.width = latestBase.current.height = 0;
   }, []);
@@ -281,6 +294,12 @@ function TargetChip({ shot, number, active, label, css, onPick }) {
   );
 }
 
+// Ảnh nhỏ chọn để chỉnh (tab Chỉnh ảnh).
+function AdjustThumb({ shot }) {
+  const src = useObjectUrl(shot?.preview);
+  return src ? <img src={src} alt="" /> : <i aria-hidden="true" />;
+}
+
 // Màu ảnh: mỗi lựa chọn hiện ảnh khách đã chọn với màu đó (CSS filter cùng công thức với ảnh in).
 function ColorChoices({ shot, filters, value, onChange }) {
   const src = useObjectUrl(shot?.preview);
@@ -298,9 +317,44 @@ function ColorChoices({ shot, filters, value, onChange }) {
 
 const TABS = {
   photos: ["Chọn ảnh", PiImagesBold],
+  adjust: ["Chỉnh ảnh", PiMagnifyingGlassPlusBold],
   color: ["Màu ảnh", PiPaletteBold],
+  text: ["Thêm chữ", PiTextTBold],
   stickers: ["Nhãn dán", PiStickerBold],
 };
+
+// Bàn phím ảo trên màn cảm ứng để khách đánh chữ vào khung (không có bàn phím cứng).
+const KEY_ROWS = [
+  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+  ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
+  ["a", "s", "d", "f", "g", "h", "j", "k", "l"],
+  ["z", "x", "c", "v", "b", "n", "m"],
+];
+function OnScreenKeyboard({ onKey, onBackspace, onSpace, caps, onToggleCaps }) {
+  const press = (ch) => onKey(caps ? ch.toUpperCase() : ch);
+  return (
+    <div className="kb" role="group" aria-label="Bàn phím">
+      {KEY_ROWS.map((row, i) => (
+        <div className="kb-row" key={i}>
+          {i === KEY_ROWS.length - 1 && (
+            <button type="button" className={`kb-key kb-wide${caps ? " is-on" : ""}`} onClick={onToggleCaps} aria-pressed={caps}>⇧</button>
+          )}
+          {row.map((ch) => (
+            <button type="button" className="kb-key" key={ch} onClick={() => press(ch)}>
+              {caps ? ch.toUpperCase() : ch}
+            </button>
+          ))}
+          {i === KEY_ROWS.length - 1 && (
+            <button type="button" className="kb-key kb-wide" onClick={onBackspace} aria-label="Xóa"><PiBackspaceBold aria-hidden="true" /></button>
+          )}
+        </div>
+      ))}
+      <div className="kb-row">
+        <button type="button" className="kb-key kb-space" onClick={onSpace} aria-label="Dấu cách">dấu cách</button>
+      </div>
+    </div>
+  );
+}
 
 // Chụp xong: bên trái khung ghép xem trước (nút ‹ › đổi khung), bên phải 3 mục:
 // Chọn ảnh — chọn đủ số ảnh của gói (vd. gói 70k chọn 4 tấm); Màu ảnh — một filter cho tất cả ảnh
@@ -330,7 +384,9 @@ export function KioskSelect({
   // Thiết lập → Nhãn dán (không có bộ biểu tượng dựng sẵn): tiệm chưa tải nhãn dán nào thì ẩn mục.
   const tabs = [
     "photos",
+    ...(frame ? ["adjust"] : []),
     ...(frame && filters.length > 1 ? ["color"] : []),
+    ...(frame ? ["text"] : []),
     ...(frame && shopStickers.length ? ["stickers"] : []),
   ];
   const [tab, setTab] = useState("photos");
@@ -392,10 +448,57 @@ export function KioskSelect({
     saveStickers([]);
     setPicked(null);
   };
+
+  // #4 — Phóng / dời ảnh trong ô (giữ nét vì vẽ từ ảnh gốc). Lưu theo mã tấm ảnh.
+  const DEFAULT_T = { zoom: 1, x: 0, y: 0 };
+  const transforms = decor?.transforms || {};
+  const readyTransforms = ready.map((key) => transforms[key]);
+  const transformKey = ready
+    .map((key) => { const tf = transforms[key]; return tf ? `${tf.zoom}|${tf.x}|${tf.y}` : "·"; })
+    .join();
+  const [adjustKey, setAdjustKey] = useState(null);
+  const adjustIndex = adjustKey ? ready.indexOf(adjustKey) : -1;
+  const setTransform = (key, change) => {
+    const cur = transforms[key] || DEFAULT_T;
+    onDecor({ transforms: { ...transforms, [key]: { ...cur, ...change } } });
+  };
+  const zoomPhoto = (key, factor) =>
+    setTransform(key, { zoom: Math.max(1, Math.min(3, (transforms[key]?.zoom || 1) * factor)) });
+  const panPhoto = (key, dx, dy) =>
+    setTransform(key, {
+      x: Math.max(-1, Math.min(1, (transforms[key]?.x || 0) + dx)),
+      y: Math.max(-1, Math.min(1, (transforms[key]?.y || 0) + dy)),
+    });
+  const resetPhoto = (key) => onDecor({ transforms: { ...transforms, [key]: DEFAULT_T } });
+  const adjustZoom = transforms[adjustKey]?.zoom || 1;
+
+  // #2 — Chữ đánh máy: khách gõ bằng bàn phím ảo, chọn font / màu, bấm "Thêm chữ" → thành nhãn chữ
+  // trên khung (kéo / phóng to / xóa như nhãn dán).
+  const [typed, setTyped] = useState("");
+  const [textFont, setTextFont] = useState("sans");
+  const [textColor, setTextColor] = useState(DECOR_COLORS[0]);
+  const [caps, setCaps] = useState(false);
+  function addText() {
+    const value = typed.trim().slice(0, 40);
+    if (!value) return;
+    if (stickers.length >= MAX_STICKERS)
+      return toast.warning(`Khung đã có ${MAX_STICKERS} mục trang trí — xóa bớt rồi thêm tiếp nhé.`);
+    const near = () => 0.5 + (Math.random() - 0.5) * 0.2;
+    const item = {
+      id: crypto.randomUUID().slice(0, 8), type: "text", text: value,
+      font: textFont, color: textColor, scale: STICKER_SCALE.initial, u: near(), v: 0.85,
+    };
+    saveStickers([...stickers, item]);
+    setPicked(item.id);
+    setTyped("");
+  }
+
   const thumbShot = shots.find((s) => s.key === (target === "all" ? selected[0] : target)) || shots[0];
   const lead = {
     photos: `Chọn ${count} tấm để ghép khung · đã chọn ${selected.length}/${count}`,
+    adjust: "Chạm một ảnh trên khung rồi phóng to / thu nhỏ, dời cho vừa ô (vẫn giữ nét)",
     color: "Chọn màu cho tất cả ảnh hoặc từng ảnh — khung và nhãn dán giữ nguyên màu",
+    text: "Gõ chữ muốn thêm vào khung, chọn kiểu chữ & màu rồi bấm “Thêm chữ”",
     stickers: "Chạm nhãn dán để dán lên khung · kéo trên khung để di chuyển",
   }[current];
   return (
@@ -427,13 +530,22 @@ export function KioskSelect({
                 qrUrl={qrUrl}
                 filters={readyFilters.map((f) => f?.steps || null)}
                 filterKey={readyFilters.map((f) => `${f?.id}|${f?.css}`).join()}
-                highlight={current === "color" && target !== "all" ? ready.indexOf(target) : -1}
-                onPhotoTap={current === "color" ? (photo) => ready[photo] && setColorTarget(ready[photo]) : null}
+                transforms={readyTransforms}
+                transformKey={transformKey}
+                highlight={
+                  current === "color" && target !== "all" ? ready.indexOf(target)
+                  : current === "adjust" ? adjustIndex : -1
+                }
+                onPhotoTap={
+                  current === "color" ? (photo) => ready[photo] && setColorTarget(ready[photo])
+                  : current === "adjust" ? (photo) => ready[photo] && setAdjustKey(ready[photo])
+                  : null
+                }
                 stickers={stickers}
                 picked={picked}
                 onPick={(id) => {
                   setPicked(id);
-                  if (id) setTab("stickers");
+                  if (id) setTab(stickers.find((s) => s.id === id)?.type === "text" ? "text" : "stickers");
                 }}
                 onDraft={setDraft}
                 onCommit={saveStickers}
@@ -491,6 +603,50 @@ export function KioskSelect({
               </div>
             </div>
           )}
+          {current === "adjust" && (
+            <div className="select-tab-panel select-adjust" {...panel("adjust")}>
+              {!ready.length ? (
+                <p className="soft-note">Chọn ảnh ở mục “Chọn ảnh” trước, rồi quay lại đây để chỉnh phóng to / dời.</p>
+              ) : (
+                <>
+                  <div className="adjust-photos" role="group" aria-label="Chọn ảnh để chỉnh">
+                    {ready.map((key, i) => (
+                      <button key={key} type="button" className={`adjust-photo${adjustKey === key ? " is-active" : ""}`} onClick={() => setAdjustKey(key)}>
+                        <AdjustThumb shot={shots.find((s) => s.key === key)} />
+                        <b>{i + 1}</b>
+                      </button>
+                    ))}
+                  </div>
+                  {adjustKey ? (
+                    <div className="adjust-controls">
+                      <div className="adjust-zoom">
+                        <button type="button" onClick={() => zoomPhoto(adjustKey, 1 / 1.15)} disabled={adjustZoom <= 1}>
+                          <PiMagnifyingGlassMinusBold aria-hidden="true" /> Thu nhỏ
+                        </button>
+                        <span>{Math.round(adjustZoom * 100)}%</span>
+                        <button type="button" onClick={() => zoomPhoto(adjustKey, 1.15)} disabled={adjustZoom >= 3}>
+                          <PiMagnifyingGlassPlusBold aria-hidden="true" /> Phóng to
+                        </button>
+                      </div>
+                      <div className="adjust-pan" aria-label="Dời ảnh trong ô">
+                        <button type="button" className="pan-up" onClick={() => panPhoto(adjustKey, 0, -0.08)} aria-label="Dời lên"><PiCaretUpBold /></button>
+                        <button type="button" className="pan-left" onClick={() => panPhoto(adjustKey, -0.08, 0)} aria-label="Dời trái"><PiCaretLeftBold /></button>
+                        <span className="pan-mid" aria-hidden="true"><PiArrowsOutCardinalBold /></span>
+                        <button type="button" className="pan-right" onClick={() => panPhoto(adjustKey, 0.08, 0)} aria-label="Dời phải"><PiCaretRightBold /></button>
+                        <button type="button" className="pan-down" onClick={() => panPhoto(adjustKey, 0, 0.08)} aria-label="Dời xuống"><PiCaretDownBold /></button>
+                      </div>
+                      <button type="button" className="text-link" onClick={() => resetPhoto(adjustKey)}>
+                        <PiArrowClockwiseBold aria-hidden="true" /> Về mặc định
+                      </button>
+                      <small>Phóng to rồi dời ảnh cho vừa ô — ảnh in vẫn giữ nguyên độ nét.</small>
+                    </div>
+                  ) : (
+                    <p className="soft-note">Chạm một ảnh ở trên (hoặc chạm ảnh trên khung) để chỉnh.</p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
           {current === "color" && (
             <div className="select-tab-panel" {...panel("color")}>
               <div className="color-targets" role="radiogroup" aria-label="Áp dụng màu cho">
@@ -518,6 +674,50 @@ export function KioskSelect({
                   : `Đang chọn màu riêng cho ảnh ${selected.indexOf(target) + 1}.`}
               </p>
               <ColorChoices shot={thumbShot} filters={filters} value={shownFilter?.id} onChange={applyColor} />
+            </div>
+          )}
+          {current === "text" && (
+            <div className="select-tab-panel select-text" {...panel("text")}>
+              <div className="text-preview" style={{ fontFamily: (DECOR_FONTS[textFont] || DECOR_FONTS.sans).css, color: textColor }}>
+                {typed || <span className="text-ph">Gõ chữ muốn thêm vào khung…</span>}
+              </div>
+              <div className="text-fonts" role="group" aria-label="Kiểu chữ">
+                {Object.entries(DECOR_FONTS).map(([id, f]) => (
+                  <button key={id} type="button" className={textFont === id ? "is-on" : ""} style={{ fontFamily: f.css }} onClick={() => setTextFont(id)}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+              <div className="text-colors" role="group" aria-label="Màu chữ">
+                {DECOR_COLORS.map((c) => (
+                  <button key={c} type="button" className={textColor === c ? "is-on" : ""} style={{ background: c }} onClick={() => setTextColor(c)} aria-label={`Màu ${c}`} />
+                ))}
+              </div>
+              <OnScreenKeyboard
+                caps={caps}
+                onToggleCaps={() => setCaps((v) => !v)}
+                onKey={(ch) => setTyped((v) => (v + ch).slice(0, 40))}
+                onBackspace={() => setTyped((v) => v.slice(0, -1))}
+                onSpace={() => setTyped((v) => (v + " ").slice(0, 40))}
+              />
+              <div className="text-actions">
+                <button type="button" className="text-add" onClick={addText} disabled={!typed.trim()}>
+                  <PiPlusBold aria-hidden="true" /> Thêm chữ vào khung
+                </button>
+                {pickedIndex >= 0 && stickers[pickedIndex]?.type === "text" && (
+                  <>
+                    <button type="button" onClick={() => resize(1 / STICKER_SCALE.step)} disabled={scale <= STICKER_SCALE.min}>
+                      <PiMinusBold aria-hidden="true" /> Nhỏ
+                    </button>
+                    <button type="button" onClick={() => resize(STICKER_SCALE.step)} disabled={scale >= STICKER_SCALE.max}>
+                      <PiPlusBold aria-hidden="true" /> To
+                    </button>
+                    <button type="button" className="is-danger" onClick={removePicked}>
+                      <PiTrashBold aria-hidden="true" /> Xóa chữ
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           )}
           {current === "stickers" && (

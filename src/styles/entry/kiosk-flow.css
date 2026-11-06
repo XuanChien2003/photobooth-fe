@@ -1298,6 +1298,117 @@
     user-select: none;
   }
 
+  /* ── Chỉnh ảnh trong ô (phóng to / dời) ── */
+  .select-adjust { gap: 14px; }
+  .adjust-photos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+    gap: 10px;
+  }
+  .adjust-photo {
+    position: relative;
+    padding: 4px;
+    border: 3px solid transparent;
+    border-radius: 14px;
+    background: #fffaf3;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgb(74 50 38 / 12%);
+  }
+  .adjust-photo.is-active { border-color: #4caf6e; }
+  .adjust-photo img, .adjust-photo i {
+    display: block; width: 100%; aspect-ratio: 3 / 2;
+    border-radius: 9px; object-fit: cover; background: #e9d8c8;
+  }
+  .adjust-photo b {
+    position: absolute; top: 7px; left: 7px;
+    display: grid; place-items: center; width: 22px; height: 22px;
+    border-radius: 50%; background: var(--mellow-cocoa, #522e22); color: #fff; font-size: 12px;
+  }
+  .adjust-controls {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    padding: 16px; border-radius: 22px;
+    background: #fdf4ea; box-shadow: inset 0 0 0 1px rgb(122 74 54 / 15%);
+  }
+  .adjust-zoom { display: flex; align-items: center; gap: 12px; }
+  .adjust-zoom span {
+    min-width: 66px; text-align: center; font-weight: 700; font-size: 18px;
+    color: var(--mellow-cocoa, #522e22);
+  }
+  .adjust-zoom button {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 52px; padding: 0 18px;
+    border: 2px solid var(--mellow-cocoa, #522e22); border-radius: 999px;
+    background: #fffaf3; color: var(--mellow-cocoa, #522e22);
+    font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  .adjust-zoom button:disabled { opacity: .4; cursor: default; }
+  .adjust-pan {
+    display: grid; gap: 6px;
+    grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(3, 56px);
+    grid-template-areas: ".  up  ." "left mid right" ".  down .";
+  }
+  .adjust-pan button, .adjust-pan .pan-mid {
+    display: grid; place-items: center; border-radius: 16px;
+    background: #fffaf3; border: 2px solid rgb(122 74 54 / 25%);
+    color: var(--mellow-cocoa, #522e22); font-size: 22px; cursor: pointer;
+  }
+  .adjust-pan .pan-up { grid-area: up; }
+  .adjust-pan .pan-left { grid-area: left; }
+  .adjust-pan .pan-right { grid-area: right; }
+  .adjust-pan .pan-down { grid-area: down; }
+  .adjust-pan .pan-mid { grid-area: mid; border: 0; background: none; color: rgb(122 74 54 / 40%); cursor: default; }
+  .adjust-controls small { color: var(--mellow-muted, #7a5a48); text-align: center; }
+
+  /* ── Thêm chữ đánh máy vào khung ── */
+  .select-text { gap: 12px; }
+  .text-preview {
+    min-height: 64px; display: grid; place-items: center; padding: 10px 16px;
+    border-radius: 18px; background: #fffaf3;
+    box-shadow: inset 0 0 0 1px rgb(122 74 54 / 15%);
+    font-size: 30px; font-weight: 700; text-align: center; word-break: break-word;
+  }
+  .text-preview .text-ph { color: #c3ab9b; font-weight: 400; font-size: 18px; }
+  .text-fonts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .text-fonts button {
+    min-height: 46px; padding: 0 16px; border-radius: 999px;
+    border: 2px solid rgb(122 74 54 / 30%); background: #fffaf3;
+    color: var(--mellow-ink, #3f2c25); font-size: 16px; cursor: pointer;
+  }
+  .text-fonts button.is-on { border-color: var(--mellow-cocoa, #522e22); background: #f3e3d4; }
+  .text-colors { display: flex; flex-wrap: wrap; gap: 8px; }
+  .text-colors button {
+    width: 38px; height: 38px; padding: 0; border-radius: 50%;
+    border: 3px solid #fff; box-shadow: 0 0 0 1px rgb(122 74 54 / 30%); cursor: pointer;
+  }
+  .text-colors button.is-on { box-shadow: 0 0 0 3px #4caf6e; }
+  .text-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .text-actions button {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 52px; padding: 0 18px;
+    border: 2px solid var(--mellow-cocoa, #522e22); border-radius: 999px;
+    background: #fffaf3; color: var(--mellow-cocoa, #522e22);
+    font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  .text-actions button:disabled { opacity: .4; cursor: default; }
+  .text-actions .text-add { background: var(--mellow-cocoa, #522e22); color: #fff; }
+  .text-actions button.is-danger { border-color: #b4483c; color: #b4483c; }
+
+  /* ── Bàn phím ảo (màn cảm ứng) ── */
+  .kb { display: flex; flex-direction: column; gap: 7px; align-items: center; }
+  .kb-row { display: flex; gap: 6px; justify-content: center; width: 100%; }
+  .kb-key {
+    flex: 1; min-width: 0; max-width: 58px; min-height: 50px;
+    border: 0; border-radius: 12px; background: #fffaf3;
+    color: var(--mellow-ink, #3f2c25);
+    font-family: inherit; font-size: 19px; font-weight: 600; cursor: pointer;
+    box-shadow: 0 2px 6px rgb(74 50 38 / 14%);
+  }
+  .kb-key:active { transform: translateY(1px); background: #f3e3d4; }
+  .kb-key.kb-wide {
+    max-width: 86px; flex: 1.4; display: grid; place-items: center;
+    color: var(--mellow-cocoa, #522e22); font-size: 20px;
+  }
+  .kb-key.kb-wide.is-on { background: var(--mellow-cocoa, #522e22); color: #fff; }
+  .kb-key.kb-space { max-width: 340px; flex: 3; font-size: 15px; color: var(--mellow-muted, #7a5a48); }
+
   .frame-stage {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;

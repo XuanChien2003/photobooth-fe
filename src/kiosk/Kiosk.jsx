@@ -1034,9 +1034,12 @@ export function Kiosk() {
     // Ảnh xem trước ở màn QR, ảnh trong album và ảnh in cùng màu ảnh và nhãn dán khách đã chọn.
     // Màu từng ảnh (màu riêng của tấm đó, không có thì màu chung), cùng thứ tự ảnh đặt vào khung.
     const stepsOf = (shot) => filterStepsFor(photoFilterId(s.decor, shot.key), settings);
+    // Phóng/dời của từng ảnh trong ô (khách tự chỉnh ở bước chọn ảnh), theo mã tấm ảnh.
+    const transformOf = (shot) => s.decor?.transforms?.[shot.key];
     const look = {
       filters: chosenShots.map(stepsOf),
       stickers: s.decor?.stickers || [],
+      transforms: chosenShots.map(transformOf),
     };
     setComposing(true);
     try {
@@ -1045,7 +1048,7 @@ export function Kiosk() {
       const shown = chosenShots.filter((x) => bitmaps.has(x.key));
       const images = shown.map((x) => bitmaps.get(x.key));
       if (frame) {
-        const canvas = await composePreview(frame, images, 700, albumLink, { ...look, filters: shown.map(stepsOf) });
+        const canvas = await composePreview(frame, images, 700, albumLink, { ...look, filters: shown.map(stepsOf), transforms: shown.map(transformOf) });
         composite = canvas.toDataURL("image/jpeg", 0.9);
         canvas.width = canvas.height = 0;
       } else {
