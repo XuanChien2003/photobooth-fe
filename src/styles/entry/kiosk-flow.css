@@ -1103,8 +1103,32 @@
     flex: 1;
     min-height: 0;
   }
+  /* Lưới ảnh chiếm hết phần còn lại của ô "Chọn ảnh" (cao bằng cả hàng, theo khung xem trước bên
+     trái); số cột và cỡ ảnh do KioskSelect (useFitGrid) chọn để ảnh to nhất mà vẫn thấy hết.
+     contain: size — kích thước lưới không phụ thuộc vào ảnh bên trong, nên ảnh to lên không kéo cả
+     hàng cao thêm (và đo lại không bao giờ lặp vô hạn). */
   .select-tab-panel .select-grid {
-    max-height: 60dvh;
+    flex: 1 1 0;
+    min-height: 0;
+    max-height: none;
+    contain: size;
+    align-content: center;
+    justify-content: center;
+  }
+  .select-tab-panel .select-grid.is-fitted {
+    overflow: hidden;
+  }
+  .select-tab-panel .select-order {
+    width: clamp(32px, 2.4vw, 44px);
+    height: clamp(32px, 2.4vw, 44px);
+    font-size: clamp(16px, 1.3vw, 22px);
+  }
+  /* Màn hẹp (một cột): khung xem trước ở trên, lưới ảnh bên dưới với chiều cao cố định. */
+  @media (max-width: 900px) {
+    .select-tab-panel .select-grid {
+      flex: none;
+      height: 56dvh;
+    }
   }
   /* Màu ảnh · áp dụng cho: "Tất cả ảnh" hoặc từng ảnh (số thứ tự trong khung) */
   .color-targets {

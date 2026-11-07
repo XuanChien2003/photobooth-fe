@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { fitGrid } from "./fit-grid.js";
 import {
   PiArrowClockwiseBold,
   PiArrowLeftBold,
@@ -308,6 +309,27 @@ function DecorStage({
   );
 }
 
+// Lưới ảnh đã chụp phủ kín ô "Chọn ảnh": đo chỗ trống (ResizeObserver) và chọn số cột cho ảnh to nhất
+// mà vẫn thấy hết (fit-grid.js). Chưa đo được thì để CSS tự chia cột như trước.
+function useFitGrid(count) {
+  // Ref dạng hàm: lưới mất đi khi khách sang mục khác và có lại khi quay về "Chọn ảnh".
+  const [element, ref] = useState(null);
+  const [layout, setLayout] = useState(null);
+  useLayoutEffect(() => {
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const measure = (width, height) => {
+      const next = fitGrid(width, height, count);
+      setLayout((old) =>
+        old && next && old.cols === next.cols && old.size === next.size && old.scroll === next.scroll ? old : next);
+    };
+    const observer = new ResizeObserver(([entry]) => measure(entry.contentRect.width, entry.contentRect.height));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [element, count]);
+  const style = layout ? { gridTemplateColumns: `repeat(${layout.cols}, ${layout.size}px)` } : undefined;
+  return { ref, style, fitted: Boolean(layout && !layout.scroll) };
+}
+
 function Pick({ shot, order, onToggle, disabled }) {
   const src = useObjectUrl(shot.preview);
   return (
@@ -433,6 +455,7 @@ export function KioskSelect({
   ];
   const [tab, setTab] = useState("photos");
   const current = tabs.includes(tab) ? tab : "photos";
+  const grid = useFitGrid(shots.length);
   const panel = (id) =>
     tabs.length > 1 ? { role: "tabpanel", id: `select-panel-${id}`, "aria-labelledby": `select-tab-${id}` } : {};
   const [picked, setPicked] = useState(null);
@@ -651,7 +674,13 @@ export function KioskSelect({
           )}
           {current === "photos" && (
             <div className="select-tab-panel" {...panel("photos")}>
-              <div className="select-grid" role="group" aria-label="Ảnh đã chụp">
+              <div
+                className={`select-grid${grid.fitted ? " is-fitted" : ""}`}
+                role="group"
+                aria-label="Ảnh đã chụp"
+                ref={grid.ref}
+                style={grid.style}
+              >
                 {shots.map((shot) => (
                   <Pick
                     key={shot.key}

@@ -2,6 +2,8 @@
 // Isolated API fixtures; the photos, frame and sticker are generated solid-colour PNGs.
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { after, before, test } from "node:test";
 import { crc32, deflateSync } from "node:zlib";
 import { build } from "vite";
@@ -99,16 +101,16 @@ before(async () => {
 
 after(async () => { await browser?.close(); await new Promise((resolve) => server?.close(resolve)); });
 
-async function selectScreen({ query = "" } = {}) {
-  const page = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+async function selectScreen({ query = "", shots = 3, viewport = { width: 1366, height: 768 } } = {}) {
+  const page = await browser.newPage({ viewport });
   const errors = [], uploads = { composite: null, print: null };
   page.on("pageerror", (e) => errors.push(e.message));
   const booking = {
-    _id: "fixture-booking", code: "123456", packageName: "Gói thử", shots: 3, selectCount: 2,
+    _id: "fixture-booking", code: "123456", packageName: "Gói thử", shots, selectCount: 2,
     prints: 1, printSize: "full", status: "checked_in", captureDuration: 10,
     captureStartedAt: new Date(Date.now() - 600000).toISOString(),
     captureEndsAt: new Date(Date.now() - 1000).toISOString(),
-    photos: ["p1", "p2", "p3"].map((id) => ({ id, kind: "original" })),
+    photos: Array.from({ length: shots }, (_, i) => ({ id: `p${i + 1}`, kind: "original" })),
   };
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
@@ -393,3 +395,39 @@ test("a photo is dragged on the frame and shrunk below 100%; the print shows the
   } finally { await page.close(); }
 });
 
+
+test("12 photos fill the 'Chọn ảnh' panel on the shop's 1920 × 1080 screen: big, all visible, no scrolling", async () => {
+  const { page, errors } = await selectScreen({ shots: 12, viewport: { width: 1920, height: 1080 } });
+  try {
+    const grid = page.getByRole("group", { name: "Ảnh đã chụp" });
+    await grid.getByRole("button").nth(11).locator("img").waitFor();
+    await page.waitForFunction(() => document.querySelector(".select-grid")?.classList.contains("is-fitted"));
+    const layout = () => grid.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const cells = [...element.querySelectorAll(".select-shot")].map((cell) => cell.getBoundingClientRect());
+      return {
+        columns: getComputedStyle(element).gridTemplateColumns.split(" ").length,
+        width: Math.round(cells[0].width),
+        inside: cells.every((cell) => cell.top >= box.top - 1 && cell.bottom <= box.bottom + 1),
+        scrolls: element.scrollHeight > element.clientHeight + 1,
+        unused: Math.round(box.bottom - cells.at(-1).bottom),
+        pageScrolls: document.documentElement.scrollHeight > innerHeight + 1,
+      };
+    });
+    const first = await layout();
+    // Ô cao: 3 cột × 4 hàng cho ảnh to nhất (trước đây 6 cột ảnh rộng ~150 px, nửa dưới ô trống).
+    assert.equal(first.columns, 3);
+    assert.ok(first.width >= 240, `ảnh rộng ${first.width} px`);
+    assert.equal(first.inside, true, "every photo is visible");
+    assert.equal(first.scrolls, false);
+    assert.equal(first.pageScrolls, false);
+    assert.ok(first.unused < 60, `little space left under the photos (${first.unused} px)`);
+    await page.screenshot({ path: join(tmpdir(), "photobooth-fe-select-1920.png") });
+    // Sang mục khác rồi quay lại: lưới vẫn vừa khít như cũ.
+    await page.getByRole("tab", { name: /Màu ảnh|Thêm chữ/ }).first().click();
+    await page.getByRole("tab", { name: /Chọn ảnh/ }).click();
+    await page.waitForFunction(() => document.querySelector(".select-grid")?.classList.contains("is-fitted"));
+    assert.deepEqual(await layout(), first);
+    assert.deepEqual(errors, []);
+  } finally { await page.close(); }
+});
