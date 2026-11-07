@@ -91,7 +91,9 @@ export function frameCandidates(frames, { count, printSize, themeOrder = [] }) {
 // Ghép nhanh để xem trên màn hình (ảnh 1600 px), ảnh lặp lại khi khung nhiều số ảnh hơn số ảnh đã
 // chọn. qrUrl: link album của khách (vùng QR trên khung). placeholders: đang chọn ảnh — ô chưa có ảnh
 // để trống, hiện số thứ tự (không lặp ảnh). filters: công thức màu của từng ảnh (cùng thứ tự images),
-// stickers: nhãn dán (decor.js).
+// stickers: nhãn dán (decor.js). width "print": đúng cỡ bản in của khung (vd. 1200 × 1800, khung ngang
+// 1800 × 1200) — ảnh xem trước nét như bản in kể cả khi khung hiện to trên màn 1920 × 1080 (trước đây
+// 700 px, khung ngang hiện rộng ~1000 px bị phóng to nên mờ).
 export async function composePreview(frame, images, width = 900, qrUrl = "",
   { placeholders = false, filters = [], stickers = [], transforms = [] } = {}) {
   const layout = photoLayout(frame);
@@ -101,8 +103,8 @@ export async function composePreview(frame, images, width = 900, qrUrl = "",
     loadStickers(stickers),
   ]);
   const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = Math.round((width * background.naturalHeight) / background.naturalWidth);
+  canvas.width = width === "print" ? frameOutputSize(frame, background).width : width;
+  canvas.height = Math.round((canvas.width * background.naturalHeight) / background.naturalWidth);
   const filled = layout.slots.map((_, i) =>
     placeholders ? images[i] || null : images.length ? images[i % images.length] : null);
   // Ảnh trong ô → màu ảnh → mã QR / ngày in → nhãn dán (nhãn dán không bị đổi màu).

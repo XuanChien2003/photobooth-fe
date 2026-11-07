@@ -99,7 +99,6 @@
   display: block;
   max-width: none;
   visibility: hidden;
-  transform: scaleX(-1);
 }
 /* Chế độ máy yếu: hình hiện trên canvas; thẻ video vẫn chạy (nguồn khung hình) nhưng trong suốt. */
 .camera-preview-viewport.is-canvas video {

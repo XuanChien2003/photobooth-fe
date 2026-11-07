@@ -62,6 +62,13 @@ after(async () => {
   await new Promise((resolve) => server?.close(resolve));
 });
 
+// Thử máy bằng webcam: chờ hình trực tiếp sẵn sàng (không có nút chụp trên màn — tiệm dùng dây bấm).
+async function liveReady(page) {
+  await page.locator(".shoot-screen:not(.no-live)").waitFor({ timeout: 15000 });
+  await page.locator(".shoot-webcam-badge", { hasText: "phím Space để chụp" }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Chạm để chụp" }).count(), 0, "no tap-to-shoot button");
+}
+
 async function booth(launched, { webcam, room = { _id: "room", flip: "device" }, extra = {}, lowPower = false, viewport = { width: 1366, height: 768 } }) {
   const context = await launched.newContext({ viewport });
   if (launched === fakeCamera) await context.grantPermissions(["camera"]);
@@ -113,7 +120,9 @@ test("without any camera the shoot screen explains it and offers the computer we
   try {
     const card = b.page.getByRole("status").filter({ hasText: "Chưa có hình trực tiếp" });
     await card.waitFor();
-    await b.page.getByText("Nhấn nút trên dây bấm để chụp", { exact: true }).waitFor();
+    // Màn chụp sạch: không có chữ hướng dẫn bấm dây đè lên hình trực tiếp.
+    await b.page.getByRole("button", { name: "Chụp xong, chọn ảnh" }).waitFor();
+    assert.equal(await b.page.getByText("Nhấn nút trên dây bấm để chụp").count(), 0);
     assert.equal(await b.page.getByRole("button", { name: "Chụp xong, chọn ảnh" }).isDisabled(), true);
     await b.page.getByText("Chụp ít nhất 1 tấm").waitFor();
     await b.page.getByText("Ảnh vừa chụp sẽ hiện ở đây").waitFor();
@@ -128,15 +137,15 @@ test("without any camera the shoot screen explains it and offers the computer we
   } finally { await b.close(); }
 });
 
-test("in webcam test mode a tap counts down, takes a photo from the webcam and it can be chosen", async () => {
+test("in webcam test mode the Space key counts down, takes a photo from the webcam and it can be chosen", async () => {
   const b = await booth(fakeCamera, { webcam: true });
   try {
-    const snap = b.page.getByRole("button", { name: "Chạm để chụp" });
-    await snap.waitFor({ timeout: 15000 });
-    await b.page.locator(".shoot-webcam-badge", { hasText: "Thử máy bằng webcam" }).waitFor();
-    await snap.click();
+    await liveReady(b.page);
+    await b.page.keyboard.press("Space");
     await b.page.getByRole("timer").filter({ hasText: /^3$/ }).waitFor();
     await b.page.locator(".shoot-thumbs .shoot-thumb-no", { hasText: "1" }).waitFor({ timeout: 15000 });
+    await mkdir(join(tmpdir(), "photobooth-fe-kiosk-webcam"), { recursive: true });
+    await b.page.screenshot({ path: join(tmpdir(), "photobooth-fe-kiosk-webcam", "shoot-landscape.png") });
     const saved = await b.page.evaluate(() => JSON.parse(sessionStorage.getItem("photo-capture-fixture-device")));
     assert.equal(saved.captureOrder.length, 1);
     // Webcam laptop vẫn quay video tua nhanh, nhưng các đoạn quay ở chế độ nhẹ: WebM VP8 (không quay
@@ -197,8 +206,7 @@ test("polaroid room counts down and shoots by itself from the live view, up to t
 test("low-power mode draws the live view on a canvas, and the shot flash does not stay over it", async () => {
   const b = await booth(fakeCamera, { webcam: true, lowPower: true });
   try {
-    const snap = b.page.getByRole("button", { name: "Chạm để chụp" });
-    await snap.waitFor({ timeout: 15000 });
+    await liveReady(b.page);
     // Hình trực tiếp hiện trên canvas (có hình thật), thẻ video vẫn chạy nhưng trong suốt.
     await b.page.waitForFunction(() => {
       const canvas = document.querySelector(".camera-preview-viewport.is-canvas canvas");
@@ -215,7 +223,7 @@ test("low-power mode draws the live view on a canvas, and the shot flash does no
         if (document.querySelector(".camera-flash")) window.__flashSeen = true;
       }).observe(document.body, { childList: true, subtree: true });
     });
-    await snap.click();
+    await b.page.keyboard.press("Space");
     await b.page.waitForFunction(() => window.__flashSeen, null, { timeout: 15000 });
     await b.page.locator(".camera-flash").waitFor({ state: "detached", timeout: 3000 });
     assert.deepEqual(b.errors, []);
@@ -225,11 +233,10 @@ test("low-power mode draws the live view on a canvas, and the shot flash does no
 test("a portrait screen splits in two: the whole camera frame on top, the photo just taken large below", async () => {
   const b = await booth(fakeCamera, { webcam: true, viewport: { width: 540, height: 960 } });
   try {
-    const snap = b.page.getByRole("button", { name: "Chạm để chụp" });
-    await snap.waitFor({ timeout: 15000 });
+    await liveReady(b.page);
     await b.page.locator(".shoot-screen.is-portrait").waitFor();
     await b.page.getByText("Ảnh vừa chụp sẽ hiện ở đây").first().waitFor();
-    await snap.click();
+    await b.page.keyboard.press("Space");
     const latest = b.page.locator(".shoot-latest img");
     await latest.waitFor({ timeout: 20000 });
     await b.page.waitForFunction(() => document.querySelector(".shoot-latest img")?.naturalWidth > 0);
@@ -258,3 +265,23 @@ test("a portrait screen splits in two: the whole camera frame on top, the photo 
   } finally { await b.close(); }
 });
 
+
+test("the live view and the photos flip together: like a mirror by default, straight only when the room says so", async () => {
+  // Chủ tiệm chọn "như soi gương" (7/11): hình trực tiếp, ảnh và video đều lật, luôn giống nhau.
+  const mirrored = await booth(fakeCamera, { webcam: true });
+  try {
+    await liveReady(mirrored.page);
+    await mirrored.page.locator(".camera-preview-viewport.is-mirrored video").waitFor({ state: "attached" });
+    assert.equal(await mirrored.page.locator(".camera-preview-viewport video").evaluate((v) => getComputedStyle(v).transform),
+      "matrix(-1, 0, 0, 1, 0, 0)", "the screen is mirrored exactly like the photos it saves");
+    assert.deepEqual(mirrored.errors, []);
+  } finally { await mirrored.close(); }
+  const straight = await booth(fakeCamera, { webcam: true, room: { _id: "room", flip: "off" } });
+  try {
+    await liveReady(straight.page);
+    assert.equal(await straight.page.locator(".camera-preview-viewport.is-mirrored").count(), 0);
+    assert.equal(await straight.page.locator(".camera-preview-viewport video").evaluate((v) => getComputedStyle(v).transform),
+      "none", "not flipped on screen, as the photos are not flipped");
+    assert.deepEqual(straight.errors, []);
+  } finally { await straight.close(); }
+});

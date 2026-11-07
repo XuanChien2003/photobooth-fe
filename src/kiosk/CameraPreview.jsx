@@ -9,7 +9,8 @@ const SETTLE_MS = 1500;
 // <video>. Trên mini PC GPU Intel đời cũ, lớp video của Chrome có lúc hiện trắng sau khi chụp dù
 // khung hình vẫn đúng; vẽ bằng canvas đi đường khác nên vẫn thấy hình.
 // fit: "cover" (mặc định, phủ kín khung xem) hoặc "contain" (thấy đủ khung hình — màn đứng chia đôi).
-export function CameraPreview({ videoRef, zoom = 0, canvas = false, fit = "cover" }) {
+// mirror: lật như gương — cùng cài đặt với ảnh chụp và video, nên màn hình luôn giống ảnh nhận được.
+export function CameraPreview({ videoRef, zoom = 0, canvas = false, fit = "cover", mirror = false }) {
   const viewport = useRef(null);
   const screen = useRef(null);
 
@@ -96,7 +97,7 @@ export function CameraPreview({ videoRef, zoom = 0, canvas = false, fit = "cover
   }, [videoRef, canvas]);
 
   return (
-    <div ref={viewport} className={`camera-preview-viewport${canvas ? " is-canvas" : ""}`}>
+    <div ref={viewport} className={`camera-preview-viewport${canvas ? " is-canvas" : ""}${mirror ? " is-mirrored" : ""}`}>
       <video ref={videoRef} autoPlay playsInline muted />
       {canvas && <canvas ref={screen} aria-hidden="true" />}
     </div>

@@ -86,7 +86,9 @@ async function booth(phase) {
 test("old timer selection resumes in cable mode without sending a camera command", async () => {
   const b = await booth("mode");
   try {
-    await b.page.getByText("Nhấn nút trên dây bấm để chụp", { exact: true }).waitFor();
+    // Màn chụp sạch: không có chữ hướng dẫn bấm dây đè lên hình trực tiếp.
+    await b.page.getByRole("button", { name: "Chụp xong, chọn ảnh" }).waitFor();
+    assert.equal(await b.page.getByText("Nhấn nút trên dây bấm để chụp").count(), 0);
     assert.equal(await b.page.getByRole("button", { name: /Hẹn giờ/ }).count(), 0);
     assert.equal(await b.page.getByRole("button", { name: "Bấm chụp", exact: true }).count(), 0);
     await b.page.keyboard.press("Space");
@@ -99,7 +101,9 @@ test("old timer selection resumes in cable mode without sending a camera command
 test("active old timer session cannot trigger another automatic exposure", async () => {
   const b = await booth("shoot");
   try {
-    await b.page.getByText("Nhấn nút trên dây bấm để chụp", { exact: true }).waitFor();
+    // Màn chụp sạch: không có chữ hướng dẫn bấm dây đè lên hình trực tiếp.
+    await b.page.getByRole("button", { name: "Chụp xong, chọn ảnh" }).waitFor();
+    assert.equal(await b.page.getByText("Nhấn nút trên dây bấm để chụp").count(), 0);
     const restored = await b.page.evaluate(() => JSON.parse(sessionStorage.getItem("photo-capture-fixture-device")));
     assert.equal(restored.mode, "remote");
     await b.page.waitForTimeout(1100);

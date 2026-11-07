@@ -108,7 +108,7 @@ function DecorStage({
   // Nền (khung + ảnh đã áp màu) chỉ ghép lại khi đổi khung, ảnh hoặc màu ảnh; nhãn dán vẽ đè mỗi lần.
   useEffect(() => {
     let alive = true;
-    composePreview(frame, images, 700, qrUrl, { placeholders: true, filters, transforms })
+    composePreview(frame, images, "print", qrUrl, { placeholders: true, filters, transforms })
       .then((next) => {
         if (!alive) return void (next.width = next.height = 0);
         const old = latestBase.current;

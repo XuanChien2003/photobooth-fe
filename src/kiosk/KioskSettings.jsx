@@ -164,18 +164,18 @@ export function KioskSettings({
               localStorage.setItem(MIRROR_KEY, e.target.checked ? "1" : "0");
               toast.success(
                 e.target.checked
-                  ? "Đã lưu: ảnh chụp lật như gương (giống hình trên màn hình)."
-                  : "Đã lưu: ảnh chụp giữ nguyên chiều như máy ảnh.",
+                  ? "Đã lưu: lật như gương — hình trên màn hình, ảnh chụp và video cùng lật."
+                  : "Đã lưu: không lật — hình trên màn hình, ảnh chụp và video đúng chiều máy ảnh.",
               );
             }}
           />
-          Lưu ảnh lật như gương (giống hình trên màn hình)
+          Lật như gương (hình trên màn hình, ảnh chụp và video cùng lật; tắt = đúng chiều máy ảnh)
           {mirrorLocked && " — quản trị đã đặt ở mục Quản lý máy"}
         </label>
         <label className="checkbox">
           <input type="checkbox" checked={webcamTest} onChange={(e) => setWebcamTest(e.target.checked)} />
-          Thử máy bằng webcam máy tính (khi không có máy ảnh): webcam làm hình trực tiếp, chụp bằng nút
-          “Chạm để chụp” trên màn hình, không cần thư mục ảnh. Tắt trước khi đón khách.
+          Thử máy bằng webcam máy tính (khi không có máy ảnh): webcam làm hình trực tiếp, bấm phím Space
+          trên bàn phím để chụp, không cần thư mục ảnh. Tắt trước khi đón khách.
         </label>
         <label className="checkbox">
           <input type="checkbox" checked={lowPower} onChange={(e) => setLowPower(e.target.checked)} />

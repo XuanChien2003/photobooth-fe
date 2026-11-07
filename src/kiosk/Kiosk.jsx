@@ -685,7 +685,7 @@ export function Kiosk() {
     webcamRef.current = on;
     setWebcamState(on);
     toast[on ? "info" : "success"](on
-      ? "Đang thử máy bằng webcam máy tính: chạm “Chạm để chụp” trên màn chụp. Nhớ tắt khi đón khách."
+      ? "Đang thử máy bằng webcam máy tính: bấm phím Space trên bàn phím để chụp. Nhớ tắt khi đón khách."
       : "Đã tắt thử máy bằng webcam — máy chụp dùng máy ảnh như bình thường.");
     if (liveCamera) openCamera();
   }
@@ -910,7 +910,7 @@ export function Kiosk() {
     setVideo({ token: s.accessToken, pending: true });
     let blob = null;
     try {
-      blob = await buildTimelapse(clips, { zoom: zoomRef.current, light: webcamRef.current });
+      blob = await buildTimelapse(clips, { zoom: zoomRef.current, light: webcamRef.current, mirror: mirrorRef.current });
     } catch {
       blob = null;
     }
@@ -1064,8 +1064,8 @@ export function Kiosk() {
       const shown = chosenShots.filter((x) => bitmaps.has(x.key));
       const images = shown.map((x) => bitmaps.get(x.key));
       if (frame) {
-        const canvas = await composePreview(frame, images, 700, albumLink, { ...look, filters: shown.map(stepsOf), transforms: shown.map(transformOf) });
-        composite = canvas.toDataURL("image/jpeg", 0.9);
+        const canvas = await composePreview(frame, images, "print", albumLink, { ...look, filters: shown.map(stepsOf), transforms: shown.map(transformOf) });
+        composite = canvas.toDataURL("image/jpeg", 0.92);
         canvas.width = canvas.height = 0;
       } else {
         // Tiệm chưa bật khung nào: màn cuối hiện tấm đầu tiên khách chọn (chưa ghép).
@@ -1406,6 +1406,7 @@ export function Kiosk() {
           webcam={{ on: webcamTest, label: liveLabel, count: snapCount, onSnap: snapWebcam, onToggle: setWebcamTest }}
           auto={polaroid ? { count: autoCount, seconds: autoSeconds } : null}
           canvasPreview={lowPower}
+          mirror={mirror}
         />
         {error && !(error === CAMERA_ERROR && !ready) && (
           <div className="shoot-error">

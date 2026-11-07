@@ -3,7 +3,6 @@ import {
   PiArrowClockwiseBold,
   PiCameraBold,
   PiCheckBold,
-  PiHandTapBold,
   PiImagesDuotone,
   PiVideoCameraSlashDuotone,
   PiWebcamBold,
@@ -88,6 +87,7 @@ export function KioskShoot({
   webcam = null,
   auto = null,
   canvasPreview = false,
+  mirror = false,
 }) {
   const t = useKioskText();
   const portrait = usePortrait();
@@ -104,6 +104,18 @@ export function KioskShoot({
           ? auto.count
           : shooting && sessionLeft > 0 && sessionLeft <= 3
             ? sessionLeft : null;
+  // Thử máy bằng webcam (không có dây bấm): bấm phím Space / Enter để chụp — không có nút trên màn.
+  useEffect(() => {
+    if (!testing || !shooting || full) return;
+    const onKey = (event) => {
+      if (!["Space", "Enter", "NumpadEnter"].includes(event.code) || event.repeat) return;
+      if (/input|textarea|select|button/i.test(event.target?.tagName || "")) return;
+      event.preventDefault();
+      if (!webcam.count) webcam.onSnap();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
   // Ảnh mới nhất ở đầu cột: có ảnh mới thì cuộn lên đầu để khách thấy ngay.
   const rail = useRef(null);
   useEffect(() => {
@@ -124,7 +136,7 @@ export function KioskShoot({
   return (
     <section className={`shoot-screen phase-${phase}${ready ? "" : " no-live"}${portrait ? " is-portrait" : ""}`}>
       <div className="shoot-stage">
-        <CameraPreview videoRef={videoRef} zoom={zoom} canvas={canvasPreview} fit={portrait ? "contain" : "cover"} />
+        <CameraPreview videoRef={videoRef} zoom={zoom} canvas={canvasPreview} fit={portrait ? "contain" : "cover"} mirror={mirror} />
         {!ready && (
           <div className="shoot-no-camera" role="status">
             <span className="shoot-no-camera-icon" aria-hidden="true">
@@ -147,7 +159,7 @@ export function KioskShoot({
         {webcam?.on && (
           <div className="shoot-webcam-badge" role="status">
             <PiWebcamBold aria-hidden="true" />
-            <span>Thử máy bằng webcam{webcam.label ? ` · ${webcam.label}` : ""}</span>
+            <span>Thử máy bằng webcam{webcam.label ? ` · ${webcam.label}` : ""} · phím Space để chụp</span>
             <button type="button" onClick={() => webcam.onToggle(false)}>Tắt</button>
           </div>
         )}
@@ -165,17 +177,7 @@ export function KioskShoot({
                 : "Đang chụp…"}
             </strong>
           </div>
-        ) : testing ? (
-          <button type="button" className="shoot-press shoot-snap" disabled={Boolean(webcam.count)} onClick={webcam.onSnap}>
-            <PiCameraBold aria-hidden="true" />
-            <strong>{webcam.count ? "Chuẩn bị…" : "Chạm để chụp"}</strong>
-          </button>
-        ) : (
-          <div className="shoot-press" role="status">
-            <PiHandTapBold aria-hidden="true" />
-            <strong>{t("shoot.press")}</strong>
-          </div>
-        ))}
+        ) : null)}
         {flashing > 0 && (
           <div className="camera-flash" key={flashing} aria-hidden="true" onAnimationEnd={() => setFlashing(0)} />
         )}
