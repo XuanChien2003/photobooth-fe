@@ -4,6 +4,7 @@
 // Windows có menu nhỏ để điều khiển cửa sổ; Mac dùng nút cửa sổ và menu Xem của trình duyệt.
 import windowsCornerControl from "./installers/kiosk-window-control.ps1?raw";
 import startFujiAcquire from "./installers/start-fuji-acquire.ps1?raw";
+import { encodePayload } from "./installers/payload.js";
 
 const FLAGS =
   "--no-first-run --disable-session-crashed-bubble --noerrdialogs --autoplay-policy=no-user-gesture-required --overscroll-history-navigation=0";
@@ -14,12 +15,6 @@ const safe = (url) => {
     throw new Error("Liên kết máy chụp không hợp lệ.");
   return url;
 };
-
-function encodePayload(source) {
-  // PowerShell 5.1 cần BOM để đọc đúng tiếng Việt trong file UTF-8.
-  const bytes = new TextEncoder().encode(`\ufeff${source}`);
-  return btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""));
-}
 
 // Phòng Photobooth và Polaroid đều chụp bằng Fujifilm + dây bấm: mở FUJIFILM X Acquire.
 export function windowsScript(url, room) {

@@ -201,7 +201,18 @@ before(async () => {
       if (path === "/api/admin/print-jobs/printers") {
         send([{ branch: "Chi nhánh Nguyễn Trãi", at: new Date().toISOString(),
           instax: { ready: true, film: 2, battery: 70, charging: false, message: "" },
-          agent: { running: true, at: new Date().toISOString(), printSizes: ["full", "instax", "strip"] } }]);
+          agent: { running: true, at: new Date().toISOString(), printSizes: ["full", "instax", "strip"] } },
+        // Máy DNP của Phòng 01 (chương trình in trên mini PC của phòng): máy in đang tắt, 1 tờ chờ.
+        { branch: "Chi nhánh Nguyễn Trãi", room: "room-1", roomName: "Phòng 01", at: null, instax: null,
+          agent: { running: true, at: new Date().toISOString(), printSizes: ["full", "strip"] },
+          dnp: { ready: false, state: "Mất kết nối (máy in tắt hoặc rút cáp USB)", jobs: 1, cut: "queue",
+            printer: "DS-RX1", stripPrinter: "DS-RX1 - cat doi 2x6", at: new Date().toISOString() } }]);
+        return;
+      }
+      const printerMatch = path.match(/^\/api\/admin\/rooms\/([^/]+)\/printer$/);
+      if (printerMatch && entry.method === "POST") {
+        const room = rooms.find((item) => item._id === printerMatch[1]);
+        send({ token: `printer-token.${room._id}`, name: room.name, branch: room.branch });
         return;
       }
       if (path === "/api/admin/rooms" && entry.method === "GET") {
@@ -417,6 +428,25 @@ test("opening a configured kiosk uses the returned device token and displays QR 
     await dialog.getByRole("button", { name: "File cài cho Mac" }).count(),
     1,
   );
+  // Máy in DNP của phòng: một file cài cho mini PC cắm máy in, mang mã máy in của đúng phòng này.
+  const printerSetup = dialog.getByRole("region", { name: "Máy in DNP của phòng" });
+  assert.match(await printerSetup.innerText(), /tờ to.*in nguyên\s+tờ 10 × 15.*tờ nhỏ.*máy tự cắt đôi/s);
+  const [file] = await Promise.all([
+    page.waitForEvent("download"),
+    printerSetup.getByRole("button", { name: "File cài máy in (Windows)" }).click(),
+  ]);
+  assert.equal(file.suggestedFilename(), "cai-may-in-phong-01.bat");
+  const bat = await readFile(await file.path(), "utf8");
+  const config = JSON.parse(Buffer.from(/^rem NXC_PRINT_CONFIG_BASE64:(\S+)/m.exec(bat)[1], "base64").toString("utf8"));
+  assert.deepEqual(config, {
+    api: `http://127.0.0.1:${server.address().port}`, token: "printer-token.room-1", room: "Phòng 01",
+  });
+  const agent = Buffer.from(/^rem NXC_PRINT_AGENT_BASE64:(\S+)/m.exec(bat)[1], "base64").toString("utf8");
+  assert.match(agent, /^﻿# NXC Photobooth - chương trình in tự động cho máy DNP DS-RX1/);
+  await page.getByRole("status").filter({ hasText: "Đã tải file cài máy in" }).first().waitFor();
+  await mkdir(screenshots, { recursive: true });
+  await printerSetup.scrollIntoViewIfNeeded();
+  await dialog.screenshot({ path: join(screenshots, "room-setup-printer.png") });
   await dialog.getByRole("button", { name: "Đóng", exact: true }).click();
   // Issuance can return a fresh JWT; the UI must use the current response.
   const freshToken = `${deviceToken}.fresh`;
@@ -595,6 +625,7 @@ test("admin keeps inactive rooms, create/edit/deactivate controls, and room edit
   const printers = await page.getByRole("region", { name: "Máy in" }).innerText();
   assert.match(printers, /Chi nhánh Nguyễn Trãi · Chương trình in tự động đang chạy \(DNP \+ Instax\)/);
   assert.match(printers, /Máy Instax Link WIDE · Sắp hết phim — chuẩn bị hộp phim mới · còn 2 tấm phim · pin 70%/);
+  assert.match(printers, /Phòng 01 · Máy in DNP Mất kết nối \(máy in tắt hoặc rút cáp USB\) · 1 tờ đang chờ in · tờ nhỏ in qua hàng in cắt đôi 2 inch/);
   assert.equal(
     await page.getByRole("button", { name: "Thêm mới", exact: true }).count(),
     1,

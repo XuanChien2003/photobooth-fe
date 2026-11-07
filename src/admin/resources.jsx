@@ -28,6 +28,8 @@ import { PriceEditor } from "../extra-prints";
 import { TableHeading } from "./table-heading";
 import { Guide } from "../guide";
 import { download, macScript, windowsScript } from "./kiosk-autostart";
+import dnpAgent from "./installers/print-agent-dnp.ps1?raw";
+import { printerInstaller, printerInstallerName } from "./printer-installer";
 import { CatalogToolbar } from "./catalog-toolbar";
 import { PackageCatalog } from "./package-catalog";
 import { ResourceEditor } from "./resource-editor";
@@ -59,6 +61,27 @@ const clock = (value) =>
 // Hộp phim Instax Wide có 10 tấm: còn ≤ 3 tấm thì nhắc thay phim.
 const FILM_LOW = 3;
 const AGENT_SIZES = { full: "DNP", strip: "DNP", instax: "Instax" };
+const CUT_TEXT = {
+  auto: " · tờ nhỏ tự cắt đôi",
+  queue: " · tờ nhỏ in qua hàng in cắt đôi 2 inch",
+  none: " · chưa có hàng in cắt đôi: tờ nhỏ phải cắt tay",
+};
+// Máy in DNP của một phòng (chương trình in trên mini PC của phòng, cài ở "Cài máy chụp").
+function RoomPrinter({ roomName, agent, dnp }) {
+  const running = Boolean(agent?.running);
+  const ready = running && (!dnp || dnp.ready);
+  return (
+    <p className={ready ? "is-ready" : "is-warn"}>
+      <strong>{roomName}</strong> · Máy in DNP{" "}
+      {!running
+        ? "— chương trình in không chạy: bật mini PC của phòng, hoặc chạy lại file cài máy in"
+        : dnp
+          ? `${dnp.ready ? "sẵn sàng" : dnp.state || "chưa sẵn sàng"}${dnp.jobs ? ` · ${dnp.jobs} tờ đang chờ in` : ""}${CUT_TEXT[dnp.cut] || ""}`
+          : "đang chạy"}
+      {agent?.at && <small> · báo lúc {clock(dnp?.at || agent.at)}</small>}
+    </p>
+  );
+}
 // Chương trình in tự động (print agent) và máy Instax của từng chi nhánh.
 function PrinterStatus({ printers }) {
   return (
@@ -66,7 +89,12 @@ function PrinterStatus({ printers }) {
       <h3>
         <Printer size={17} aria-hidden="true" /> Máy in tự động
       </h3>
-      {printers.map(({ branch, at, instax, agent }) => {
+      {printers.filter((row) => row.room).map((row) => (
+        <div key={`room-${row.room}`} className="printer-status-branch">
+          <RoomPrinter {...row} />
+        </div>
+      ))}
+      {printers.filter((row) => !row.room).map(({ branch, at, instax, agent }) => {
         const low = instax?.ready && Number.isInteger(instax.film) && instax.film <= FILM_LOW;
         const kinds = [...new Set((agent?.printSizes || []).map((s) => AGENT_SIZES[s]))].join(" + ");
         return (
@@ -93,7 +121,8 @@ function PrinterStatus({ printers }) {
         );
       })}
       <small className="muted">
-        Phòng Photobooth in ở máy DNP; phòng Polaroid in Instax Wide. Máy Instax chưa sẵn sàng hay hết phim thì lệnh in
+        Phòng Photobooth in ở máy DNP cắm vào mini PC của phòng (tờ to in nguyên tờ, tờ nhỏ máy tự cắt đôi);
+        phòng Polaroid in Instax Wide. Máy Instax chưa sẵn sàng hay hết phim thì lệnh in
         Polaroid chờ trong hàng và tự in khi máy in kết nối lại.
         In lỗi (hết phim, mất kết nối) sẽ báo ngay trên trang quản trị.
       </small>
@@ -111,6 +140,7 @@ export function ResourceManager({ resource, notify, me }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [device, setDevice] = useState(null);
+  const [printerBusy, setPrinterBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
@@ -309,6 +339,21 @@ Liên kết máy chụp của phòng này sẽ không mở được nữa. Đơn
       kind: item.kind || "photobooth",
       paymentTest: Boolean(item.paymentTest),
     });
+  // File cài máy in DNP của phòng: chạy trên mini PC cắm máy in (mã máy in chỉ nhận lệnh của phòng này).
+  async function downloadPrinter() {
+    setPrinterBusy(true);
+    try {
+      const d = await api(`/admin/rooms/${device.room._id}/printer`, { method: "POST", body: {} });
+      download(printerInstallerName(d.name), printerInstaller({
+        script: dnpAgent, api: window.location.origin, token: d.token, room: d.name,
+      }));
+      notify("Đã tải file cài máy in. Mở file trên mini PC cắm máy DNP của phòng (Windows hỏi: “Thêm thông tin” → “Vẫn chạy”, rồi bấm Yes).");
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setPrinterBusy(false);
+    }
+  }
   async function issueDevice(next, change = {}) {
     setDevice({ ...next, busy: true });
     try {
@@ -340,6 +385,7 @@ Liên kết máy chụp của phòng này sẽ không mở được nữa. Đơn
             "Bấm “Cài máy chụp” ở dòng phòng → mở liên kết (hoặc quét QR) trên máy tính trong phòng bằng Chrome / Edge. Loại phòng (Photobooth / Polaroid) chọn lúc thêm phòng.",
             "Trên máy chụp: mở “Cài đặt máy chụp (nhân viên)”, làm theo hướng dẫn kết nối máy ảnh.",
             "Muốn bật máy tính là tự mở máy chụp: trong hộp “Cài máy chụp” tải “File cài cho Windows / Mac”, chạy 1 lần trên máy trong phòng.",
+            "Phòng Photobooth: cũng trong hộp đó tải “File cài máy in” và chạy 1 lần trên mini PC cắm máy DNP — khách bấm “In ảnh” là máy tự in (tờ nhỏ tự cắt đôi).",
           ]}
           note="Liên kết máy chụp có hạn 1 năm, chỉ gửi cho nhân viên."
         />
@@ -714,6 +760,28 @@ Liên kết máy chụp của phòng này sẽ không mở được nữa. Đơn
                 nhật cách điều khiển cửa sổ.
               </p>
             </div>
+            {device.kind === "photobooth" && (
+              <section className="kiosk-autostart printer-setup" aria-label="Máy in DNP của phòng">
+                <h3>
+                  <Printer size={16} aria-hidden="true" /> Máy in DNP của phòng này
+                </h3>
+                <p>
+                  Tải file cài về <b>mini PC của phòng (máy cắm máy in DNP DS-RX1)</b> rồi chạy một lần — Windows
+                  hỏi quyền quản trị thì bấm Yes. Từ đó khách bấm “In ảnh” là máy in tự in: <b>tờ to</b> in nguyên
+                  tờ 10 × 15, <b>tờ nhỏ</b> in 2 dải và máy tự cắt đôi.
+                </p>
+                <div className="kiosk-autostart-actions">
+                  <Button className="outline small" disabled={printerBusy} onClick={downloadPrinter}>
+                    <Download size={15} /> {printerBusy ? "Đang tạo file…" : "File cài máy in (Windows)"}
+                  </Button>
+                </div>
+                <small>
+                  Cần cài driver DNP và cắm máy in trước. Nếu cửa sổ cài đặt in hiện ra: Advanced… → Printer
+                  Features → 2inch cut → Enable → OK (chỉ làm một lần). Tình trạng máy in hiện ở mục “Máy in tự
+                  động” trên trang Quản lý máy.
+                </small>
+              </section>
+            )}
             </>
             )}
           </section>
