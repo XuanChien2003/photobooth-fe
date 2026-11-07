@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import postcss from 'postcss';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -34,6 +35,22 @@ function albumRoutePreload() {
           `${JSON.stringify(urls)}.forEach(function(h){add("modulepreload",h,"","")})})()</script>`;
         return html.replace(/(<meta name="viewport"[^>]*>)/, `$1\n    ${script}`);
       },
+    },
+  };
+}
+// The DNP print agent (src/admin/installers/print-agent-dnp.ps1) is also published at
+// /downloads/print-agent-dnp.ps1: agents already installed on the rooms' mini PCs fetch it from there
+// and update themselves (Update-Self in the script), so a fix needs no new install at the shop.
+function printAgentDownload() {
+  return {
+    name: 'print-agent-download',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'downloads/print-agent-dnp.ps1',
+        source: readFileSync(new URL('./src/admin/installers/print-agent-dnp.ps1', import.meta.url)),
+      });
     },
   };
 }
@@ -84,7 +101,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const proxy = { '/api': env.API_PROXY_TARGET || 'http://localhost:8080' };
   return {
-    plugins: [react(), tailwindcss(), albumRoutePreload(), guestStylesheet()],
+    plugins: [react(), tailwindcss(), albumRoutePreload(), guestStylesheet(), printAgentDownload()],
     server: { host: '0.0.0.0', port: 5173, strictPort: true, proxy },
     preview: { port: 5173, strictPort: true, proxy },
     build: {

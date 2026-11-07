@@ -22,6 +22,7 @@ $AgentDir = Join-Path $env:LOCALAPPDATA 'NXC-Printer'
 if (-not $ConfigPath) { $ConfigPath = Join-Path $AgentDir 'config.json' }
 $LogPath = Join-Path (Split-Path -Parent $ConfigPath) 'print-agent.log'
 $StripSuffix = ' - cat doi 2x6'
+$AgentPath = $PSCommandPath
 $PsfNs = 'http://schemas.microsoft.com/windows/2003/08/printing/printschemaframework'
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 } catch {}
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch {}
@@ -261,6 +262,68 @@ $StatusNames = @{
   PaperJam = 'Kẹt giấy'; Paused = 'Hàng in đang tạm dừng'; Error = 'Máy in báo lỗi'; PaperProblem = 'Lỗi giấy'
   DoorOpen = 'Đang mở nắp'; NotAvailable = 'Không dùng được'; TonerLow = 'Sắp hết mực'
 }
+# Hàng in đang bật "Use printer offline" (Windows giữ lệnh, không gửi xuống máy): chương trình chưa nhận lệnh
+# từ web — lệnh chờ trên web và tự in khi tắt chế độ đó, thay vì web báo "đã gửi" mà máy không in (7/11).
+function Get-OfflineQueue {
+  if ($DryRunDir) { return $null }
+  foreach ($name in @($script:Config.printer, $script:Config.stripPrinter)) {
+    if (-not $name) { continue }
+    $queue = Get-Printer -Name $name -ErrorAction SilentlyContinue
+    if ($queue -and $queue.WorkOffline) { return $name }
+  }
+  return $null
+}
+
+# Máy in báo gì sau khi nhận tờ in (mất kết nối, hết giấy…): ghi vào kết quả để quản trị biết lệnh còn nằm
+# trong hàng in Windows, chưa ra giấy.
+function Get-PrinterProblem {
+  if ($DryRunDir) { return '' }
+  $printer = Get-Printer -Name $script:Config.printer -ErrorAction SilentlyContinue
+  if (-not $printer) { return '' }
+  $raw = [string]$printer.PrinterStatus
+  if ($raw -notin @('Offline', 'Error', 'PaperOut', 'PaperJam', 'PaperProblem', 'Paused', 'DoorOpen', 'NotAvailable', 'UserInterventionRequired')) { return '' }
+  $state = $StatusNames[$raw]
+  if (-not $state) { $state = $raw }
+  return " Máy in đang báo: $state — tờ in nằm trong hàng in Windows, máy sẽ in khi sẵn sàng."
+}
+
+# Tự cập nhật: lúc khởi động và mỗi 30 phút, tải bản mới của chính chương trình này từ trang web (cùng địa
+# chỉ với API, /downloads/print-agent-dnp.ps1). Chỉ thay khi khác bản đang chạy, đọc được (không lỗi cú
+# pháp) và đúng là chương trình in. Sửa lỗi chương trình in không cần chạy lại file cài trên mini PC.
+function Update-Self {
+  if ($Once -or $DryRunDir -or -not $AgentPath) { return $false }
+  $temp = Join-Path $env:TEMP ('nxc-print-agent-' + [guid]::NewGuid().ToString('N') + '.ps1')
+  try {
+    Invoke-WebRequest -Uri "$($script:Config.api)/downloads/print-agent-dnp.ps1" -OutFile $temp -UseBasicParsing -TimeoutSec 60
+    $new = [IO.File]::ReadAllBytes($temp)
+    if ($new.Length -lt 2000) { return $false }
+    if ([Convert]::ToBase64String($new) -eq [Convert]::ToBase64String([IO.File]::ReadAllBytes($AgentPath))) { return $false }
+    $errors = $null
+    [void][System.Management.Automation.Language.Parser]::ParseFile($temp, [ref]$null, [ref]$errors)
+    if ($errors -or ([Text.Encoding]::UTF8.GetString($new) -notmatch 'Update-Self' )) {
+      Write-Log 'Bản cập nhật tải về không hợp lệ — giữ bản đang chạy.'
+      return $false
+    }
+    Copy-Item -LiteralPath $temp -Destination $AgentPath -Force
+    Write-Log 'Đã tải bản mới của chương trình in.'
+    return $true
+  } catch {
+    Write-Log "Chưa kiểm tra được bản cập nhật: $($_.Exception.Message)"
+    return $false
+  } finally {
+    Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
+  }
+}
+
+function Restart-Agent {
+  Write-Log 'Chạy lại chương trình in với bản mới.'
+  try { $script:Mutex.ReleaseMutex() } catch {}
+  Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -ArgumentList @(
+    '-NoProfile', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-File', "`"$AgentPath`""
+  )
+  exit 0
+}
+
 function Send-Status {
   $config = $script:Config
   $printer = Get-Printer -Name $config.printer -ErrorAction SilentlyContinue
@@ -271,6 +334,8 @@ function Send-Status {
     if (-not $state) { $state = $raw }
     $ready = ($raw -eq 'Normal') -and -not $printer.WorkOffline
     if ($printer.WorkOffline) { $state = 'Đang bật "Use printer offline" trong Windows' }
+    $offline = Get-OfflineQueue
+    if ($offline) { $ready = $false; $state = "Hàng in '$offline' đang bật ""Use printer offline"" trong Windows" }
     foreach ($name in @($config.printer, $config.stripPrinter)) {
       if ($name) { $jobs += @(Get-PrintJob -PrinterName $name -ErrorAction SilentlyContinue).Count }
     }
@@ -307,7 +372,7 @@ function Invoke-Job($job) {
       }
     }
     $paper = Send-Sheets $queue $files ("NXC-$($job.code)")
-    return "Đã gửi $($files.Count) tờ tới máy DNP ($paper)$note."
+    return "Đã gửi $($files.Count) tờ tới máy DNP ($paper)$note.$(Get-PrinterProblem)"
   } finally {
     Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue
   }
@@ -317,17 +382,34 @@ function Start-Agent {
   $script:Config = Read-Config
   if (-not $Once) {
     $script:Mutex = New-Object System.Threading.Mutex($false, 'Local\NXC-Printer-Agent')
-    if (-not $script:Mutex.WaitOne(0)) { Write-Log 'Chương trình in đã đang chạy.'; return }
+    # Bản cũ vừa tự cập nhật đang thoát: chờ nó nhả khoá một lúc.
+    if (-not $script:Mutex.WaitOne(15000)) { Write-Log 'Chương trình in đã đang chạy.'; return }
+    if (Update-Self) { Restart-Agent }
   }
+  $updateAt = Get-Date
   Write-Log "Bắt đầu nhận lệnh in phòng '$($script:Config.room)' → $($script:Config.printer) (tờ nhỏ: $($script:Config.stripPrinter))."
   $statusAt = [datetime]::MinValue
   $delay = 3
   while ($true) {
     try {
+      if (-not $Once -and ((Get-Date) - $updateAt).TotalMinutes -ge 30) {
+        $updateAt = Get-Date
+        if (Update-Self) { Restart-Agent }
+      }
       if (((Get-Date) - $statusAt).TotalSeconds -ge 60) {
         try { Send-Status } catch { Write-Log "Không báo được tình trạng máy in: $($_.Exception.Message)" }
         $statusAt = Get-Date
       }
+      $offline = Get-OfflineQueue
+      if ($offline) {
+        if ($script:OfflineQueue -ne $offline) { Write-Log "Hàng in '$offline' đang bật 'Use printer offline': chưa nhận lệnh in." }
+        $script:OfflineQueue = $offline
+        if ($Once) { break }
+        $delay = 10
+        Start-Sleep -Seconds $delay
+        continue
+      }
+      $script:OfflineQueue = $null
       $claim = Invoke-Api 'POST' '/claim' @{ printSizes = @('full', 'strip') }
       $job = $claim.job
       if ($job) {
