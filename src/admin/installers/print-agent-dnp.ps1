@@ -176,11 +176,16 @@ function Set-TwoInchCut([string]$queueName, [bool]$enable) {
 }
 
 # Khổ giấy 10 × 15 cm (4 × 6 inch) của driver (driver có thể khai báo dọc hoặc ngang).
+# Driver DNP khai báo khổ 4x6 dọc hoặc ngang, có khi lớn hơn một chút vì phần tràn lề (vd. 4,13 × 6,15
+# inch), với tên "(6x4)", "PR (4x6)"…: nhận cả khoảng đó, ưu tiên khổ không phải "x2 / cắt", gần 4 × 6 nhất.
+# (7/11: driver ở tiệm không có khổ đúng 4,00 × 6,00 nên mọi lệnh in bị từ chối.)
 function Find-Paper($settings) {
-  return $settings.PaperSizes | Where-Object {
+  return @($settings.PaperSizes | Where-Object {
     $short = [Math]::Min($_.Width, $_.Height); $long = [Math]::Max($_.Width, $_.Height)
-    [Math]::Abs($short - 400) -lt 12 -and [Math]::Abs($long - 600) -lt 12
-  } | Sort-Object { $_.PaperName -match 'x ?2|2x6|strip|cut' } | Select-Object -First 1
+    $short -ge 380 -and $short -le 440 -and $long -ge 580 -and $long -le 650
+  }) | Sort-Object @{ Expression = { [bool]($_.PaperName -match 'x ?2|2x6|strip|cut') } },
+    @{ Expression = { [Math]::Abs([Math]::Min($_.Width, $_.Height) - 400) + [Math]::Abs([Math]::Max($_.Width, $_.Height) - 600) } } |
+    Select-Object -First 1
 }
 
 function Send-Sheets([string]$printerName, [string[]]$files, [string]$docName) {
@@ -201,8 +206,10 @@ function Send-Sheets([string]$printerName, [string[]]$files, [string]$docName) {
   if (-not $document.PrinterSettings.IsValid) { throw "Không thấy hàng in '$printerName' trong Windows." }
   $document.PrintController = New-Object System.Drawing.Printing.StandardPrintController
   $paper = Find-Paper $document.PrinterSettings
-  if (-not $paper) { throw "Hàng in '$printerName' không có khổ giấy 4x6 (10 × 15 cm). Kiểm tra driver DNP." }
-  $document.DefaultPageSettings.PaperSize = $paper
+  # Không nhận ra khổ 4x6 trong danh sách của driver: in bằng khổ đang đặt sẵn của hàng in (driver DNP mặc
+  # định 4x6) thay vì bỏ lệnh in của khách; tên khổ ghi vào kết quả để kiểm tra.
+  if ($paper) { $document.DefaultPageSettings.PaperSize = $paper }
+  else { $paper = $document.DefaultPageSettings.PaperSize }
   $document.DefaultPageSettings.Landscape = $false
   $document.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0, 0, 0, 0)
   $script:printPages = $files
@@ -223,7 +230,7 @@ function Send-Sheets([string]$printerName, [string[]]$files, [string]$docName) {
     $event.HasMorePages = $script:printIndex -lt $script:printPages.Count
   })
   try { $document.Print() } finally { $document.Dispose() }
-  return $paper.PaperName
+  return '{0} {1}x{2}' -f $paper.PaperName, $paper.Width, $paper.Height
 }
 
 function Read-Config {
