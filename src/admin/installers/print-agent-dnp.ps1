@@ -375,7 +375,8 @@ function Install-Agent {
   $config | ConvertTo-Json | Set-Content -LiteralPath $ConfigPath -Encoding UTF8
 
   # Bật máy là chạy: lối tắt trong thư mục Startup của người dùng này.
-  $startup = [Environment]::GetFolderPath('Startup')
+  $startup = $env:NXC_STARTUP_DIR
+  if (-not $startup) { $startup = [Environment]::GetFolderPath('Startup') }
   Set-Content -LiteralPath (Join-Path $startup 'NXC-May-in.bat') -Encoding ASCII -Value @(
     '@echo off',
     "start `"`" /min powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$PSCommandPath`""
@@ -395,7 +396,19 @@ function Install-Agent {
 
 if ($Diagnose) { Show-Diagnosis; return }
 if ($Install) {
-  try { Install-Agent } catch { Show-Message "Cài máy in không thành công: $($_.Exception.Message)" 'Error'; exit 1 }
-  return
+  # Nhật ký cài đặt (gửi cho kỹ thuật khi cài lỗi): %LOCALAPPDATA%\NXC-Printer\install.log
+  try {
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ConfigPath) | Out-Null
+    Start-Transcript -LiteralPath (Join-Path (Split-Path -Parent $ConfigPath) 'install.log') -Force | Out-Null
+  } catch {}
+  $failed = $false
+  try { Install-Agent } catch {
+    $failed = $true
+    Write-Host ($_ | Out-String) -ForegroundColor Red
+    Show-Message "Cài máy in không thành công: $($_.Exception.Message)" 'Error'
+  }
+  try { Stop-Transcript | Out-Null } catch {}
+  if ($failed) { exit 1 }
+  exit 0
 }
 Start-Agent

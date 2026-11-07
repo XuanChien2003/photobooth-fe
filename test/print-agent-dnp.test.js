@@ -88,7 +88,7 @@ test("the room's installer carries the agent and its settings, and its own comma
   assert.equal(printerInstallerName("Phòng Đỏ 1"), "cai-may-in-phong-do-1.bat");
   assert.ok(bat.includes("\r\n") && !/[^\r]\n/.test(bat), "Windows line endings throughout");
   assert.match(bat, /Start-Process -FilePath \$env:NXC_SELF -Verb RunAs/, "asks for admin rights to add the cut queue");
-  assert.match(bat, /print-agent\.ps1" -Install\r\nexit \/b\r\n/, "nothing after exit /b is ever executed");
+  assert.match(bat, /\r\nexit \/b\r\nrem NXC_PRINT_AGENT_BASE64:/, "nothing after exit /b is ever executed");
   const field = (name) => Buffer.from(new RegExp(`^rem ${name}:([A-Za-z0-9+/=]+)\r$`, "m").exec(bat)[1], "base64");
   assert.deepEqual(JSON.parse(field("NXC_PRINT_CONFIG_BASE64").toString("utf8")),
     { api: "https://photobooth.example.dev", token: "header.payload.sig", room: "Phòng 1" });
@@ -97,17 +97,28 @@ test("the room's installer carries the agent and its settings, and its own comma
   assert.equal(agent.subarray(3).toString("utf8"), source.replace(/^﻿/, ""));
   assert.throws(() => printerInstaller({ script: source, api: "https://x.dev/\" & calc", token: "t", room: "r" }));
   if (process.platform !== "win32") return;
-  // Chạy đúng dòng giải nén trong file cài bằng cmd, như khi nhân viên bấm đúp file.
+  // Chạy chính file cài bằng cmd như khi nhân viên bấm đúp file, chỉ bỏ bước xin quyền quản trị và thay
+  // -Install (thêm hàng in, hộp thoại) bằng -Diagnose (chỉ đọc): đường dẫn, giải nén và lệnh chạy
+  // chương trình in đều là của file thật (6/11: thiếu dấu \ trong đường dẫn làm cửa sổ tự tắt).
+  assert.ok(bat.includes('set "NXC_PRINT_DIR=%LOCALAPPDATA%\\NXC-Printer"\r\n'));
+  assert.ok(bat.includes('-File "%NXC_PRINT_DIR%\\print-agent.ps1" -Install\r\n'));
   const folder = await mkdtemp(path.join(os.tmpdir(), "nxc-installer-"));
   try {
+    const lines = bat.split("\r\n");
+    const from = lines.indexOf("net session >nul 2>&1"), to = lines.indexOf(")", from);
+    const runnable = [...lines.slice(0, from), ...lines.slice(to + 1)].join("\r\n")
+      .replace('print-agent.ps1" -Install', 'print-agent.ps1" -Diagnose')
+      .replace("timeout /t 5 >nul", "rem");
     const installer = path.join(folder, "cai-may-in-phong-1.bat");
-    await writeFile(installer, bat);
-    const line = bat.split("\r\n").find((text) => text.startsWith("powershell -NoProfile -Command \"try {"));
-    await promisify(execFile)("cmd.exe", ["/d", "/s", "/c", `"${line}"`], {
-      windowsVerbatimArguments: true, windowsHide: true, timeout: 60000,
-      env: { ...process.env, NXC_PRINT_INSTALLER: installer, NXC_PRINT_DIR: folder },
+    await writeFile(installer, runnable);
+    const local = path.join(folder, "Local");
+    const { stdout } = await promisify(execFile)("cmd.exe", ["/d", "/c", installer], {
+      windowsHide: true, timeout: 60000, env: { ...process.env, LOCALAPPDATA: local },
     });
-    assert.deepEqual(await readFile(path.join(folder, "print-agent.ps1")), agent);
+    assert.match(stdout, /Dang cai chuong trinh in tu dong/);
+    assert.match(stdout, /== M/, "the unpacked agent ran (its read-only printer check printed)");
+    assert.match(stdout, /Da cai xong may in DNP/);
+    assert.deepEqual(await readFile(path.join(local, "NXC-Printer", "print-agent.ps1")), agent);
   } finally {
     await rm(folder, { recursive: true, force: true });
   }

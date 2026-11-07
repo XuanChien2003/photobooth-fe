@@ -25,7 +25,7 @@ export function printerInstaller({ script, api, token, room }) {
     "  exit /b",
     ")",
     'set "NXC_PRINT_INSTALLER=%~f0"',
-    'set "NXC_PRINT_DIR=%LOCALAPPDATA%\NXC-Printer"',
+    'set "NXC_PRINT_DIR=%LOCALAPPDATA%\\NXC-Printer"',
     'if not exist "%NXC_PRINT_DIR%" mkdir "%NXC_PRINT_DIR%"',
     "echo Dang cai chuong trinh in tu dong...",
     extract,
@@ -34,7 +34,24 @@ export function printerInstaller({ script, api, token, room }) {
     "  pause",
     "  exit /b 1",
     ")",
-    'powershell -NoProfile -ExecutionPolicy Bypass -File "%NXC_PRINT_DIR%\print-agent.ps1" -Install',
+    // Phần mềm diệt virus có thể xoá ngay file vừa giải nén: báo rõ thay vì cửa sổ tự tắt.
+    'if not exist "%NXC_PRINT_DIR%\\print-agent.ps1" (',
+    "  echo Khong thay chuong trinh in sau khi giai nen: phan mem diet virus co the da chan.",
+    "  echo Mo Windows Security - Virus and threat protection - Protection history de cho phep, roi chay lai file nay.",
+    "  pause",
+    "  exit /b 1",
+    ")",
+    'powershell -NoProfile -ExecutionPolicy Bypass -File "%NXC_PRINT_DIR%\\print-agent.ps1" -Install',
+    // Lỗi gì cũng giữ cửa sổ lại để chụp màn hình (nhật ký đầy đủ ở install.log).
+    "if errorlevel 1 (",
+    "  echo.",
+    "  echo Cai may in chua xong. Chup man hinh cua so nay gui cho ky thuat.",
+    "  echo Nhat ky: %NXC_PRINT_DIR%\\install.log",
+    "  pause",
+    "  exit /b 1",
+    ")",
+    "echo Da cai xong may in DNP. Cua so nay tu dong sau 5 giay.",
+    "timeout /t 5 >nul",
     "exit /b",
     `rem NXC_PRINT_AGENT_BASE64:${encodePayload(script)}`,
     `rem NXC_PRINT_CONFIG_BASE64:${encodePayload(JSON.stringify({ api, token, room }), { bom: false })}`,
@@ -44,5 +61,5 @@ export function printerInstaller({ script, api, token, room }) {
 
 // Tên file: không dấu, chỉ chữ số và gạch nối ("Phòng 1" → cai-may-in-phong-1.bat).
 export const printerInstallerName = (room) =>
-  `cai-may-in-${room.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/gi, "d")
+  `cai-may-in-${room.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\u0111/gi, "d")
     .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "phong"}.bat`;
