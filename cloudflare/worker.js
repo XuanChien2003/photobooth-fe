@@ -18,6 +18,28 @@ function keepAwakeNow(time) {
   return hour >= AWAKE_FROM_HOUR || hour < AWAKE_UNTIL_HOUR;
 }
 
+// Tên miền chính của tiệm (wrangler.jsonc → PUBLIC_ORIGIN, vd. https://mellowptb.com). Trang chủ, quản
+// trị và album mở bằng địa chỉ phụ *.workers.dev được chuyển sang tên miền chính: liên kết máy chụp, mã QR
+// album và file cài tạo ra từ đó đều mang tên miền chính, và kho ảnh R2 chỉ cần cho phép tên miền đó.
+// Trang máy chụp (/kiosk) và API KHÔNG chuyển: ảnh chưa gửi, quyền camera / thư mục ảnh và cài đặt của
+// máy chụp gắn với địa chỉ đang mở; máy in và máy chụp cũ vẫn gọi API ở địa chỉ cũ.
+const MOVED_PAGES = /^\/(?:$|admin(?:\/|$)|album\/)/;
+export function canonicalRedirect(incoming, env) {
+  if (!env.PUBLIC_ORIGIN || !incoming.hostname.endsWith(".workers.dev") || !MOVED_PAGES.test(incoming.pathname))
+    return null;
+  let target;
+  try {
+    target = new URL(env.PUBLIC_ORIGIN);
+  } catch {
+    return null;
+  }
+  if (target.protocol !== "https:" || target.origin === incoming.origin) return null;
+  target.pathname = incoming.pathname;
+  target.search = incoming.search;
+  // 302: trình duyệt không nhớ mãi, đổi tên miền sau này không bị kẹt.
+  return Response.redirect(target.toString(), 302);
+}
+
 function apiError(status, message) {
   return Response.json({ message }, {
     status,
@@ -29,7 +51,8 @@ export default {
   async fetch(request, env) {
     const incoming = new URL(request.url);
     if (incoming.pathname !== "/api" && !incoming.pathname.startsWith("/api/")) {
-      return env.ASSETS.fetch(request);
+      const moved = ["GET", "HEAD"].includes(request.method) && canonicalRedirect(incoming, env);
+      return moved || env.ASSETS.fetch(request);
     }
 
     // Enforce browser origin here BEFORE translating it for the existing backend.

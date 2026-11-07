@@ -41,6 +41,30 @@ test("Cloudflare sends only /api and /api/* to Render and leaves SPA/assets to t
   assert.equal(assets.length, 6);
 });
 
+test("home, admin and album pages opened on *.workers.dev move to the shop's own domain; kiosk and API stay", async (t) => {
+  const env = { ...environment(() => new Response("app or asset")), PUBLIC_ORIGIN: "https://mellowptb.com" };
+  const calls = intercept(t, () => Response.json({ ok: true }));
+  for (const [path, to] of [
+    ["/", "https://mellowptb.com/"],
+    ["/admin", "https://mellowptb.com/admin"],
+    ["/admin/bookings?from=2026-11-01", "https://mellowptb.com/admin/bookings?from=2026-11-01"],
+    ["/album/abc123", "https://mellowptb.com/album/abc123"],
+  ]) {
+    const response = await worker.fetch(request(path), env);
+    assert.equal(response.status, 302, path);
+    assert.equal(response.headers.get("Location"), to);
+  }
+  // Máy chụp giữ địa chỉ đang mở (ảnh chưa gửi, quyền camera / thư mục nằm ở đó); API không chuyển.
+  for (const path of ["/kiosk?device=x", "/assets/main.js", "/administrator"])
+    assert.equal(await (await worker.fetch(request(path), env)).text(), "app or asset");
+  assert.equal((await worker.fetch(request("/api/health"), env)).status, 200);
+  assert.equal(calls.length, 1);
+  // Đã ở tên miền chính, hoặc chưa cấu hình: không chuyển.
+  const own = new Request("https://mellowptb.com/admin");
+  assert.equal(await (await worker.fetch(own, env)).text(), "app or asset");
+  assert.equal(await (await worker.fetch(request("/admin"), environment())).text(), "static asset");
+});
+
 test("Cloudflare rejects foreign and opaque browser origins before contacting Render, including safe reads", async (t) => {
   const calls = intercept(t, () => { throw Error("must not reach Render"); });
   for (const method of ["GET", "POST", "PATCH", "DELETE", "OPTIONS"]) {

@@ -10,11 +10,14 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api", "/api/*"]
+    // Trang chủ, quản trị, album: Worker chuyển *.workers.dev sang tên miền chính (PUBLIC_ORIGIN).
+    "run_worker_first": ["/api", "/api/*", "/", "/admin", "/admin/*", "/album/*"]
   },
   // Backend Render gói Starter ($7, 0,5 CPU, 512 MB) — không ngủ, nên không cần lịch cron đánh
   // thức máy chủ như gói free (trang studio vẫn giữ cron trong wrangler.studio.jsonc).
   "vars": {
-    "API_ORIGIN": "https://photobooth-be-oqcr.onrender.com"
+    "API_ORIGIN": "https://photobooth-be-oqcr.onrender.com",
+    // Tên miền chính của tiệm (custom domain của Worker này).
+    "PUBLIC_ORIGIN": "https://mellowptb.com"
   }
 }
