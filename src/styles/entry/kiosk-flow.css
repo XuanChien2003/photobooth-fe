@@ -1751,6 +1751,13 @@
   .album-viewer-arrow.is-next {
     right: 12px;
   }
+  .album-viewer-note {
+    margin: 0;
+    padding: 0 14px;
+    color: var(--mellow-muted, #7a5a48);
+    font-size: 13px;
+    text-align: center;
+  }
   .album-viewer-actions {
     display: flex;
     flex-wrap: wrap;

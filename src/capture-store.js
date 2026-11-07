@@ -32,6 +32,10 @@ export const countPending = (token) => token === undefined
   ? run("photos", "readonly", (s) => s.count())
   : readPending(token).then((rows) => rows.length);
 export const removePending = (id) => run("photos", "readwrite", (s) => s.delete(id));
+// Ảnh xem trước đã lên album: dòng ảnh ở lại để gửi ảnh gốc sau (stage "original", theo thứ tự chụp).
+export const markOriginalPending = (row) => savePending({ ...row, stage: "original", originalAt: Date.now() });
+// Ảnh còn phải gửi ảnh xem trước (chưa lên album).
+export const isPreviewPending = (row) => row.stage !== "original";
 export const saveSetting = (key, value) =>
   run("settings", "readwrite", (s) => s.put(value, key));
 export const readSetting = (key) => run("settings", "readonly", (s) => s.get(key));

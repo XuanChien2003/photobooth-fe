@@ -91,6 +91,62 @@ export async function savePhoto(path, image, options = {}) {
   }
 }
 
+// Ảnh xem trước tới trước: chỉ gửi ảnh xem trước 1600 px của máy chụp (~0,3 MB thay vì 15 MB) — máy
+// chủ lưu nó làm ảnh trong album ngay, khách quét QR là thấy ảnh. Ảnh gốc gửi sau (saveOriginal).
+// row: dòng ảnh chờ gửi trên máy ({ id, image, preview, mirrored }).
+export function savePreview(path, row, { captureToken } = {}) {
+  return api(path, {
+    method: "POST",
+    timeout: 60000,
+    retry: 1,
+    body: row.preview,
+    headers: {
+      "X-Photo-Key": row.id,
+      "X-Photo-Original": "later",
+      ...(captureToken && { "X-Capture-Token": captureToken }),
+      ...(row.mirrored !== undefined && { "X-Photo-Mirrored": row.mirrored ? "1" : "0" }),
+    },
+  });
+}
+
+// Ảnh gốc của máy ảnh cho ảnh album đã có (đang hiện ảnh xem trước): thẳng lên kho R2 rồi báo máy chủ
+// gắn vào ảnh; kho MongoDB, trang chưa được kho cho tải lên (CORS) hoặc tệp trên kho không dùng được
+// thì gửi tệp qua máy chủ. Lỗi 410 / 404 (ảnh hoặc album không còn): người gọi bỏ dòng ảnh đó.
+export async function saveOriginal(token, row) {
+  const base = `/albums/${token}/photos/original`;
+  let file;
+  try {
+    file = await cleanCameraJpeg(row.image);
+  } catch {
+    file = row.image; // tệp chưa trọn vẹn: máy chủ tự kiểm tra và trả lỗi như thường
+  }
+  const body = file.type === "image/jpeg" ? file : file.slice(0, file.size, "image/jpeg");
+  const viaServer = () => api(base, { method: "POST", body, timeout: 600000, headers: { "X-Photo-Key": row.id } });
+  if (Date.now() < directOffUntil) return viaServer();
+  let ticket;
+  try {
+    ticket = await api(`${base}-url`, { method: "POST", body: { clientKey: row.id, size: body.size } });
+  } catch (error) {
+    if (error.status === 404) return viaServer(); // kho MongoDB không tải thẳng được
+    throw error;
+  }
+  if (ticket?.saved) return ticket;
+  if (!isStorageUrl(ticket?.upload?.url) || typeof ticket.upload.stored !== "string") return viaServer();
+  try {
+    // Mạng tiệm chậm: 15 MB có thể mất vài phút.
+    await putToStorage(ticket.upload.url, body, { timeout: 600000 });
+  } catch {
+    directOffUntil = Date.now() + DIRECT_PAUSE_MS;
+    return viaServer();
+  }
+  try {
+    return await api(base, { method: "POST", timeout: 60000, retry: 1, body: { clientKey: row.id, stored: ticket.upload.stored } });
+  } catch (error) {
+    if (error.status === 422) return viaServer();
+    throw error;
+  }
+}
+
 // Video tua nhanh (tới ~48 MB) thẳng lên kho R2 như ảnh gốc: máy chủ free không phải nhận và giữ cả
 // video trong bộ nhớ, video lên album nhanh hơn. Kho MongoDB, trang chưa được kho cho tải lên (CORS)
 // hoặc tệp trên kho không dùng được: gửi qua máy chủ như trước. video: Blob loại video/mp4 | video/webm.

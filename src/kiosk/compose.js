@@ -19,6 +19,7 @@ import { fetchMediaBlob } from "../media-delivery.js";
 import { jpegDataUrl } from "../album/encode-jpeg.js";
 import { printPackUpload } from "../album/print-upload.js";
 import { drawStickers, filterPhotos, loadStickers, stickerArea } from "./decor.js";
+import { priority } from "./uplink.js";
 
 // Ghép khung và in ngay tại máy chụp (khách chọn ảnh → chọn khung → lấy ảnh ở khay in).
 // Một "tấm" (shot): { key, preview: Blob | URL, image?: Blob gốc chưa lật, mirrored, serverId? }.
@@ -268,9 +269,9 @@ export function runKioskPrints() {
         const left = [];
         for (const job of queue) {
           try {
-            const printed = await api(`/albums/${job.token}/print-pack`, printPackUpload({
+            const printed = await priority(() => api(`/albums/${job.token}/print-pack`, printPackUpload({
               images: job.images, frameName: job.frameName, requestKey: job.requestKey,
-            }));
+            })));
             notify(job.token, spoolState(printed));
             watchSpool(job.token, job.requestKey);
           } catch (error) {
@@ -322,7 +323,7 @@ export function runKioskComposites() {
         const finished = new Set();
         for (const job of queue) {
           try {
-            await api("/kiosk/composite", {
+            await priority(() => api("/kiosk/composite", {
               method: "POST",
               body: job.image,
               timeout: 120000,
@@ -330,7 +331,7 @@ export function runKioskComposites() {
                 "X-Capture-Token": job.captureToken,
                 "X-Frame-Name": encodeURIComponent(job.frameName || ""),
               },
-            });
+            }));
             finished.add(job.id);
           } catch (error) {
             // Phiên chụp không còn hợp lệ / ảnh bị từ chối / chờ quá lâu: không thử lại nữa.

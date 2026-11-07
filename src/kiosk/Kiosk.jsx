@@ -10,6 +10,8 @@ import {
   removePending,
   readSetting,
   saveSetting,
+  markOriginalPending,
+  isPreviewPending,
 } from "../capture-store";
 import { transition } from "../transitions";
 import { CAMERA_KEY, FOLDER_KEY, LOW_POWER_KEY, MIRROR_KEY, QR_SECONDS, WEBCAM_KEY } from "./constants.js";
@@ -32,7 +34,8 @@ import {
 } from "./folder.js";
 import { cameraPhotoId, prepareCameraPhoto } from "./photo.js";
 import { directMediaUrl } from "../media-delivery.js";
-import { savePhoto, saveVideo } from "./direct-upload.js";
+import { saveOriginal, savePhoto, savePreview, saveVideo } from "./direct-upload.js";
+import { priority, whenUplinkIdle } from "./uplink.js";
 import { watchCameraFolder } from "./watch-camera-folder.js";
 import {
   canApplyKioskPhoto,
@@ -156,6 +159,8 @@ export function Kiosk() {
     finishRetry = useRef({ at: 0, failures: 0, timer: null }),
     current = useRef(session),
     photoRequests = useRef(createSingleFlight()),
+    originalRequests = useRef(createSingleFlight()),
+    originalRetry = useRef(null),
     photoWake = useRef(null),
     stateRequests = useRef(createSingleFlight()),
     request = useRef(0),
@@ -825,6 +830,46 @@ export function Kiosk() {
     if (phase === "ready" && !preCount) patch({ phase: "shoot" });
   }, [phase, preCount]);
 
+  // Ảnh gốc 15 MB của máy ảnh: gửi sau ảnh xem trước, từng tấm theo thứ tự chụp, chỉ khi không có việc
+  // khách đang chờ (ảnh xem trước, tờ in, ảnh ghép, video — uplink.js). Lỗi mạng: thử lại sau 20 giây.
+  // Album / ảnh không còn: bỏ dòng ảnh (410), hoặc đẩy xuống cuối hàng rồi bỏ sau 1 ngày (404).
+  function sendOriginals() {
+    return originalRequests.current.run(async () => {
+      clearTimeout(originalRetry.current);
+      while (alive.current) {
+        await whenUplinkIdle();
+        // Ảnh xem trước của lượt đang chụp còn chờ: chúng đi trước, gửi xong sẽ gọi lại.
+        if (pendingRef.current.length) return;
+        const rows = (await readPending().catch(() => []))
+          .filter((row) => !isPreviewPending(row))
+          .sort((a, b) => (a.originalAt || 0) - (b.originalAt || 0));
+        const row = rows[0];
+        if (!row) return;
+        try {
+          await saveOriginal(row.token, row);
+          await removePending(row.id);
+        } catch (error) {
+          if (error.status === 410 || (error.status === 404 && Date.now() - (row.originalAt || 0) > 86400000)) {
+            await removePending(row.id).catch(() => {});
+            continue;
+          }
+          if (error.status === 404) await savePending({ ...row, originalAt: Date.now() }).catch(() => {});
+          originalRetry.current = setTimeout(sendOriginals, 20000);
+          return;
+        }
+      }
+    }).catch(() => {});
+  }
+  useEffect(() => {
+    sendOriginals();
+    const timer = setInterval(sendOriginals, 30000);
+    const unsubscribe = onNetworkRecovery(sendOriginals);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(originalRetry.current);
+      unsubscribe();
+    };
+  }, []);
   async function sync() {
     if (!current.current || !alive.current) return;
     const started = current.current;
@@ -834,7 +879,7 @@ export function Kiosk() {
         await drainPendingPhotos({
           isActive: () => alive.current && sameKioskSession(started, current.current) &&
             Boolean(kioskPhotoPath(current.current)),
-          readPending: () => readPending(started.accessToken),
+          readPending: () => readPending(started.accessToken).then((rows) => rows.filter(isPreviewPending)),
           subscribe: (wake) => {
             photoWake.current = wake;
             return () => { if (photoWake.current === wake) photoWake.current = null; };
@@ -842,6 +887,9 @@ export function Kiosk() {
           upload: (row) => {
             const live = current.current;
             const path = kioskPhotoPath(live);
+            // Ảnh xem trước tới trước (~0,3 MB): album có ảnh trong vài giây; ảnh gốc gửi sau.
+            if (row.preview instanceof Blob)
+              return priority(() => savePreview(path, row, { captureToken: live.captureToken }));
             return savePhoto(path, row.image, {
               captureToken: live.captureToken,
               clientKey: row.id,
@@ -853,8 +901,10 @@ export function Kiosk() {
             const live = current.current;
             if (canApplyKioskPhoto(started, live, b))
               update({ ...live, booking: { ...mergeUploadedPhotos(live.booking, b), status: b.status } });
-            await removePending(row.id);
+            if (row.preview instanceof Blob) await markOriginalPending(row);
+            else await removePending(row.id);
             trackPending((list) => list.filter((p) => p.id !== row.id));
+            sendOriginals();
           },
         });
         if (alive.current && sameKioskSession(started, current.current)) netRecovered();
@@ -924,7 +974,7 @@ export function Kiosk() {
     for (let attempt = 0; attempt < 6; attempt++) {
       try {
         // Thẳng lên kho R2 khi được, không thì qua máy chủ (direct-upload.js).
-        await saveVideo(body, s.captureToken);
+        await priority(() => saveVideo(body, s.captureToken));
         return;
       } catch (e) {
         if (!isTransient(e) && !(e.status >= 500)) return;
@@ -1163,11 +1213,19 @@ export function Kiosk() {
       (!current.current || doneRef.current);
     const flush = () => photoRequests.current.run(() => flushPendingPhotos({
       isIdle,
-      readPending,
-      upload: (row) => savePhoto(`/albums/${row.token}/photos`, row.image,
-        { clientKey: row.id, mirrored: row.mirrored, preview: row.preview }),
-      removePending,
-      onSaved: (row) => trackPending((list) => list.filter((p) => p.id !== row.id)),
+      readPending: () => readPending().then((rows) => rows.filter(isPreviewPending)),
+      upload: (row) => row.preview instanceof Blob
+        ? priority(() => savePreview(`/albums/${row.token}/photos`, row))
+        : savePhoto(`/albums/${row.token}/photos`, row.image, { clientKey: row.id, mirrored: row.mirrored, preview: row.preview }),
+      removePending: async (id) => {
+        const row = (await readPending()).find((item) => item.id === id);
+        if (row?.preview instanceof Blob) await markOriginalPending(row);
+        else await removePending(id);
+      },
+      onSaved: (row) => {
+        trackPending((list) => list.filter((p) => p.id !== row.id));
+        sendOriginals();
+      },
     })).catch(() => {});
     flush();
     const timer = setInterval(flush, 15000);
@@ -1236,7 +1294,8 @@ export function Kiosk() {
         for (const row of rows)
           if (!localShots.current.has(row.id))
             localShots.current.set(row.id, { image: row.image, preview: row.preview, mirrored: row.mirrored });
-        trackPending(rows);
+        // Ảnh đã lên album (chỉ còn chờ gửi ảnh gốc) không tính là ảnh chưa đồng bộ.
+        trackPending(rows.filter(isPreviewPending));
       },
       () => {},
     );

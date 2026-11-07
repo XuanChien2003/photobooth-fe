@@ -17,6 +17,8 @@ const ALBUM_SETTLE_MS = 3 * 60000;
 const albumSignature = (b) => [
   b.status,
   (b.photos || []).map((p) => p.id || p._id).join(","),
+  // Ảnh gốc độ nét cao còn đang tới (album hiện ảnh xem trước): còn làm mới nhanh tới khi đủ.
+  (b.photos || []).filter((p) => p.originalPending).length,
   b.video?.size || 0,
   b.composite ? 1 : 0,
   b.mediaDeleted ? 1 : 0,

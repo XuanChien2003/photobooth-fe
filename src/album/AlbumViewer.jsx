@@ -50,6 +50,8 @@ export function AlbumViewer({ token, booking }) {
   const sheet = !composite && job?._id ? getApiUrl(`/api/albums/${token}/prints/${job._id}`) : "";
   const video = booking.video ? getApiUrl(`/api/albums/${token}/video`) : "";
   const originals = booking.photos.filter((p) => p.kind === "original");
+  // Máy chụp gửi ảnh xem trước trước (khách thấy ảnh ngay), ảnh gốc độ nét cao tới sau ít phút.
+  const pendingOriginals = originals.filter((p) => p.originalPending).length;
   const compositeThumbs = composite || sheet
     ? albumMediaSources(booking.composite, `${composite || sheet}?size=thumbnail`, "thumbnail")
     : [];
@@ -211,6 +213,11 @@ export function AlbumViewer({ token, booking }) {
           </button>
         )}
       </div>
+      {pendingOriginals > 0 && (
+        <p className="album-viewer-note" role="status">
+          Đang nhận ảnh gốc độ nét cao ({pendingOriginals} ảnh) — vài phút nữa bấm Lưu để có bản nét nhất.
+        </p>
+      )}
       <div className="album-viewer-actions">
         <button type="button" className="button small" disabled={Boolean(saving)} onClick={() => save(item.key, [item])}>
           <PiDownloadSimpleBold aria-hidden="true" />
