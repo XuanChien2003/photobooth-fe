@@ -82,7 +82,7 @@ test("album displays R2 media directly and refreshed links do not restart a play
   try {
     await page.goto(base);
     await page.evaluate(value => window.showAlbum(value), booking());
-    const composite = page.locator(".album-viewer-stage img");
+    const composite = page.locator(".album-viewer-stage img.album-viewer-main");
     await composite.waitFor();
     assert.equal(await composite.getAttribute("src"), storage + "composite.jpg?sig=first");
     await page.getByRole("tab", { name: "Video tua nhanh" }).click();
@@ -92,7 +92,7 @@ test("album displays R2 media directly and refreshed links do not restart a play
     assert.equal(await page.locator("video").getAttribute("src"), storage + "video.webm?sig=first");
     assert.equal(await page.evaluate(() => window.playingVideo === document.querySelector("video")), true);
     await page.getByRole("tab", { name: "Ảnh 1", exact: true }).click();
-    assert.equal(await page.locator(".album-viewer-stage img").getAttribute("src"), storage + "preview.jpg?sig=refreshed");
+    assert.equal(await page.locator(".album-viewer-stage img.album-viewer-main").getAttribute("src"), storage + "preview.jpg?sig=refreshed");
     assert.deepEqual(apiCalls, [], "viewing uses no API byte relay");
     assert.deepEqual(errors, []);
   } finally { await page.close(); }
@@ -112,7 +112,7 @@ test("unavailable or expired R2 media falls back to the authenticated image and 
     await page.goto(base);
     await page.evaluate(value => window.showAlbum(value), booking());
     await page.waitForFunction(() => {
-      const image = document.querySelector(".album-viewer-stage img");
+      const image = document.querySelector(".album-viewer-stage img.album-viewer-main");
       return image?.complete && image.naturalWidth > 0 && image.getAttribute("src") === "/api/albums/fixture/composite";
     });
     await page.getByRole("tab", { name: "Video tua nhanh" }).click();
@@ -134,12 +134,46 @@ test("a newly uploaded composite replaces the legacy print sheet already on scre
     const old = booking();
     delete old.composite; delete old.video;
     await page.evaluate(value => window.showAlbum(value), old);
-    await page.waitForFunction(() => document.querySelector(".album-viewer-stage img")?.getAttribute("src") ===
+    await page.waitForFunction(() => document.querySelector(".album-viewer-stage img.album-viewer-main")?.getAttribute("src") ===
       "/api/albums/fixture/prints/legacy-sheet?direct=1");
     await page.evaluate(value => window.showAlbum(value), booking());
-    await page.waitForFunction(expected => document.querySelector(".album-viewer-stage img")?.getAttribute("src") === expected,
+    await page.waitForFunction(expected => document.querySelector(".album-viewer-stage img.album-viewer-main")?.getAttribute("src") === expected,
       storage + "composite.jpg?sig=first");
     assert.equal(await page.getByRole("tab", { name: "Ảnh ghép khung" }).locator("img").getAttribute("src"),
       storage + "thumb.jpg?sig=first");
   } finally { await page.close(); }
+});
+
+test("the big photo shows its thumbnail at once while the sharp version loads, and the next photo is fetched ahead", async () => {
+  const page = await browser.newPage(), requested = [], errors = [];
+  let release;
+  const held = new Promise(resolve => { release = resolve; });
+  page.on("pageerror", error => errors.push(error.message));
+  await page.route("**/api/**", route => route.abort());
+  await page.route(storage + "**", async route => {
+    const url = route.request().url();
+    requested.push(new URL(url).pathname.split("/").pop());
+    // Ảnh nét của ảnh 1 tải chậm (mạng điện thoại).
+    if (url.includes("/preview.jpg")) await held;
+    await route.fulfill({ contentType: "image/png", body: imageBytes }).catch(() => {});
+  });
+  try {
+    await page.goto(base);
+    const album = booking();
+    const { until } = album.photos[0].links;
+    album.photos.push({ id: "second", kind: "original",
+      links: { until, preview: `${storage}preview-2.jpg?sig=first`, thumbnail: `${storage}photo-thumb-2.jpg?sig=first` } });
+    await page.evaluate(value => window.showAlbum(value), album);
+    await page.getByRole("tab", { name: "Ảnh 1", exact: true }).click();
+    const placeholder = page.locator(".album-viewer-placeholder");
+    await placeholder.waitFor();
+    assert.equal(await placeholder.getAttribute("src"), storage + "photo-thumb.jpg?sig=first",
+      "the same thumbnail as in the strip below, so it is already in the browser cache");
+    assert.equal(await page.locator(".album-viewer-main").getAttribute("src"), storage + "preview.jpg?sig=first");
+    assert.ok(requested.includes("preview-2.jpg"), "the neighbouring photo was fetched before it was opened");
+    release();
+    await placeholder.waitFor({ state: "detached" });
+    assert.equal(await page.locator(".album-viewer-main").evaluate(img => img.complete && img.naturalWidth > 0), true);
+    assert.deepEqual(errors, []);
+  } finally { release(); await page.close(); }
 });

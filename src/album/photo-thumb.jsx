@@ -10,13 +10,15 @@ export const photoUrl = (token, id, size = false) =>
 
 // Ảnh nhỏ của album: tải thẳng từ kho lưu trữ bằng link album trả kèm, rồi qua chuyển hướng của
 // API, cuối cùng qua API. Giữ nguyên nguồn đã chọn: album làm mới link định kỳ, đổi src là tải lại.
+export function thumbSources(photo, token) {
+  const api = photoUrl(token, photo.id, true);
+  const link = storageLink(photo, "thumbnail");
+  return [...(link ? [{ src: link, cors: true }] : []),
+    { src: directMediaUrl(api), cors: true }, { src: api, cors: false }];
+}
+
 export function PhotoThumb({ photo, token, ...props }) {
-  const [sources] = useState(() => {
-    const api = photoUrl(token, photo.id, true);
-    const link = storageLink(photo, "thumbnail");
-    return [...(link ? [{ src: link, cors: true }] : []),
-      { src: directMediaUrl(api), cors: true }, { src: api, cors: false }];
-  });
+  const [sources] = useState(() => thumbSources(photo, token));
   const [index, setIndex] = useState(0);
   const { src, cors } = sources[index];
   return (

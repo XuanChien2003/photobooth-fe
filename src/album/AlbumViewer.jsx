@@ -3,9 +3,37 @@ import { PiArrowLeftBold, PiArrowRightBold, PiDownloadSimpleBold, PiImagesBold, 
 import { useToast } from "../studio";
 import { api, getApiUrl } from "../api";
 import { albumMediaSources, storageLink } from "../media-delivery.js";
-import { PhotoThumb, photoUrl } from "./photo-thumb.jsx";
+import { PhotoThumb, photoUrl, thumbSources } from "./photo-thumb.jsx";
 import { AlbumMedia } from "./album-media.jsx";
 import { downloadEach, fetchFiles, savableOnIOS, usesShareSheet } from "./save-to-phone.js";
+
+// Ảnh lớn: ảnh nhỏ của dải bên dưới (đã tải sẵn) hiện ngay, phóng vừa khung; ảnh nét (1600 px / ảnh
+// ghép) đè lên khi tải xong. Mạng điện thoại chậm thì khách vẫn thấy ảnh ngay, không phải khung trống.
+function StageImage({ sources, placeholder, alt }) {
+  const [loaded, setLoaded] = useState(false);
+  const [placeholderFailed, setPlaceholderFailed] = useState(false);
+  return (
+    <div className="album-viewer-photo">
+      {placeholder && !loaded && !placeholderFailed && (
+        <img
+          className="album-viewer-placeholder"
+          src={placeholder.src}
+          crossOrigin={placeholder.cors ? "anonymous" : undefined}
+          alt=""
+          aria-hidden="true"
+          onError={() => setPlaceholderFailed(true)}
+        />
+      )}
+      <AlbumMedia
+        className="album-viewer-main"
+        sources={sources}
+        alt={alt}
+        fetchPriority="high"
+        onLoad={() => setLoaded(true)}
+      />
+    </div>
+  );
+}
 
 // Trang link ảnh (khách quét QR ở máy chụp / nhân viên bấm "Link ảnh"), như Snapbox: ảnh lớn ở giữa,
 // dải ảnh nhỏ bên dưới — ảnh đã ghép khung, video tua nhanh rồi tới mọi ảnh gốc. "Lưu" đưa ảnh / video
@@ -22,13 +50,17 @@ export function AlbumViewer({ token, booking }) {
   const sheet = !composite && job?._id ? getApiUrl(`/api/albums/${token}/prints/${job._id}`) : "";
   const video = booking.video ? getApiUrl(`/api/albums/${token}/video`) : "";
   const originals = booking.photos.filter((p) => p.kind === "original");
+  const compositeThumbs = composite || sheet
+    ? albumMediaSources(booking.composite, `${composite || sheet}?size=thumbnail`, "thumbnail")
+    : [];
   const items = [
     ...(composite || sheet
       ? [{
           key: "composite",
           kind: "image",
           sources: albumMediaSources(booking.composite, composite || sheet),
-          thumbs: albumMediaSources(booking.composite, `${composite || sheet}?size=thumbnail`, "thumbnail"),
+          thumbs: compositeThumbs,
+          placeholder: { src: compositeThumbs[0], cors: false },
           save: {
             url: composite ? `${composite}?download=1` : `${sheet}?download=1`,
             link: storageLink(booking.composite, "original"),
@@ -57,6 +89,7 @@ export function AlbumViewer({ token, booking }) {
       kind: "image",
       photo,
       sources: albumMediaSources(photo, photoUrl(token, photo.id, "preview"), "preview"),
+      placeholder: thumbSources(photo, token)[0],
       save: {
         url: photoUrl(token, photo.id),
         link: storageLink(photo, "original"),
@@ -71,6 +104,20 @@ export function AlbumViewer({ token, booking }) {
   const item = items[index];
   const go = (by) => items.length && setCurrent(items[(index + by + items.length) % items.length].key);
   const rail = useRef(null);
+  // Tải sẵn ảnh lớn liền trước / liền sau: vuốt sang là hiện ngay.
+  const preloaded = useRef(new Set());
+  useEffect(() => {
+    if (items.length < 2) return;
+    for (const by of [1, -1]) {
+      const near = items[(index + by + items.length) % items.length];
+      const src = near?.kind === "image" ? near.sources[0] : null;
+      if (!src || preloaded.current.has(src)) continue;
+      preloaded.current.add(src);
+      const image = new Image();
+      image.decoding = "async";
+      image.src = src;
+    }
+  }, [index, items.length]);
   useEffect(() => {
     rail.current?.querySelector(".is-active")?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
   }, [index]);
@@ -151,9 +198,10 @@ export function AlbumViewer({ token, booking }) {
         {item.kind === "video" ? (
           <AlbumMedia key={item.save.url} as="video" sources={item.sources} controls autoPlay muted loop playsInline preload="metadata" />
         ) : (
-          <AlbumMedia
+          <StageImage
             key={item.save.url}
             sources={item.sources}
+            placeholder={item.placeholder}
             alt={item.label}
           />
         )}
