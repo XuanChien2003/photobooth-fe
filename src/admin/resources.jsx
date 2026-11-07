@@ -89,6 +89,13 @@ function PrinterStatus({ printers }) {
       <h3>
         <Printer size={17} aria-hidden="true" /> Máy in tự động
       </h3>
+      {!printers.length && (
+        <p className="is-warn">
+          Chưa có máy in nào báo về. Phòng Photobooth: bấm “Cài máy chụp” ở dòng phòng → “File cài máy in
+          (Windows)”, chạy trên mini PC cắm máy DNP và làm hết các bước (cửa sổ cài đặt có thể nằm sau cửa sổ đen).
+          Mục này tự cập nhật, không cần tải lại trang.
+        </p>
+      )}
       {printers.filter((row) => row.room).map((row) => (
         <div key={`room-${row.room}`} className="printer-status-branch">
           <RoomPrinter {...row} />
@@ -184,6 +191,14 @@ export function ResourceManager({ resource, notify, me }) {
     setQuery("");
     setStatus("all");
     load();
+  }, [resource]);
+  useEffect(() => {
+    if (resource !== "rooms") return;
+    const refresh = () => {
+      if (!document.hidden) api("/admin/print-jobs/printers").then(setPrinters, () => {});
+    };
+    const timer = setInterval(refresh, 20000);
+    return () => clearInterval(timer);
   }, [resource]);
   const openEditor = (item) => {
     if (!canManage) return;
@@ -390,7 +405,7 @@ Liên kết máy chụp của phòng này sẽ không mở được nữa. Đơn
           note="Liên kết máy chụp có hạn 1 năm, chỉ gửi cho nhân viên."
         />
       )}
-      {resource === "rooms" && printers.length > 0 && <PrinterStatus printers={printers} />}
+      {resource === "rooms" && <PrinterStatus printers={printers} />}
       {isCatalog && <ServiceTabs value={service} onChange={setService} counts={loading ? {} : serviceCounts} />}
       {isCatalog ? (
         <CatalogToolbar
