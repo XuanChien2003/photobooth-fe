@@ -45,6 +45,42 @@ function Show-Message([string]$text, [string]$icon = 'Information') {
   } catch {}
 }
 
+# Bấm chuột vào cửa sổ đen làm Windows chuyển sang chế độ chọn chữ ("Select" trên thanh tiêu đề) và DỪNG
+# chương trình tới khi bấm Esc (7/11: cài máy in đứng im mãi vì vậy). Tắt chế độ đó (QuickEdit) cho cửa
+# sổ cài đặt.
+function Disable-QuickEdit {
+  try {
+    if (-not ('NXC.ConsoleMode' -as [type])) {
+      Add-Type -Namespace NXC -Name ConsoleMode -MemberDefinition @'
+[DllImport("kernel32.dll")] public static extern System.IntPtr GetStdHandle(int handle);
+[DllImport("kernel32.dll")] public static extern bool GetConsoleMode(System.IntPtr handle, out uint mode);
+[DllImport("kernel32.dll")] public static extern bool SetConsoleMode(System.IntPtr handle, uint mode);
+'@
+    }
+    $handle = [NXC.ConsoleMode]::GetStdHandle(-10)
+    $mode = [uint32]0
+    if ([NXC.ConsoleMode]::GetConsoleMode($handle, [ref]$mode)) {
+      # Bỏ ENABLE_QUICK_EDIT_MODE (0x40), giữ ENABLE_EXTENDED_FLAGS (0x80) để Windows nhận thay đổi.
+      [void][NXC.ConsoleMode]::SetConsoleMode($handle, [uint32]((([long]$mode) -bor 128) -band 4294967231))
+    }
+  } catch {}
+}
+
+# Một bước có thể treo vì driver máy in hoặc dịch vụ in của Windows (tạo hàng in, đọc / đặt tuỳ chọn của
+# driver): chạy riêng, quá giờ thì báo lỗi rõ ràng thay vì đứng im mãi.
+function Invoke-WithTimeout([scriptblock]$block, [object[]]$arguments, [int]$seconds, [string]$what) {
+  $job = Start-Job -ScriptBlock $block -ArgumentList $arguments
+  try {
+    if (-not (Wait-Job $job -Timeout $seconds)) {
+      Stop-Job $job -ErrorAction SilentlyContinue
+      throw "$what quá $seconds giây: driver máy in hoặc dịch vụ in của Windows (Print Spooler) không trả lời. Khởi động lại máy tính rồi chạy lại file cài."
+    }
+    return Receive-Job $job -ErrorAction Stop
+  } finally {
+    Remove-Job $job -Force -ErrorAction SilentlyContinue
+  }
+}
+
 # Máy DNP trong Windows: theo tên driver / tên hàng in, bỏ hàng in cắt đôi do chương trình này tạo.
 function Find-Dnp {
   $all = @(Get-Printer -ErrorAction SilentlyContinue)
@@ -86,11 +122,17 @@ function Find-CutOptionIn([System.Xml.XmlDocument]$caps, [bool]$enable) {
   }
   return $null
 }
+function Get-CapabilitiesXml([string]$queueName) {
+  return Invoke-WithTimeout {
+    param($queueName)
+    Add-Type -AssemblyName System.Printing, ReachFramework
+    $server = New-Object System.Printing.LocalPrintServer
+    (New-Object System.IO.StreamReader($server.GetPrintQueue($queueName).GetPrintCapabilitiesAsXml())).ReadToEnd()
+  } @($queueName) 45 'Đọc tuỳ chọn của driver máy in'
+}
 function Find-CutOption([string]$queueName, [bool]$enable) {
-  Add-Type -AssemblyName System.Printing, ReachFramework
-  $server = New-Object System.Printing.LocalPrintServer
   $caps = New-Object System.Xml.XmlDocument
-  $caps.Load($server.GetPrintQueue($queueName).GetPrintCapabilitiesAsXml())
+  $caps.LoadXml([string](Get-CapabilitiesXml $queueName))
   return Find-CutOptionIn $caps $enable
 }
 # PrintTicket chỉ đổi đúng tuỳ chọn cắt (các tuỳ chọn khác của hàng in giữ nguyên khi gộp).
@@ -111,15 +153,19 @@ function Set-TwoInchCut([string]$queueName, [bool]$enable) {
     if (-not $found) { return $false }
     $xml = New-CutTicketXml $found
     $oLocal = $found.option.GetAttribute('name').Split(':', 2)[1]
-    $delta = New-Object System.Printing.PrintTicket(New-Object System.IO.MemoryStream(, [Text.Encoding]::UTF8.GetBytes($xml)))
-    $server = New-Object System.Printing.PrintServer
-    $queue = New-Object System.Printing.PrintQueue($server, $queueName, [System.Printing.PrintSystemDesiredAccess]::AdministratePrinter)
-    $queue.DefaultPrintTicket = $queue.MergeAndValidatePrintTicket($queue.DefaultPrintTicket, $delta).ValidatedPrintTicket
-    $queue.UserPrintTicket = $queue.MergeAndValidatePrintTicket($queue.UserPrintTicket, $delta).ValidatedPrintTicket
-    $queue.Commit()
-    $queue.Refresh()
-    $check = (New-Object System.IO.StreamReader($queue.UserPrintTicket.GetXmlStream())).ReadToEnd()
-    if ($check -match [regex]::Escape($oLocal)) {
+    $saved = Invoke-WithTimeout {
+      param($queueName, $xml, $oLocal)
+      Add-Type -AssemblyName System.Printing, ReachFramework
+      $delta = New-Object System.Printing.PrintTicket(New-Object System.IO.MemoryStream(, [Text.Encoding]::UTF8.GetBytes($xml)))
+      $server = New-Object System.Printing.PrintServer
+      $queue = New-Object System.Printing.PrintQueue($server, $queueName, [System.Printing.PrintSystemDesiredAccess]::AdministratePrinter)
+      $queue.DefaultPrintTicket = $queue.MergeAndValidatePrintTicket($queue.DefaultPrintTicket, $delta).ValidatedPrintTicket
+      $queue.UserPrintTicket = $queue.MergeAndValidatePrintTicket($queue.UserPrintTicket, $delta).ValidatedPrintTicket
+      $queue.Commit()
+      $queue.Refresh()
+      (New-Object System.IO.StreamReader($queue.UserPrintTicket.GetXmlStream())).ReadToEnd() -match [regex]::Escape($oLocal)
+    } @($queueName, $xml, $oLocal) 60 'Bật / tắt cắt đôi 2 inch'
+    if ($saved -eq $true) {
       Write-Log "Hàng in '$queueName': $($found.label)."
       return $true
     }
@@ -341,6 +387,7 @@ function Install-Agent {
   if (-not $payload.Success) { throw 'File cài bị hỏng: tải lại ở Quản lý máy.' }
   $setup = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($payload.Groups[1].Value)) | ConvertFrom-Json
   New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ConfigPath) | Out-Null
+  Disable-QuickEdit
   Write-Host "Cài máy in DNP cho phòng: $($setup.room)"
 
   $main = Find-Dnp
@@ -353,10 +400,17 @@ function Install-Agent {
   $stripName = $main.Name + $StripSuffix
   $created = $false
   if (-not (Get-Printer -Name $stripName -ErrorAction SilentlyContinue)) {
-    Add-Printer -Name $stripName -DriverName $main.DriverName -PortName $main.PortName
+    Write-Host "Đang tạo hàng in cho tờ nhỏ: $stripName (có thể mất tới 1 phút)..."
+    [void](Invoke-WithTimeout {
+      param($name, $driver, $port)
+      Add-Printer -Name $name -DriverName $driver -PortName $port
+    } @($stripName, $main.DriverName, $main.PortName) 120 'Tạo hàng in cho tờ nhỏ')
     $created = $true
     Write-Host "Đã tạo hàng in cho tờ nhỏ: $stripName"
+  } else {
+    Write-Host "Đã có hàng in cho tờ nhỏ: $stripName"
   }
+  Write-Host 'Đang thử tự bật cắt đôi 2 inch cho tờ nhỏ...'
   $cut = 'queue'
   if (Set-TwoInchCut $stripName $true) {
     $cut = 'auto'
